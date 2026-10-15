@@ -266,13 +266,44 @@
     }
   }
 
-  // Header: identity and XP on the left; HP, armor and damage on the right,
-  // separated by thin dividers.
+  // Header: name and class on the left; level/XP, HP, armor and damage
+  // blocks on the right, separated by thin dividers.
   .dw-header {
+    position: relative;
+    overflow: hidden;
     display: flex;
     align-items: stretch;
-    gap: 14px;
-    padding: 10px 12px;
+    gap: 12px;
+    padding: 10px 14px;
+
+    // Everything sits above the banner art.
+    > :not(.dw-banner-art) {
+      position: relative;
+    }
+  }
+
+  // The portrait, faded and cropped, behind the left of the header. It fades
+  // out before the stat blocks so they stay easy to read.
+  .dw-banner-art {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center 25%;
+    background-repeat: no-repeat;
+    opacity: 0.45;
+    pointer-events: none;
+    -webkit-mask-image: linear-gradient(to right, #000 0%, #000 28%, transparent 60%);
+    mask-image: linear-gradient(to right, #000 0%, #000 28%, transparent 60%);
+  }
+
+  .dw-header--banner {
+    input.dw-name {
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+    }
+  }
+
+  &:not(.dw-dark) .dw-header--banner input.dw-name {
+    text-shadow: 0 1px 3px rgba(255, 255, 255, 0.9);
   }
 
   .dw-divider {
@@ -283,12 +314,12 @@
   }
 
   .dw-portrait {
-    flex: 0 0 76px;
-    width: 76px;
-    height: 76px;
+    flex: 0 0 124px;
+    width: 124px;
+    height: 124px;
     align-self: center;
     object-fit: cover;
-    border: 1px solid var(--dw-line);
+    border: 2px solid var(--dw-navy);
     border-radius: 10px;
     background: var(--dw-navy);
     cursor: pointer;
@@ -307,7 +338,7 @@
     height: 34px;
     padding: 0 4px;
     font-family: $font-stack-secondary;
-    font-size: 26px;
+    font-size: 24px;
     color: var(--dw-navy);
     background: transparent;
     border-color: transparent;
@@ -317,62 +348,114 @@
     }
   }
 
-  .dw-identity-row,
-  .dw-xp-row {
+  .dw-identity-row {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 4px 8px;
+    gap: 4px 6px;
   }
 
   input.dw-class-input {
-    width: 150px;
+    flex: 1 1 100px;
+    min-width: 0;
+    max-width: 180px;
+    height: 28px;
   }
 
-  .dw-level {
-    display: inline-flex;
+  // The level, HP, armor and damage blocks: centered contents.
+  .dw-header-stat {
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 6px;
-    margin-left: 4px;
-    color: var(--dw-muted);
+    justify-content: center;
+    gap: 4px;
+    text-align: center;
 
-    input {
-      width: 44px;
-      height: 28px;
+    input.dw-big {
+      width: 46px;
+      height: 30px;
+      font-size: 19px;
+      font-weight: 700;
+    }
+
+    input.dw-small {
+      width: 40px;
+      height: 24px;
     }
   }
 
-  .dw-xp-row {
+  // Level/XP and HP side by side, armor and damage in one row below.
+  .dw-header-stats {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: 186px 172px;
+    grid-template-rows: 1fr auto;
+    gap: 6px 12px;
+  }
+
+  .dw-header-stat--level {
+    align-items: stretch;
+  }
+
+  .dw-level {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .dw-xp-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
     .dw-bar {
-      flex: 1 1 60px;
-      max-width: 150px;
+      flex: 1;
     }
   }
 
   .dw-xp-count {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
+    font-size: 14px;
     font-weight: 700;
 
     input {
-      width: 40px;
+      width: 34px;
+      height: 22px;
+      font-size: 14px;
+    }
+  }
+
+  .dw-xp-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    .dw-step {
+      flex: 0 0 24px;
+      width: 24px;
       height: 24px;
     }
   }
 
   .dw-levelup-btn {
+    flex: 1;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
-    height: 26px;
-    padding: 0 10px;
+    height: 24px;
+    padding: 0 6px;
     border: 1px dashed var(--dw-line);
     border-radius: 6px;
     background: transparent;
     color: var(--dw-muted);
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
 
     &[disabled] {
       cursor: not-allowed;
@@ -382,6 +465,7 @@
       border: 0;
       background: var(--dw-accent);
       color: var(--dw-on-accent);
+      font-size: 13px;
 
       &:hover {
         filter: brightness(1.08);
@@ -389,42 +473,47 @@
     }
   }
 
-  // The HP, armor and damage blocks: centered contents.
-  .dw-header-stat {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    text-align: center;
-
-    input.dw-big {
-      width: 52px;
-      height: 32px;
-      font-size: 20px;
-      font-weight: 700;
-    }
-
-    input.dw-small {
-      width: 44px;
-      height: 26px;
-    }
-  }
-
   .dw-header-stat--hp {
-    flex: 0 0 170px;
+    padding-left: 12px;
+    border-left: 1px solid var(--dw-line);
 
     .dw-bar {
       align-self: stretch;
     }
+
+    .dw-step {
+      width: 24px;
+      height: 24px;
+    }
   }
 
-  .dw-header-stat--armor {
-    flex: 0 0 64px;
+  .dw-header-inline {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding-top: 6px;
+    border-top: 1px solid var(--dw-line);
+
+    input.dw-big {
+      width: 44px;
+      height: 26px;
+      font-size: 17px;
+      font-weight: 700;
+    }
   }
 
-  .dw-header-stat--damage {
-    flex: 0 0 120px;
+  .dw-inline-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .dw-inline-divider {
+    width: 1px;
+    align-self: stretch;
+    background: var(--dw-line);
   }
 
   .dw-hp-value {
@@ -438,7 +527,7 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
-    height: 28px;
+    height: 26px;
     padding: 0 10px;
     border: 1px solid var(--dw-line);
     border-radius: 6px;
@@ -459,99 +548,146 @@
     gap: 3px;
 
     select {
-      width: 56px;
-      height: 26px;
+      width: 54px;
+      height: 24px;
       padding: 0 2px;
       font-size: 14px;
     }
 
     input {
-      width: 44px;
-      height: 26px;
+      width: 42px;
+      height: 24px;
       padding: 0 4px;
       font-size: 14px;
     }
   }
 
-  // Abilities and roll modifiers: one panel. Ability columns share the
-  // panel instead of each having its own box.
+  // Abilities and roll modifiers share one panel. Each ability is a tile with
+  // its own icon, shown small by the label and large as a faded watermark.
   .dw-stats {
     display: flex;
     align-items: stretch;
     gap: 10px;
-    padding: 6px 12px 6px 6px;
+    padding: 8px 12px 8px 8px;
   }
 
   .dw-abilities {
     flex: 1;
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 2px;
+    gap: 6px;
   }
 
   .dw-ability {
+    position: relative;
     display: flex;
     flex-direction: column;
+    gap: 0;
+    min-width: 0;
+    padding: 5px 6px 4px;
+    overflow: hidden;
+    background: var(--dw-sunken);
+    border: 1px solid var(--dw-line);
+    border-radius: 10px;
+
+    &.has-debility {
+      background: var(--dw-deb);
+      border-color: var(--dw-deb-ink);
+    }
+  }
+
+  .dw-ability-watermark {
+    position: absolute;
+    right: -8px;
+    bottom: -10px;
+    font-size: 54px;
+    color: var(--dw-navy);
+    opacity: 0.09;
+    pointer-events: none;
+  }
+
+  .dw-ability-head {
+    position: relative;
+    display: flex;
     align-items: center;
-    gap: 2px;
-    padding: 2px 0;
-    border-radius: 8px;
+    justify-content: space-between;
+    gap: 4px;
+
+    .dw-label i {
+      margin-right: 2px;
+      color: var(--dw-navy);
+      opacity: 0.8;
+    }
+  }
+
+  .dw-ability-values {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin: 2px 0 4px;
   }
 
   .dw-ability-roll {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    width: 100%;
-    padding: 4px 4px 0;
+    position: relative;
+    padding: 0 6px;
     border: 0;
     border-radius: 8px;
     background: transparent;
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.15;
 
     &:hover {
-      background: var(--dw-chip);
+      background: var(--dw-chip-hover);
     }
-  }
-
-  .dw-ability-mod {
-    font-size: 24px;
-    font-weight: 700;
-    line-height: 1.1;
   }
 
   input.dw-ability-score {
-    width: 46px;
+    width: 34px;
     height: 22px;
+    padding: 0 2px;
+    border-radius: 11px;
     font-size: 13px;
     color: var(--dw-muted);
-    background: transparent;
-    border-color: transparent;
-
-    &:hover {
-      border-color: var(--dw-line);
-    }
+    background: var(--dw-surface);
   }
 
+  // Debility toggle: the debility's name. The checkbox stays for the form,
+  // but the label is the control.
   .dw-debility {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 8px;
+    position: relative;
+    display: block;
+    min-width: 0;
+    padding: 1px 4px;
+    text-align: center;
+    border: 1px solid transparent;
     border-radius: 10px;
     font-size: 12px;
     color: var(--dw-muted);
     cursor: pointer;
 
-    // The checkbox stays for the form, but the label is the control.
+    span {
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     input {
       position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
       opacity: 0;
       pointer-events: none;
     }
 
     &:hover {
-      background: var(--dw-chip);
+      color: var(--dw-ink);
+      border-color: var(--dw-line);
     }
 
     &:focus-within {
@@ -559,9 +695,12 @@
     }
 
     &.on {
-      background: var(--dw-deb);
-      color: var(--dw-deb-ink);
+      color: var(--dw-bad);
       font-weight: 700;
+      border-color: var(--dw-bad);
+      background: var(--dw-deb);
+      text-shadow: 0 0 6px var(--dw-bad);
+      box-shadow: 0 0 8px -1px var(--dw-bad);
     }
   }
 
@@ -637,6 +776,10 @@
 
     input {
       position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
       opacity: 0;
       pointer-events: none;
     }
