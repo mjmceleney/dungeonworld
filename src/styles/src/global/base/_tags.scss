@@ -72,7 +72,7 @@ a.tag {
   align-items: center;
   justify-content: center;
   background: transparent;
-  transition: all ease-in-out 0.25s;
+  transition: background-color ease-in-out 0.25s, color ease-in-out 0.25s;
   border-radius: 50px;
 
   &:hover {

@@ -42,7 +42,7 @@
     .directory-item {
       border-bottom: 1px solid rgba($c-black, 0.25);
       line-height: 1;
-      transition: all ease-in-out 0.25s;
+      transition: opacity ease-in-out 0.25s, background-color ease-in-out 0.25s;
       position: relative;
       padding-left: 5px;
       padding-right: 5px;
@@ -58,7 +58,7 @@
         height: 5px;
         width: 0px;
         background: rgba($c-white, 0.75);
-        transition: all ease-in-out 0.25s;
+        transition: width ease-in-out 0.25s;
         pointer-events: none;
       }
 

@@ -104,16 +104,26 @@ export class DwActorSheet extends foundry.appv1.sheets.ActorSheet {
       relativeTo: this.actor
     };
 
-    // Prepare items.
-    await this._prepareCharacterItems(context);
-    await this._prepareNpcItems(context);
+    // Prepare items, enrich fields, and load the class list concurrently.
+    const details = context.system.details;
+    const isCharacter = this.actor.type == 'character';
+    const enrich = (text) => TextEditor.enrichHTML(text, context.enrichmentOptions);
+    const [biographyEnriched, classlist, lookEnriched, alignmentEnriched, raceEnriched] = await Promise.all([
+      enrich(details.biography),
+      isCharacter ? DwClassList.getClasses() : null,
+      isCharacter ? enrich(details.look) : null,
+      isCharacter ? enrich(details.alignment.description) : null,
+      isCharacter ? enrich(details.race.description) : null,
+      this._prepareCharacterItems(context),
+      this._prepareNpcItems(context),
+    ]);
 
     // Enrich the bio field.
-    context.system.details.biographyEnriched = await TextEditor.enrichHTML(context.system.details.biography, context.enrichmentOptions);
+    details.biographyEnriched = biographyEnriched;
 
     // Add classlist.
-    if (this.actor.type == 'character') {
-      context.system.classlist = await DwClassList.getClasses();
+    if (isCharacter) {
+      context.system.classlist = classlist;
 
       let xpSvg = {
         radius: 16,
@@ -122,9 +132,9 @@ export class DwActorSheet extends foundry.appv1.sheets.ActorSheet {
       };
 
       // Handle enriched fields.
-      context.system.details.lookEnriched = await TextEditor.enrichHTML(context.system.details.look, context.enrichmentOptions);
-      context.system.details.alignment.enriched = await TextEditor.enrichHTML(context.system.details.alignment.description, context.enrichmentOptions);
-      context.system.details.race.enriched = await TextEditor.enrichHTML(context.system.details.race.description, context.enrichmentOptions);
+      details.lookEnriched = lookEnriched;
+      details.alignment.enriched = alignmentEnriched;
+      details.race.enriched = raceEnriched;
 
       // Set a warning for tokens.
       context.system.isToken = this.actor.token != null;
@@ -210,7 +220,7 @@ export class DwActorSheet extends foundry.appv1.sheets.ActorSheet {
       owner: isOwner,
       title: this.title,
       xpRequired: context.xpRequired,
-      rollData: this.actor.getRollData()
+      rollData: context.enrichmentOptions.rollData
     };
 
     // Return template data
@@ -229,11 +239,12 @@ export class DwActorSheet extends foundry.appv1.sheets.ActorSheet {
     if (sheetData.actor.type !== 'character') return;
 
     const actorData = sheetData.actor;
-    const enrichmentOptions = {
-      async: true,
-      documents: true,
-      secrets: this.actor.isOwner,
-      rollData: this.actor.getRollData(),
+    const secrets = this.actor.isOwner;
+
+    // Enrichment runs concurrently; each call stores its result on the target.
+    const enrichments = [];
+    const enrich = (target, key, text, options) => {
+      enrichments.push(TextEditor.enrichHTML(text, options).then(html => target[key] = html));
     };
 
     // Initialize containers.
@@ -257,18 +268,23 @@ export class DwActorSheet extends foundry.appv1.sheets.ActorSheet {
     // let totalWeight = 0;
     for (let i of sheetData.items) {
       const item = this.actor.items.get(i._id);
-      enrichmentOptions.relativeTo = item;
-      enrichmentOptions.rollData = item.getRollData();
+      const enrichmentOptions = {
+        async: true,
+        documents: true,
+        secrets: secrets,
+        relativeTo: item,
+        rollData: item.getRollData(),
+      };
       if (i.system?.description) {
-        i.system.descriptionEnriched = await TextEditor.enrichHTML(i.system.description, enrichmentOptions);
+        enrich(i.system, 'descriptionEnriched', i.system.description, enrichmentOptions);
       }
 
       i.img = i.img || DEFAULT_TOKEN;
       // If this is a move, sort into various arrays.
       if (i.type === 'move') {
-        i.system.choicesEnriched = await TextEditor.enrichHTML(i.system.choices, enrichmentOptions);
-        for (let [k, v] of Object.entries(i.system.moveResults)) {
-          i.system.moveResults[k].enriched = await TextEditor.enrichHTML(v.value, enrichmentOptions);
+        enrich(i.system, 'choicesEnriched', i.system.choices, enrichmentOptions);
+        for (let v of Object.values(i.system.moveResults)) {
+          enrich(v, 'enriched', v.value, enrichmentOptions);
         }
 
         switch (i.system.moveType) {
@@ -303,10 +319,11 @@ export class DwActorSheet extends foundry.appv1.sheets.ActorSheet {
         equipment.push(i);
       }
       else if (i.type === 'bond') {
-        i.nameEnriched = await TextEditor.enrichHTML(i.name, enrichmentOptions);
+        enrich(i, 'nameEnriched', i.name, enrichmentOptions);
         bonds.push(i);
       }
     }
+    await Promise.all(enrichments);
 
     // Assign and return
     sheetData.moves = moves;
@@ -349,12 +366,8 @@ export class DwActorSheet extends foundry.appv1.sheets.ActorSheet {
     }
 
     const actorData = sheetData.actor;
-    const enrichmentOptions = {
-      async: true,
-      documents: true,
-      secrets: this.actor.isOwner,
-      rollData: this.actor.getRollData(),
-    };
+    const secrets = this.actor.isOwner;
+    const enrichments = [];
 
     // Initialize containers.
     const moves = [];
@@ -365,10 +378,15 @@ export class DwActorSheet extends foundry.appv1.sheets.ActorSheet {
     // let totalWeight = 0;
     for (let i of sheetData.items) {
       const item = this.actor.items.get(i._id);
-      enrichmentOptions.relativeTo = item;
-      enrichmentOptions.rollData = item.getRollData();
       if (i.system?.description) {
-        i.system.descriptionEnriched = await TextEditor.enrichHTML(i.system.description, enrichmentOptions);
+        const enrichmentOptions = {
+          async: true,
+          documents: true,
+          secrets: secrets,
+          relativeTo: item,
+          rollData: item.getRollData(),
+        };
+        enrichments.push(TextEditor.enrichHTML(i.system.description, enrichmentOptions).then(html => i.system.descriptionEnriched = html));
       }
 
       i.img = i.img || DEFAULT_TOKEN;
@@ -389,6 +407,8 @@ export class DwActorSheet extends foundry.appv1.sheets.ActorSheet {
         }
       }
     }
+
+    await Promise.all(enrichments);
 
     // Assign and return
     sheetData.moves = moves;
@@ -534,8 +554,8 @@ export class DwActorSheet extends foundry.appv1.sheets.ActorSheet {
     const actorData = this.actor.system;
     let orig_class_name = actorData.details.class;
     let char_class_name = orig_class_name.trim();
-    let class_list = await DwClassList.getClasses();
     let class_list_items = await DwClassList.getClasses(false);
+    let class_list = class_list_items.map(c => c.name);
 
     let char_class = DwUtility.cleanClass(char_class_name);
     let char_level = Number(actorData.attributes.level.value);
@@ -876,8 +896,6 @@ export class DwActorSheet extends foundry.appv1.sheets.ActorSheet {
       return;
     }
 
-    let context = await this.getData();
-
     let move_ids = [];
     let equipment_ids = [];
     let spell_ids = [];
@@ -975,24 +993,21 @@ export class DwActorSheet extends foundry.appv1.sheets.ActorSheet {
 
     // Adjust level.
     if (Number(actor.system.attributes.xp.value) > 0) {
-      let xp = Number(actor.system.attributes.xp.value) - context.xpRequired;
+      const xpRequired = actor.system.attributes.xp.max ?? Number(actor.system.attributes.level.value ?? 1) + 7;
+      let xp = Number(actor.system.attributes.xp.value) - xpRequired;
       system['attributes.xp.value'] = xp > -1 ? xp : 0;
       system['attributes.level.value'] = Number(actor.system.attributes.level.value) + 1;
     }
 
     //Set Level 1 bonds
+    let newbonds = [];
     if (Number(actor.system.attributes.xp.value) == 0) {
       let theclass = DwUtility.cleanClass(actor.system.details.class);
-      let newbonds = [];
 
       for (let i = 1; i < 7; i++) {
         if (game.i18n.localize("DW." + theclass + ".Bond" + i ) != "DW." + theclass + ".Bond" + i ) {
           newbonds.push({name: game.i18n.localize("DW." + theclass + ".Bond" + i), type: 'bond', system: ''});
         }
-      }
-
-      if (newbonds.length > 0) {
-        await actor.createEmbeddedDocuments('Item', newbonds);
       }
     }
 
@@ -1030,22 +1045,18 @@ export class DwActorSheet extends foundry.appv1.sheets.ActorSheet {
       system['attributes.damage.value'] = itemData.class_item.system.damage;
     }
 
-    if (new_moves) {
-      await actor.createEmbeddedDocuments('Item', new_moves);
-    }
-    if (new_equipment) {
-      await actor.createEmbeddedDocuments('Item', new_equipment);
-    }
-    if (new_spells) {
-      await actor.createEmbeddedDocuments('Item', new_spells);
+    // Create all new items in a single operation.
+    const new_items = [
+      ...newbonds,
+      ...(new_moves ?? []),
+      ...(new_equipment ?? []),
+      ...(new_spells ?? []),
+    ];
+    if (new_items.length > 0) {
+      await actor.createEmbeddedDocuments('Item', new_items);
     }
 
-    await actor.update({ system: system });
-    await actor.setFlag('dungeonworld', 'levelup', false);
-    // Workaround for attempting to level up a new character.
-    setTimeout(() => {
-      actor.sheet.render(true);
-    }, 100);
+    await actor.update({ system: system, 'flags.dungeonworld.levelup': false });
   }
 
   // @todo abstract the logic in this method so that we can combine it with onLevelUp as much as possible.
@@ -1056,8 +1067,8 @@ export class DwActorSheet extends foundry.appv1.sheets.ActorSheet {
     const actorData = this.actor.system;
     let orig_class_name = actorData.details.class;
     let char_class_name = orig_class_name.trim();
-    let class_list = await DwClassList.getClasses();
     let class_list_items = await DwClassList.getClasses(false);
+    let class_list = class_list_items.map(c => c.name);
 
     let char_class = DwUtility.cleanClass(char_class_name);
 
@@ -1365,8 +1376,6 @@ export class DwActorSheet extends foundry.appv1.sheets.ActorSheet {
 
       let update = { "system.prepared": !item.system.prepared };
       await item.update(update, {});
-
-      this.render();
     }
   }
 
@@ -1389,8 +1398,6 @@ export class DwActorSheet extends foundry.appv1.sheets.ActorSheet {
       let update =
       { "system.equipped": !item.system.equipped };
       await item.update(update, {});
-
-      this.render();
     }
   }
 
@@ -1427,8 +1434,6 @@ export class DwActorSheet extends foundry.appv1.sheets.ActorSheet {
     }
 
     await item.update(update, {});
-
-    this.render();
   }
 
   /**
@@ -1564,13 +1569,7 @@ export class DwActorSheet extends foundry.appv1.sheets.ActorSheet {
       }
     }
     // Reduce duplicates.
-    let tagNames = [];
-    for (let tag of tags) {
-      let tagName = tag.toLowerCase();
-      if (tagNames.includes(tagName) === false) {
-        tagNames.push(tagName);
-      }
-    }
+    let tagNames = [...new Set(tags.map(tag => tag.toLowerCase()))];
 
     // Sort the tagnames list.
     tagNames.sort((a, b) => {

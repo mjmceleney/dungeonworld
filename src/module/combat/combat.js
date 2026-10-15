@@ -201,9 +201,11 @@ export class CombatSidebarDw {
       }
     });
 
-    // Re-render combat when actors are modified.
+    // Re-render combat when actors in the current combat are modified.
     Hooks.on('updateActor', (actor, data, options, id) => {
-      ui.combat.render();
+      if (game.combat?.combatants.some(c => c.actorId === actor.id)) {
+        ui.combat.render();
+      }
     });
 
     Hooks.on('updateToken', (scene, token, data, options, id) => {
@@ -298,13 +300,14 @@ export class CombatSidebarDw {
     }
 
     let currentInitiative = 0;
+    const orphanedIds = [];
     // Reduce the combatants array into a new object with keys based on
     // the actor types.
     let combatants = game.combat.combatants.reduce((groups, combatant) => {
       // If this is for a combatant that has had its token/actor deleted,
-      // remove it from the combat.
+      // queue it for removal from the combat.
       if (!combatant.actor) {
-        game.combat.deleteEmbeddedDocuments('Combatant', [combatant.id]);
+        orphanedIds.push(combatant.id);
       }
       // Append valid actors to the appropriate group.
       else {
@@ -372,6 +375,12 @@ export class CombatSidebarDw {
       // Return the updated group.
       return groups;
     }, {});
+
+    // Remove orphaned combatants in a single operation. Only the GM has
+    // permission to do this.
+    if (orphanedIds.length > 0 && game.user.isGM) {
+      game.combat.deleteEmbeddedDocuments('Combatant', orphanedIds);
+    }
 
     // Sort the combatants in each group by initiative.
     for (let [groupKey, group] of Object.entries(combatants)) {

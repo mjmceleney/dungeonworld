@@ -108,7 +108,6 @@ export class DwClassItemSheet extends DwItemSheet {
 
     // Update the entity.
     await this.item.update(itemData);
-    this.render(true);
   }
 
   async _createEquipment(equipmentId, groupId) {
@@ -130,7 +129,6 @@ export class DwClassItemSheet extends DwItemSheet {
       itemData[`system.equipment.${groupId}.items`] = existing_items;
       // Update the entity.
       await this.item.update(itemData);
-      this.render(true);
     }
 
   }

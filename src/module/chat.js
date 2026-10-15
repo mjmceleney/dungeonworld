@@ -1,3 +1,30 @@
+const { renderTemplate } = foundry.applications.handlebars;
+
+// Damage button markup, rendered once and reused for every message.
+let damageButtonsHtml = null;
+
+const getDamageButtons = function() {
+  damageButtonsHtml ??= renderTemplate('systems/dungeonworld/templates/parts/chat-buttons.html', {});
+  return damageButtonsHtml;
+}
+
+export const preloadDamageButtons = function() {
+  return getDamageButtons();
+}
+
+export const appendDamageButtons = async function(message, html) {
+  if (!message.rolls?.length) return;
+  // Exit early if this is a rollable table.
+  if (message.flags?.core?.RollTable) return;
+  // Messages from older versions have the buttons saved in their content.
+  if (message.flags?.dungeonworld?.damageButtons) return;
+  // The buttons are GM-only.
+  if (!game.user.isGM || !game.settings.get('dungeonworld', 'enableDamageButtons')) return;
+  const content = html.querySelector('.message-content');
+  if (!content || content.querySelector('.chat-damage-buttons')) return;
+  content.insertAdjacentHTML('beforeend', await getDamageButtons());
+}
+
 export const displayChatActionButtons = function(message, html, data) {
   html = $(html);
   const chatCard = html.find(".dw.chat-card");
@@ -111,7 +138,10 @@ async function _chatActionDamage(message, action) {
   let actors = canvas.tokens.controlled.map(t => t.document.actor);
   if (!actors || actors.length < 1) return;
 
-  let $content = $(message.content).text();
+  // Wrap the content so that plain-text content (such as a bare roll total)
+  // isn't treated as a jQuery selector.
+  const $message = $('<div>').html(message.content);
+  let $content = $message.text();
   // TODO: Localize this.
   let piercing = $content.match(/(\d+)\s*piercing|piercing\s*(\d+)/) ?? [];
   let dmgBonus = $content.match(/[+](\d+)\s*damage|damage\s*[+](\d+)/) ?? [];
@@ -120,10 +150,9 @@ async function _chatActionDamage(message, action) {
     piercing: (piercing[1] ?? piercing[2]) ?? 0,
     dmgBonus: (dmgBonus[1] ?? dmgBonus[2]) ?? 0,
   };
+  const rollTotal = message.rolls?.[0]?.total ?? $message.find('.dice-total').text() ?? 0;
   for (let actor of actors) {
     if (!actor || !actor.system.attributes.hp) return;
-
-    let rollTotal = $(message.content).find('.dice-total')?.text() ?? 0;
 
     switch (action) {
       case 'damage':

@@ -14,6 +14,21 @@ export class DwRolls {
     return defaultFormula;
   }
 
+  /**
+   * Check whether a formula can be evaluated, without rolling any dice or
+   * prompting for manual dice entry. Unresolved strings (such as `str` or
+   * `bond`) are invalid.
+   */
+  static isValidFormula(formula, rollData) {
+    try {
+      new Roll(formula, rollData).evaluateSync({ strict: false });
+      return true;
+    }
+    catch (error) {
+      return false;
+    }
+  }
+
   static getModifiers(actor) {
     let forward = Number(actor.system.attributes?.forward?.value) ?? 0;
     let ongoing = Number(actor.system.attributes?.ongoing?.value) ?? 0;
@@ -209,12 +224,7 @@ export class DwRolls {
     // Handle dice rolls.
     if (!DwUtility.isEmpty(roll)) {
       // Test if the roll is a formula.
-      let validRoll = false;
-      try {
-        validRoll = await (new Roll(roll.trim(), rollData).evaluate());
-      } catch (error) {
-        validRoll = false;
-      }
+      let validRoll = DwRolls.isValidFormula(roll.trim(), rollData);
       // Roll can be either a formula like `2d6+3` or a raw stat like `str`.
       let formula = validRoll ? roll.trim() : '';
       // Handle bond (user input).
@@ -245,13 +255,7 @@ export class DwRolls {
         // Handle formula overrides.
         let formulaOverride = this.actor.system.attributes?.rollFormula?.value;
         if (formulaOverride && formula.includes('2d6')) {
-          let overrideIsValid = false;
-          try {
-            overrideIsValid = await (new Roll(formulaOverride.trim(), rollData).evaluate());
-          }
-          catch (error) {
-            overrideIsValid = false;
-          }
+          let overrideIsValid = DwRolls.isValidFormula(formulaOverride.trim(), rollData);
 
           if (overrideIsValid) formula = formula.replace('2d6', formulaOverride);
         }
@@ -400,7 +404,6 @@ export class DwRolls {
         }
         else {
           await game.combat.updateEmbeddedDocuments('Combatant', [{ _id: combatant.id, 'flags.dungeonworld.moveCount': moveCount }]);
-          ui.combat.render();
         }
       }
     }
