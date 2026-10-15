@@ -1,4 +1,4 @@
-<section class="dw-stats">
+<section class="dw-card dw-stats">
   <div class="dw-abilities">
     {{#each abilities}}
     <div class="dw-ability {{#if debility}}has-debility{{/if}}">
@@ -9,29 +9,32 @@
       <input class="dw-ability-score" type="number" name="system.abilities.{{key}}.value" value="{{value}}" step="1" aria-label="{{label}}"/>
       <label class="dw-debility {{#if debility}}on{{/if}}">
         <input type="checkbox" name="system.abilities.{{key}}.debility" {{checked debility}}/>
-        <i class="fas fa-circle-exclamation" inert></i>
         <span>{{debilityLabel}}</span>
       </label>
     </div>
     {{/each}}
   </div>
 
-  <div class="dw-card dw-modifiers">
-    <div class="dw-modifier">
-      <span class="dw-label">{{localize "DW.Forward"}}</span>
-      <span class="dw-stepper">
-        <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.forward.value" data-delta="-1" aria-label="{{localize "DW.Sheet.Decrease"}} {{localize "DW.Forward"}}"><i class="fas fa-minus" inert></i></button>
-        <input type="number" name="system.attributes.forward.value" value="{{system.attributes.forward.value}}" step="1" aria-label="{{localize "DW.Forward"}}"/>
-        <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.forward.value" data-delta="1" aria-label="{{localize "DW.Sheet.Increase"}} {{localize "DW.Forward"}}"><i class="fas fa-plus" inert></i></button>
-      </span>
-    </div>
-    <div class="dw-modifier">
-      <span class="dw-label">{{localize "DW.Ongoing"}}</span>
-      <span class="dw-stepper">
-        <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.ongoing.value" data-delta="-1" aria-label="{{localize "DW.Sheet.Decrease"}} {{localize "DW.Ongoing"}}"><i class="fas fa-minus" inert></i></button>
-        <input type="number" name="system.attributes.ongoing.value" value="{{system.attributes.ongoing.value}}" step="1" aria-label="{{localize "DW.Ongoing"}}"/>
-        <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.ongoing.value" data-delta="1" aria-label="{{localize "DW.Sheet.Increase"}} {{localize "DW.Ongoing"}}"><i class="fas fa-plus" inert></i></button>
-      </span>
+  <div class="dw-divider"></div>
+
+  <div class="dw-modifiers">
+    <div class="dw-modifier-pair">
+      <div class="dw-modifier">
+        <span class="dw-label">{{localize "DW.Forward"}}</span>
+        <span class="dw-stepper">
+          <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.forward.value" data-delta="-1" aria-label="{{localize "DW.Sheet.Decrease"}} {{localize "DW.Forward"}}"><i class="fas fa-minus" inert></i></button>
+          <input type="number" name="system.attributes.forward.value" value="{{system.attributes.forward.value}}" step="1" aria-label="{{localize "DW.Forward"}}"/>
+          <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.forward.value" data-delta="1" aria-label="{{localize "DW.Sheet.Increase"}} {{localize "DW.Forward"}}"><i class="fas fa-plus" inert></i></button>
+        </span>
+      </div>
+      <div class="dw-modifier">
+        <span class="dw-label">{{localize "DW.Ongoing"}}</span>
+        <span class="dw-stepper">
+          <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.ongoing.value" data-delta="-1" aria-label="{{localize "DW.Sheet.Decrease"}} {{localize "DW.Ongoing"}}"><i class="fas fa-minus" inert></i></button>
+          <input type="number" name="system.attributes.ongoing.value" value="{{system.attributes.ongoing.value}}" step="1" aria-label="{{localize "DW.Ongoing"}}"/>
+          <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.ongoing.value" data-delta="1" aria-label="{{localize "DW.Sheet.Increase"}} {{localize "DW.Ongoing"}}"><i class="fas fa-plus" inert></i></button>
+        </span>
+      </div>
     </div>
     <fieldset class="dw-segmented">
       <legend class="dw-label">{{localize "DW.RollMode"}}</legend>

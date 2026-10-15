@@ -56,10 +56,9 @@
   .window-content {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 250px;
-    grid-template-rows: auto auto auto auto minmax(0, 1fr);
+    grid-template-rows: auto auto auto minmax(0, 1fr);
     grid-template-areas:
       "header header"
-      "vitals vitals"
       "stats stats"
       "nav sidebar"
       "panel sidebar";
@@ -74,7 +73,6 @@
   }
 
   [data-application-part="header"] { grid-area: header; }
-  [data-application-part="vitals"] { grid-area: vitals; }
   [data-application-part="stats"] { grid-area: stats; }
   [data-application-part="tabs"] { grid-area: nav; }
   [data-application-part="sidebar"] { grid-area: sidebar; }
@@ -268,18 +266,27 @@
     }
   }
 
-  // Header.
+  // Header: identity and XP on the left; HP, armor and damage on the right,
+  // separated by thin dividers.
   .dw-header {
     display: flex;
-    align-items: center;
+    align-items: stretch;
     gap: 14px;
     padding: 10px 12px;
+  }
+
+  .dw-divider {
+    flex: 0 0 1px;
+    width: 1px;
+    align-self: stretch;
+    background: var(--dw-line);
   }
 
   .dw-portrait {
     flex: 0 0 76px;
     width: 76px;
     height: 76px;
+    align-self: center;
     object-fit: cover;
     border: 1px solid var(--dw-line);
     border-radius: 10px;
@@ -292,11 +299,12 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
+    justify-content: center;
     gap: 4px;
   }
 
   input.dw-name {
-    height: 36px;
+    height: 34px;
     padding: 0 4px;
     font-family: $font-stack-secondary;
     font-size: 26px;
@@ -309,47 +317,35 @@
     }
   }
 
-  .dw-identity-row {
+  .dw-identity-row,
+  .dw-xp-row {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 6px 8px;
+    gap: 4px 8px;
   }
 
   input.dw-class-input {
-    width: 170px;
+    width: 150px;
   }
 
   .dw-level {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    margin-left: 6px;
+    margin-left: 4px;
     color: var(--dw-muted);
 
     input {
-      width: 48px;
+      width: 44px;
+      height: 28px;
     }
   }
 
-  .dw-xp {
-    flex: 0 0 190px;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-
-    .dw-stepper {
-      justify-content: flex-end;
-    }
-  }
-
-  .dw-xp-head {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-
-    .dw-label {
-      flex: 1;
+  .dw-xp-row {
+    .dw-bar {
+      flex: 1 1 60px;
+      max-width: 150px;
     }
   }
 
@@ -360,30 +356,22 @@
     font-weight: 700;
 
     input {
-      width: 44px;
-      height: 26px;
+      width: 40px;
+      height: 24px;
     }
   }
 
-  .dw-levelup {
-    flex: 0 0 140px;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 4px;
-    text-align: center;
-  }
-
   .dw-levelup-btn {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
-    height: 38px;
+    gap: 6px;
+    height: 26px;
+    padding: 0 10px;
     border: 1px dashed var(--dw-line);
-    border-radius: 8px;
+    border-radius: 6px;
     background: transparent;
     color: var(--dw-muted);
+    font-size: 13px;
     font-weight: 700;
 
     &[disabled] {
@@ -401,69 +389,62 @@
     }
   }
 
-  // Vitals.
-  .dw-vitals {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .dw-vital {
+  // The HP, armor and damage blocks: centered contents.
+  .dw-header-stat {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 8px 10px;
-    min-width: 0;
-  }
-
-  .dw-vital-head {
-    display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-    min-height: 26px;
-  }
+    justify-content: center;
+    gap: 5px;
+    text-align: center;
 
-  .dw-vital-value {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 20px;
-    font-weight: 700;
-
-    input[type="number"] {
-      height: 30px;
-      font-size: 18px;
+    input.dw-big {
+      width: 52px;
+      height: 32px;
+      font-size: 20px;
       font-weight: 700;
     }
 
     input.dw-small {
-      width: 48px;
-      font-size: 15px;
-      font-weight: 400;
+      width: 44px;
+      height: 26px;
     }
   }
 
-  .dw-vital--encumbered {
-    border-color: var(--dw-bad);
+  .dw-header-stat--hp {
+    flex: 0 0 170px;
 
-    .dw-hint {
-      color: var(--dw-bad);
-      font-weight: 700;
+    .dw-bar {
+      align-self: stretch;
     }
+  }
+
+  .dw-header-stat--armor {
+    flex: 0 0 64px;
+  }
+
+  .dw-header-stat--damage {
+    flex: 0 0 120px;
+  }
+
+  .dw-hp-value {
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
 
   .dw-roll-chip {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
-    height: 26px;
-    padding: 0 8px;
+    height: 28px;
+    padding: 0 10px;
     border: 1px solid var(--dw-line);
     border-radius: 6px;
     background: var(--dw-surface);
     color: var(--dw-navy);
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 700;
 
     &:hover {
@@ -475,44 +456,46 @@
   .dw-damage-inputs {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
 
     select {
-      width: 64px;
-      padding: 0 4px;
+      width: 56px;
+      height: 26px;
+      padding: 0 2px;
+      font-size: 14px;
     }
 
     input {
-      flex: 1;
-      min-width: 0;
+      width: 44px;
+      height: 26px;
+      padding: 0 4px;
+      font-size: 14px;
     }
   }
 
-  // Stats.
+  // Abilities and roll modifiers: one panel. Ability columns share the
+  // panel instead of each having its own box.
   .dw-stats {
     display: flex;
-    gap: 8px;
+    align-items: stretch;
+    gap: 10px;
+    padding: 6px 12px 6px 6px;
   }
 
   .dw-abilities {
     flex: 1;
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 8px;
+    gap: 2px;
   }
 
   .dw-ability {
     display: flex;
     flex-direction: column;
-    align-items: stretch;
-    overflow: hidden;
-    background: var(--dw-surface);
-    border: 1px solid var(--dw-line);
-    border-radius: 10px;
-
-    &.has-debility {
-      border-color: var(--dw-deb-ink);
-    }
+    align-items: center;
+    gap: 2px;
+    padding: 2px 0;
+    border-radius: 8px;
   }
 
   .dw-ability-roll {
@@ -520,10 +503,10 @@
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    gap: 0;
-    padding: 6px 4px 0;
+    width: 100%;
+    padding: 4px 4px 0;
     border: 0;
-    border-radius: 0;
+    border-radius: 8px;
     background: transparent;
 
     &:hover {
@@ -532,17 +515,15 @@
   }
 
   .dw-ability-mod {
-    font-size: 26px;
+    font-size: 24px;
     font-weight: 700;
     line-height: 1.1;
   }
 
   input.dw-ability-score {
-    align-self: center;
-    width: 52px;
+    width: 46px;
     height: 22px;
-    margin: 0 0 4px;
-    font-size: 14px;
+    font-size: 13px;
     color: var(--dw-muted);
     background: transparent;
     border-color: transparent;
@@ -553,18 +534,16 @@
   }
 
   .dw-debility {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 5px;
-    margin-top: auto;
-    padding: 4px;
-    border-top: 1px solid var(--dw-line);
-    font-size: 13px;
+    padding: 0 8px;
+    border-radius: 10px;
+    font-size: 12px;
     color: var(--dw-muted);
     cursor: pointer;
 
-    // The checkbox stays for the form, but the whole strip is the control.
+    // The checkbox stays for the form, but the label is the control.
     input {
       position: absolute;
       opacity: 0;
@@ -577,7 +556,6 @@
 
     &:focus-within {
       outline: 2px solid var(--dw-focus);
-      outline-offset: -2px;
     }
 
     &.on {
@@ -591,10 +569,22 @@
     flex: 0 0 250px;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    gap: 6px;
-    padding: 8px 10px;
-    box-sizing: border-box;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  // Forward and Ongoing side by side, each label above its stepper, so the
+  // full words fit without crowding.
+  .dw-modifier-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+
+    .dw-modifier {
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
   }
 
   .dw-modifier {
@@ -613,7 +603,7 @@
     overflow: hidden;
 
     legend {
-      // Kept for screen readers; the buttons read on their own visually.
+      // Kept for screen readers; the options read on their own visually.
       position: absolute;
       width: 1px;
       height: 1px;
@@ -624,7 +614,7 @@
     label {
       flex: 1;
       position: relative;
-      padding: 5px 2px;
+      padding: 4px 2px;
       text-align: center;
       font-size: 13px;
       cursor: pointer;
@@ -649,6 +639,41 @@
       position: absolute;
       opacity: 0;
       pointer-events: none;
+    }
+  }
+
+  // Equipment tab summary: load and coin.
+  .dw-summary {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    padding: 8px 12px;
+    background: var(--dw-sunken);
+    border-radius: 8px;
+  }
+
+  .dw-summary-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    .dw-readonly {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    input[type="number"] {
+      width: 48px;
+      height: 26px;
+    }
+  }
+
+  .dw-summary-item--warn {
+    .dw-readonly,
+    .dw-hint {
+      color: var(--dw-bad);
+      font-weight: 700;
     }
   }
 

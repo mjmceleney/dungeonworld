@@ -1,4 +1,22 @@
 <section class="tab dw-panel {{tab.cssClass}}" data-group="primary" data-tab="equipment">
+  <div class="dw-summary">
+    <div class="dw-summary-item {{#if encumbered}}dw-summary-item--warn{{/if}}">
+      <span class="dw-label">{{localize "DW.Weight"}}</span>
+      <span class="dw-readonly">{{weight}}</span>
+      <span class="dw-of">/</span>
+      <input type="number" name="system.attributes.weight.max" value="{{weightMax}}" step="1" aria-label="Max {{localize "DW.Weight"}}"/>
+      <span class="dw-hint">{{#if encumbered}}{{localize "DW.Sheet.Encumbered"}}{{else}}{{localize "DW.Sheet.ToSpare" weight=weightSpare}}{{/if}}</span>
+    </div>
+    <div class="dw-summary-item">
+      <span class="dw-label">{{localize "DW.Coin"}}</span>
+      <span class="dw-stepper">
+        <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.coin.value" data-delta="-1" aria-label="{{localize "DW.Sheet.Decrease"}} {{localize "DW.Coin"}}"><i class="fas fa-minus" inert></i></button>
+        <input type="number" name="system.attributes.coin.value" value="{{system.attributes.coin.value}}" step="1" aria-label="{{localize "DW.Coin"}}"/>
+        <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.coin.value" data-delta="1" aria-label="{{localize "DW.Sheet.Increase"}} {{localize "DW.Coin"}}"><i class="fas fa-plus" inert></i></button>
+      </span>
+    </div>
+  </div>
+
   <section class="dw-section">
     <header class="dw-section-head">
       <span class="dw-section-title">{{localize "DW.Equipment"}}</span>

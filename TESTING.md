@@ -183,7 +183,7 @@ Characters now open with the new **Dungeon World Character Sheet**. The previous
 - [ ] Portrait click opens the file picker. Class book button opens the class viewer.
 - [ ] Level up: greyed with a reason ("Needs N more XP", "Class not recognized", "Maximum level", "Unlinked token") until available, then highlighted. Clicking it opens the level-up dialog; applying it updates the sheet.
 - [ ] A character with moves from another class shows a "+ Class" tag in the header.
-- [ ] Load shows "N to spare", or "Encumbered" in red when over.
+- [ ] HP, armor and damage sit in the header (option C layout). Load and coin are in a summary bar at the top of the Equipment tab; load shows "N to spare", or "Encumbered" in red when over.
 
 **Abilities and roll modifiers**
 - [ ] Clicking an ability card rolls it. Editing the score updates the modifier.
