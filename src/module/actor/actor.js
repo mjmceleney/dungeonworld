@@ -231,10 +231,7 @@ export class ActorDw extends Actor {
       user: game.user.id,
       speaker: ChatMessage.getSpeaker({ actor: actor })
     };
-    let rollMode = game.settings.get("core", "rollMode");
-    if (["gmroll", "blindroll"].includes(rollMode)) chatData["whisper"] = ChatMessage.getWhisperRecipients("GM");
-    if (rollMode === "selfroll") chatData["whisper"] = [game.user.id];
-    if (rollMode === "blindroll") chatData["blind"] = true;
+    DwUtility.applyMessageMode(chatData);
     // Handle dice rolls.
     if (roll) {
       // Roll can be either a formula like `2d6+3` or a raw stat like `str`.

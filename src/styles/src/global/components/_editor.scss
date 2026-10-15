@@ -6,30 +6,26 @@
   padding: 4px;
 }
 
-.tox-tinymce,
-.tox-editor-container,
-.tox-sidebar-wrap,
-.tox-edit-area {
+// Active ProseMirror editor (V1 sheets add the .prosemirror class to .editor).
+.editor.prosemirror {
+  display: flex;
+  flex-direction: column;
   min-height: 170px;
-  height: 100% !important;
-}
 
-.tox-tinymce {
-  height: 100% !important;
-
-  .tox-toolbar-overlord,
-  .tox-toolbar__primary {
-    background: transparent;
+  .editor-menu {
+    flex: 0 0 auto;
     border-bottom: 1px solid $c-black;
+
+    button {
+      font-size: 12px;
+      width: auto;
+      height: auto;
+      line-height: normal;
+    }
   }
 
-  button {
-    font-size: 12px;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    margin: 0;
-    width: auto;
-    height: auto;
+  .editor-container {
+    flex: 1 1 auto;
+    min-height: 0;
   }
 }
