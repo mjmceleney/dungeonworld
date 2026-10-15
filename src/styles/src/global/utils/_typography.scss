@@ -1,8 +1,8 @@
 // @import url('https://fonts.googleapis.com/css2?family=Martel:wght@400;800&display=swap');
 // @import url('https://fonts.googleapis.com/css2?family=Martel:wght@400;800&family=Roboto:wght@300;400;500&display=swap');
 
-// Metamorphous and Alegreya are self-hosted.
-@import 'fonts';
+// Metamorphous and Alegreya are self-hosted; their @font-face rules are in
+// _fonts.scss, imported by dungeonworld.scss.
 // @import url('https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&display=swap');
 
 $font-stack-base: 'Alegreya', serif;

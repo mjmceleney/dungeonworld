@@ -3,9 +3,9 @@ import { DwUtility } from "../utility.js";
 import { DwRolls } from "../rolls.js";
 import { DwLevelUp } from "./level-up.js";
 
-const { HandlebarsApplicationMixin } = foundry.applications.api;
+const { HandlebarsApplicationMixin, DialogV2 } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
-const { TextEditor, DragDrop } = foundry.applications.ux;
+const { TextEditor, DragDrop, FormDataExtended } = foundry.applications.ux;
 
 const TEMPLATES = "systems/dungeonworld/templates/sheet/character";
 
@@ -102,6 +102,9 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       toggleSection: DwCharacterSheet.#onToggleSection,
       toggleEquipped: DwCharacterSheet.#onToggleEquipped,
       togglePrepared: DwCharacterSheet.#onTogglePrepared,
+      addTracker: DwCharacterSheet.#onAddTracker,
+      editTracker: DwCharacterSheet.#onEditTracker,
+      adjustTracker: DwCharacterSheet.#onAdjustTracker,
     },
   };
 
@@ -236,6 +239,7 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       enriched: { look, alignment, race, biography },
 
       // Sidebar.
+      trackers: this._prepareTrackers(),
       bonds: items.bonds,
     });
   }
@@ -317,6 +321,27 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       });
     }
     return abilities;
+  }
+
+  /**
+   * The character's custom trackers, in the order they were added. Stored in
+   * flags.dungeonworld.trackers, keyed by id: {label, value, max, sort}.
+   * A max of 0 means the tracker has no maximum.
+   *
+   * @return {Object[]}
+   */
+  _prepareTrackers() {
+    const trackers = this.actor.flags?.dungeonworld?.trackers ?? {};
+    return Object.entries(trackers)
+      .filter(([id, tracker]) => tracker && typeof tracker == 'object')
+      .map(([id, tracker]) => ({
+        id: id,
+        label: tracker.label ?? '',
+        value: Number(tracker.value) || 0,
+        max: Number(tracker.max) || 0,
+        sort: Number(tracker.sort) || 0,
+      }))
+      .sort((a, b) => a.sort - b.sort);
   }
 
   _prepareRollModes() {
@@ -889,6 +914,121 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     event.preventDefault();
     const item = this._getItem(target);
     if (item) await item.update({ 'system.prepared': !item.system.prepared });
+  }
+
+  /**
+   * Ask for a tracker's name and maximum.
+   *
+   * @param {Object|null} tracker The tracker being edited, or null for a new one.
+   * @return {Promise<{action: string, label?: string, max?: number}|null>}
+   *   "save" with the entered values, "delete", or null if cancelled.
+   */
+  async _trackerDialog(tracker = null) {
+    const escape = (value) => Handlebars.escapeExpression(String(value ?? ''));
+    const content = `
+      <div class="form-group">
+        <label>${escape(game.i18n.localize('DW.Sheet.TrackerName'))}</label>
+        <input type="text" name="label" value="${escape(tracker?.label ?? '')}" placeholder="${escape(game.i18n.localize('DW.Sheet.NewTracker'))}" autofocus>
+      </div>
+      <div class="form-group">
+        <label>${escape(game.i18n.localize('DW.Sheet.TrackerMax'))}</label>
+        <input type="number" name="max" min="0" step="1" value="${tracker?.max ? tracker.max : ''}" placeholder="${escape(game.i18n.localize('DW.Sheet.TrackerNoMax'))}">
+      </div>`;
+
+    const buttons = [{
+      action: 'save',
+      label: 'DW.Sheet.Save',
+      icon: 'fa-solid fa-check',
+      default: true,
+      callback: (event, button) => ({ action: 'save', ...new FormDataExtended(button.form).object }),
+    }];
+    if (tracker) {
+      buttons.push({
+        action: 'delete',
+        label: 'DW.Sheet.DeleteTracker',
+        icon: 'fa-solid fa-trash',
+        callback: () => ({ action: 'delete' }),
+      });
+    }
+    buttons.push({ action: 'cancel', label: 'DW.Cancel', icon: 'fa-solid fa-xmark', callback: () => null });
+
+    const result = await DialogV2.wait({
+      window: { title: game.i18n.localize(tracker ? 'DW.Sheet.EditTracker' : 'DW.Sheet.AddTracker') },
+      position: { width: 360 },
+      content: content,
+      buttons: buttons,
+      rejectClose: false,
+    });
+    if (!result || result.action !== 'save') return result ?? null;
+
+    return {
+      action: 'save',
+      label: String(result.label ?? '').trim() || game.i18n.localize('DW.Sheet.NewTracker'),
+      max: Math.max(0, Number(result.max) || 0),
+    };
+  }
+
+  /**
+   * Add a tracker at the end of the list, after asking for its name and max.
+   * @this {DwCharacterSheet}
+   */
+  static async #onAddTracker(event, target) {
+    event.preventDefault();
+    const result = await this._trackerDialog();
+    if (result?.action !== 'save') return;
+
+    const sorts = this._prepareTrackers().map(t => t.sort);
+    const sort = sorts.length ? Math.max(...sorts) + 1 : 0;
+    const id = foundry.utils.randomID();
+    await this.actor.update({
+      [`flags.dungeonworld.trackers.${id}`]: {
+        label: result.label,
+        value: 0,
+        max: result.max,
+        sort: sort,
+      },
+    });
+  }
+
+  /**
+   * Rename, change the max of, or delete a tracker.
+   * @this {DwCharacterSheet}
+   */
+  static async #onEditTracker(event, target) {
+    event.preventDefault();
+    const id = target.closest('[data-tracker-id]')?.dataset.trackerId;
+    const tracker = this._prepareTrackers().find(t => t.id == id);
+    if (!tracker) return;
+
+    const result = await this._trackerDialog(tracker);
+    if (result?.action === 'delete') {
+      await this.actor.update(DwUtility.deletionUpdate(`flags.dungeonworld.trackers.${id}`));
+    }
+    else if (result?.action === 'save') {
+      // Keep the value within the new maximum.
+      const value = result.max > 0 ? Math.min(tracker.value, result.max) : tracker.value;
+      await this.actor.update({
+        [`flags.dungeonworld.trackers.${id}.label`]: result.label,
+        [`flags.dungeonworld.trackers.${id}.max`]: result.max,
+        [`flags.dungeonworld.trackers.${id}.value`]: value,
+      });
+    }
+  }
+
+  /**
+   * Step a tracker's value up or down by one, staying within 0 and its max.
+   * @this {DwCharacterSheet}
+   */
+  static async #onAdjustTracker(event, target) {
+    event.preventDefault();
+    const id = target.closest('[data-tracker-id]')?.dataset.trackerId;
+    const tracker = this._prepareTrackers().find(t => t.id == id);
+    const delta = Number(target.dataset.delta ?? 0);
+    if (!tracker || !delta) return;
+    let value = tracker.value + delta;
+    if (tracker.max > 0) value = Math.min(value, tracker.max);
+    value = Math.max(value, 0);
+    await this.actor.update({ [`flags.dungeonworld.trackers.${id}.value`]: value });
   }
 
   /* -------------------------------------------- */

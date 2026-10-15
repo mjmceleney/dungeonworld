@@ -1,14 +1,46 @@
 export class MigrateDw {
 
-  static runMigration() {
+  static async runMigration() {
+    // Only a GM can update world data and settings.
+    if (!game.user.isGM) return;
+
     // Retrieve the version.
     let version = game.settings.get('dungeonworld', 'systemMigrationVersion');
 
     // Update 1: Assign basic/special moves on actors.
     if (version < 1) {
       this.updateSpecialMoves();
-      version++;
-      game.settings.set('dungeonworld', 'systemMigrationVersion', version);
+      version = 1;
+      await game.settings.set('dungeonworld', 'systemMigrationVersion', version);
+    }
+
+    // Update 2: Move each character's custom resource into the trackers list.
+    if (version < 2) {
+      await this.migrateResourceToTrackers();
+      version = 2;
+      await game.settings.set('dungeonworld', 'systemMigrationVersion', version);
+    }
+  }
+
+  /**
+   * Copy the single custom resource (system.attributes.resource1) into the
+   * character sheet's trackers list, for characters that used it. The old
+   * field is left in place for the legacy sheet.
+   */
+  static async migrateResourceToTrackers() {
+    for (let actor of game.actors.filter(a => a.type == 'character')) {
+      const resource = actor.system.attributes?.resource1;
+      if (!resource || actor.flags?.dungeonworld?.trackers) continue;
+      const label = (resource.label ?? '').trim();
+      const value = Number(resource.value) || 0;
+      const max = Number(resource.max) || 0;
+      const used = value !== 0 || max !== 0 || (label !== '' && label !== 'Custom Resource');
+      if (!used) continue;
+
+      const id = foundry.utils.randomID();
+      await actor.update({
+        [`flags.dungeonworld.trackers.${id}`]: { label: label || 'Custom Resource', value, max, sort: 0 },
+      });
     }
   }
 

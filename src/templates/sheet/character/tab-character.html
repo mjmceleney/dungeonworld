@@ -10,6 +10,12 @@
     <prose-mirror name="system.details.race.description" value="{{system.details.race.description}}" toggled>{{{enriched.race}}}</prose-mirror>
   </div>
 
+  <label class="dw-field">
+    <span class="dw-label">{{localize "DW.Sheet.RollFormulaOverride"}}</span>
+    <input type="text" name="system.attributes.rollFormula.value" value="{{system.attributes.rollFormula.value}}" placeholder="2d6"/>
+    <span class="dw-hint">{{localize "DW.Sheet.RollFormulaHint"}}</span>
+  </label>
+
   <div class="dw-field dw-field--grow">
     <span class="dw-label">{{localize "DW.Biography"}}</span>
     <prose-mirror name="system.details.biography" value="{{system.details.biography}}" toggled>{{{enriched.biography}}}</prose-mirror>

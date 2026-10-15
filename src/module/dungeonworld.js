@@ -21,6 +21,11 @@ import { CombatSidebarDw } from "./combat/combat.js";
 import { MigrateDw } from "./migrate/migrate.js";
 
 import * as chat from "./chat.js";
+import { BUILD_ID } from "./build-info.js";
+
+// Load this build's stylesheet rather than a cached copy of an older one.
+DwUtility.bustStylesheetCache(BUILD_ID);
+console.log(`Dungeon World | build ${BUILD_ID}`);
 
 const { Actors, Items } = foundry.documents.collections;
 const { ActorSheet, ItemSheet } = foundry.appv1.sheets;

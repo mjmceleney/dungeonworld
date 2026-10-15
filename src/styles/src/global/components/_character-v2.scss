@@ -717,12 +717,25 @@
   .dw-modifier-pair {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 6px;
 
     .dw-modifier {
       flex-direction: column;
       align-items: center;
       gap: 3px;
+    }
+
+    .dw-stepper {
+      gap: 2px;
+
+      .dw-step {
+        width: 22px;
+        height: 22px;
+      }
+
+      input[type="number"] {
+        width: 36px;
+      }
     }
   }
 
@@ -1109,14 +1122,38 @@
   // Edit/delete only show on hover or keyboard focus.
   .dw-row-actions {
     display: flex;
+    max-width: 0;
+    overflow: hidden;
     opacity: 0;
+    transition: max-width 0.15s ease-in-out, opacity 0.15s ease-in-out;
   }
 
   .dw-row:hover .dw-row-actions,
-  .dw-row:focus-within .dw-row-actions,
-  .dw-bond:hover .dw-row-actions,
-  .dw-bond:focus-within .dw-row-actions {
+  .dw-row:focus-within .dw-row-actions {
+    max-width: 64px;
     opacity: 1;
+  }
+
+  // Bond buttons float over the text's corner instead, so long bond text
+  // doesn't reflow when hovered.
+  .dw-bond {
+    position: relative;
+
+    .dw-row-actions {
+      position: absolute;
+      top: 4px;
+      right: 0;
+      max-width: none;
+      background: var(--dw-surface);
+      border: 1px solid var(--dw-line);
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    }
+
+    &:hover .dw-row-actions,
+    &:focus-within .dw-row-actions {
+      opacity: 1;
+    }
   }
 
   .dw-row-details {
@@ -1232,6 +1269,103 @@
     p {
       margin: 0;
     }
+  }
+
+  // Trackers: one line each. The name is quiet; the count is the focus.
+  .dw-tracker {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 32px;
+    padding: 2px 0;
+    border-top: 1px solid var(--dw-line);
+
+    &:first-of-type {
+      border-top: 0;
+    }
+  }
+
+  .dw-tracker-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    color: var(--dw-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .dw-tracker-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  // Without a max, the value takes the max's space (34 + 30 + 2px margin), so
+  // it sits centered between the buttons and the buttons still line up.
+  .dw-tracker-count.no-max input.dw-tracker-value {
+    width: 66px;
+  }
+
+  input.dw-tracker-value {
+    width: 34px;
+    height: 28px;
+    padding: 0;
+    font-size: 19px;
+    font-weight: 700;
+    background: transparent;
+    border-color: transparent;
+
+    &:hover {
+      border-color: var(--dw-line);
+    }
+  }
+
+  // Fixed width so the -/+ buttons line up down the list.
+  .dw-tracker-max {
+    min-width: 30px;
+    margin-right: 2px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--dw-muted);
+    white-space: nowrap;
+  }
+
+  // Slim -/+ buttons: icon only until hovered.
+  .dw-mini-step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--dw-muted);
+    font-size: 11px;
+
+    &:hover {
+      background: var(--dw-chip-hover);
+      color: var(--dw-ink);
+    }
+  }
+
+  .dw-tracker-edit,
+  .dw-tracker-edit-spacer {
+    flex: 0 0 22px;
+    width: 22px;
+    height: 22px;
+  }
+
+  .dw-tracker-edit {
+    font-size: 12px;
+  }
+
+  .dw-add-small {
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
   }
 
   .dw-resource {
