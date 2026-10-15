@@ -1,4 +1,5 @@
 @import 'init';
+@import 'global/utils/fonts';
 
 // Base styles.
 @import 'global/base/grid';
@@ -102,6 +103,3 @@
 }
 
 @import 'global/theme/nightmode';
-
-// Character sheet (ApplicationV2). Not scoped under .dungeonworld.
-@import 'global/components/character-v2';

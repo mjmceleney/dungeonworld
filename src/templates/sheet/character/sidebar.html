@@ -1,6 +1,44 @@
 <aside class="dw-sidebar">
   <section class="dw-card dw-side-card">
     <header class="dw-side-head">
+      <span class="dw-section-title">{{localize "DW.Sheet.Trackers"}}</span>
+      {{#if editable}}
+      <button type="button" class="dw-icon-btn dw-add-small" data-action="addTracker" aria-label="{{localize "DW.Sheet.AddTracker"}}" data-tooltip="DW.Sheet.AddTracker"><i class="fas fa-plus" inert></i></button>
+      {{/if}}
+    </header>
+
+    {{!-- One line per tracker: name, then the count with slim -/+ buttons.
+         Hold is built in: always first, and can't be renamed or deleted. --}}
+    <div class="dw-tracker">
+      <span class="dw-tracker-name">{{localize "DW.Hold"}}</span>
+      <span class="dw-tracker-count no-max">
+        <button type="button" class="dw-mini-step" data-action="adjustResource" data-attr="attributes.hold.value" data-delta="-1" aria-label="{{localize "DW.Sheet.Decrease"}} {{localize "DW.Hold"}}"><i class="fas fa-minus" inert></i></button>
+        <input class="dw-tracker-value" type="number" name="system.attributes.hold.value" value="{{system.attributes.hold.value}}" step="1" aria-label="{{localize "DW.Hold"}}"/>
+        <button type="button" class="dw-mini-step" data-action="adjustResource" data-attr="attributes.hold.value" data-delta="1" aria-label="{{localize "DW.Sheet.Increase"}} {{localize "DW.Hold"}}"><i class="fas fa-plus" inert></i></button>
+      </span>
+      <span class="dw-tracker-edit-spacer"></span>
+    </div>
+
+    {{#each trackers}}
+    <div class="dw-tracker" data-tracker-id="{{id}}">
+      <span class="dw-tracker-name" title="{{label}}">{{label}}</span>
+      <span class="dw-tracker-count {{#unless max}}no-max{{/unless}}">
+        <button type="button" class="dw-mini-step" data-action="adjustTracker" data-delta="-1" aria-label="{{localize "DW.Sheet.Decrease"}} {{label}}"><i class="fas fa-minus" inert></i></button>
+        <input class="dw-tracker-value" type="number" name="flags.dungeonworld.trackers.{{id}}.value" value="{{value}}" step="1" aria-label="{{label}}"/>
+        {{#if max}}<span class="dw-tracker-max">/ {{max}}</span>{{/if}}
+        <button type="button" class="dw-mini-step" data-action="adjustTracker" data-delta="1" aria-label="{{localize "DW.Sheet.Increase"}} {{label}}"><i class="fas fa-plus" inert></i></button>
+      </span>
+      {{#if ../editable}}
+      <button type="button" class="dw-icon-btn dw-tracker-edit" data-action="editTracker" aria-label="{{localize "DW.Sheet.EditTracker"}}: {{label}}" data-tooltip="DW.Sheet.EditTracker"><i class="fas fa-edit" inert></i></button>
+      {{else}}
+      <span class="dw-tracker-edit-spacer"></span>
+      {{/if}}
+    </div>
+    {{/each}}
+  </section>
+
+  <section class="dw-card dw-side-card">
+    <header class="dw-side-head">
       <span class="dw-section-title">{{localizeOverride "DW.Bonds" "bondPlural"}}</span>
       {{#if editable}}
       <button type="button" class="dw-add" data-action="createItem" data-type="bond" aria-label="{{localize "DW.Add"}}"><i class="fas fa-plus" inert></i></button>
@@ -28,33 +66,5 @@
     <input type="text" name="system.details.alignment.value" value="{{system.details.alignment.value}}" aria-label="{{localizeOverride "DW.Alignment" "alignmentSingle"}}"/>
     <prose-mirror class="dw-compact" name="system.details.alignment.description" value="{{system.details.alignment.description}}" toggled>{{{enriched.alignment}}}</prose-mirror>
     <span class="dw-hint">{{localize "DW.Sheet.AlignmentHint"}}</span>
-  </section>
-
-  <section class="dw-card dw-side-card">
-    <header class="dw-side-head">
-      <span class="dw-section-title">{{localize "DW.Sheet.Trackers"}}</span>
-    </header>
-    <div class="dw-modifier">
-      <span class="dw-label">{{localize "DW.Hold"}}</span>
-      <span class="dw-stepper">
-        <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.hold.value" data-delta="-1" aria-label="{{localize "DW.Sheet.Decrease"}} {{localize "DW.Hold"}}"><i class="fas fa-minus" inert></i></button>
-        <input type="number" name="system.attributes.hold.value" value="{{system.attributes.hold.value}}" step="1" aria-label="{{localize "DW.Hold"}}"/>
-        <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.hold.value" data-delta="1" aria-label="{{localize "DW.Sheet.Increase"}} {{localize "DW.Hold"}}"><i class="fas fa-plus" inert></i></button>
-      </span>
-    </div>
-    <div class="dw-resource">
-      <input class="dw-resource-label" type="text" name="system.attributes.resource1.label" value="{{system.attributes.resource1.label}}" aria-label="Resource name"/>
-      <span class="dw-stepper">
-        <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.resource1.value" data-delta="-1" aria-label="{{localize "DW.Sheet.Decrease"}}"><i class="fas fa-minus" inert></i></button>
-        <input type="number" name="system.attributes.resource1.value" value="{{system.attributes.resource1.value}}" step="1" aria-label="Value"/>
-        <span class="dw-of">/</span>
-        <input type="number" name="system.attributes.resource1.max" value="{{system.attributes.resource1.max}}" step="1" aria-label="Max"/>
-        <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.resource1.value" data-delta="1" aria-label="{{localize "DW.Sheet.Increase"}}"><i class="fas fa-plus" inert></i></button>
-      </span>
-    </div>
-    <label class="dw-field">
-      <span class="dw-label">{{localize "DW.RollFormula"}}</span>
-      <input type="text" name="system.attributes.rollFormula.value" value="{{system.attributes.rollFormula.value}}" placeholder="2d6"/>
-    </label>
   </section>
 </aside>

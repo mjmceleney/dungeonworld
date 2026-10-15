@@ -204,7 +204,10 @@ Characters now open with the new **Dungeon World Character Sheet**. The previous
 - [ ] Equipment: roll, equip toggle, uses/quantity counters (left-click +, right-click −), weight, tags in the details.
 - [ ] Spells: grouped by level; add per level; prepared toggle; roll.
 - [ ] Character tab: look, race and biography editors save; race name saves.
-- [ ] Sidebar: add, edit and delete bonds; alignment name and description save; hold, custom resource name/value/max and roll formula save.
+- [ ] Sidebar: add, edit and delete bonds; alignment name and description save.
+- [ ] Trackers (top of the sidebar): Hold is always the first row (can't be renamed or deleted). The small + in the card header opens a dialog for the name and an optional maximum; Save adds it, Cancel or closing adds nothing, and a blank name becomes "New tracker". On the sheet each tracker shows its name, −/+ and value, and "/ max" as plain text when it has one. −/+ stay within 0 and the max; typing a value directly also works. The edit icon reopens the dialog: rename, change or clear the max (a value above a lowered max is reduced to it), or Delete. They persist after reopening.
+- [ ] Migration: as GM, load a world where a character used the old custom resource (non-zero value or max, or a renamed label). It appears as a tracker. Characters that never used it get no tracker.
+- [ ] The roll formula override is on the Character tab and still replaces 2d6 when set.
 
 **Drag and drop, permissions**
 - [ ] Drag items from the sidebar and compendiums onto the sheet; reorder by dragging rows; drag a move to the hotbar and the macro rolls it.

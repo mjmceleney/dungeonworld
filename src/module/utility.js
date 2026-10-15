@@ -31,6 +31,46 @@ export class DwUtility {
     return ChatMessage.applyRollMode(chatData, game.settings.get('core', 'rollMode'));
   }
 
+  /**
+   * Point the system stylesheets at URLs unique to this build, so browsers
+   * load the current CSS instead of a cached copy from an earlier build.
+   * Foundry includes them without any version in the URL: as @import rules in
+   * a <style> element (V13+), or as <link> elements.
+   * @param {string} buildId Id written by the build; "dev" does nothing.
+   */
+  static bustStylesheetCache(buildId) {
+    if (!buildId || buildId === 'dev') return;
+    const ours = /(systems\/dungeonworld\/styles\/dist\/[\w-]+\.css)(?=["')])/g;
+
+    for (const style of document.querySelectorAll('style')) {
+      const css = style.textContent;
+      if (!css.includes('systems/dungeonworld/styles/dist/') || css.includes(`build=${buildId}`)) continue;
+      style.textContent = css.replace(ours, `$1?build=${buildId}`);
+    }
+
+    for (const link of document.querySelectorAll('link[rel="stylesheet"]')) {
+      const url = new URL(link.href, window.location.href);
+      if (!/\/systems\/dungeonworld\/styles\/dist\/[\w-]+\.css$/.test(url.pathname)) continue;
+      if (url.searchParams.get('build') === buildId) continue;
+      url.searchParams.set('build', buildId);
+      link.href = url.href;
+    }
+  }
+
+  /**
+   * Build an update that deletes a key from a document's data.
+   * V14 replaced the "-=key" syntax with a ForcedDeletion operator (the old
+   * syntax logs a deprecation warning there); V13 only has "-=key".
+   * @param {string} path Dotted path of the key to delete, e.g. "system.races.2".
+   * @returns {Object} Update data to merge into a document update.
+   */
+  static deletionUpdate(path) {
+    const ForcedDeletion = foundry.data?.operators?.ForcedDeletion;
+    if (ForcedDeletion) return { [path]: new ForcedDeletion() };
+    const i = path.lastIndexOf('.');
+    return { [`${path.slice(0, i)}.-=${path.slice(i + 1)}`]: null };
+  }
+
   static async getEquipment(update = false) {
     if (typeof game.items == 'undefined') {
       return false;

@@ -13,8 +13,11 @@ authors:
 esmodules:
   - module/dungeonworld.js
 styles:
-  - styles/lib/tagify.css
-  - styles/dist/dungeonworld.css
+  - src: styles/lib/tagify.css
+  - src: styles/dist/dungeonworld.css
+  # Unlayered, so the sheet's own control styles aren't overridden by core's.
+  - src: styles/dist/character-sheet.css
+    layer: null
 # @todo make a custom logo
 # media:
 #   - type: setup

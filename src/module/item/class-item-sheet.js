@@ -147,7 +147,7 @@ export class DwClassItemSheet extends DwItemSheet {
     });
     for (let key of oldKeys) {
       if (Number(key) >= remaining.length || isNaN(Number(key))) {
-        update[`system.${field}.-=${key}`] = null;
+        Object.assign(update, DwUtility.deletionUpdate(`system.${field}.${key}`));
       }
     }
     await this.item.update(update);
