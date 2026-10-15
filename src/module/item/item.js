@@ -47,6 +47,19 @@ export class ItemDw extends Item {
   }
 
   /** @override */
+  async _preUpdate(changes, options, user) {
+    const allowed = await super._preUpdate(changes, options, user);
+    if (allowed === false) return false;
+
+    // Bond names are edited with ProseMirror, which wraps everything in a
+    // paragraph. Strip a single wrapping <p> so the name stays inline.
+    if (this.type == 'bond' && typeof changes.name == 'string') {
+      const match = changes.name.trim().match(/^<p>([\s\S]*)<\/p>$/);
+      if (match && match[1].trim() && !match[1].includes('<p>')) changes.name = match[1].trim();
+    }
+  }
+
+  /** @override */
   getRollData() {
     return this.actor ? {
       ...super.getRollData(),

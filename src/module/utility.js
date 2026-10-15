@@ -15,6 +15,22 @@ export class DwUtility {
     return [null, false, undefined, 0, ''].includes(arg);
   }
 
+  /**
+   * Apply the user's current roll visibility (whisper/blind) to chat data.
+   * V14 replaced roll modes with message modes; V13 only has roll modes.
+   * @param {Object} chatData
+   * @returns {Object} The modified chatData.
+   */
+  static applyMessageMode(chatData) {
+    if (typeof ChatMessage.applyMode === 'function') {
+      let mode = game.settings.get('core', 'messageMode');
+      // Roll cards are never in-character, matching core behavior for rolls.
+      if (mode === 'ic') mode = 'public';
+      return ChatMessage.applyMode(chatData, mode);
+    }
+    return ChatMessage.applyRollMode(chatData, game.settings.get('core', 'rollMode'));
+  }
+
   static async getEquipment(update = false) {
     if (typeof game.items == 'undefined') {
       return false;

@@ -128,40 +128,10 @@ $c-blue-dark: #344460;
       }
     }
 
-    // @todo TinyMCE night mode overrides disabled for AppV1. Refactor this in AppV2 later.
-    .editor {
-      button {
-        background: transparent !important;
-        color: $c-black !important;
-        // color: $c-white !important;
-
-        svg {
-          // fill: $c-white !important;
-        }
-
-        &:hover {
-          svg {
-            fill: $c-blue !important;
-          }
-        }
-
-        &.tox-tbtn--disabled {
-          // opacity: 0.5 !important;
-
-          &:hover svg {
-            // fill: $c-white !important;
-          }
-        }
-      }
-
-      .tox:not(.tox-tinymce-inline) .tox-editor-header {
-        // background: transparent;
-      }
-
-      .tox-edit-area {
-        // background: rgba($c-white, 0.85);
-        // padding: 10px;
-      }
+    // Keep ProseMirror menu buttons from picking up the blue button style above.
+    .editor .editor-menu button {
+      background: transparent !important;
+      color: $c-white !important;
     }
 
     .drop-area {

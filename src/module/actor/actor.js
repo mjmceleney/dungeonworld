@@ -245,10 +245,7 @@ export class ActorDw extends Actor {
       user: game.user.id,
       speaker: ChatMessage.getSpeaker({ actor: actor })
     };
-    let rollMode = game.settings.get("core", "rollMode");
-    if (["gmroll", "blindroll"].includes(rollMode)) chatData["whisper"] = ChatMessage.getWhisperRecipients("GM");
-    if (rollMode === "selfroll") chatData["whisper"] = [game.user.id];
-    if (rollMode === "blindroll") chatData["blind"] = true;
+    DwUtility.applyMessageMode(chatData);
     // Handle dice rolls.
     if (roll) {
       // Roll can be either a formula like `2d6+3` or a raw stat like `str`.
@@ -414,15 +411,41 @@ export class ActorDw extends Actor {
 
   /** @override */
   async _preCreate(data, options, user) {
-    if (this.type === "character") {
-      this.updateSource({
-        prototypeToken: {
-          actorLink: true,
-          disposition: CONST.TOKEN_DISPOSITIONS.FRIENDLY,
-          sight: { enabled: true }
-        }
-      });
+    const allowed = await super._preCreate(data, options, user);
+    if (allowed === false) return false;
+
+    const isCharacter = this.type === "character";
+
+    // Never override the GM's core Prototype Token Overrides setting.
+    const overrides = foundry.data.PrototypeTokenOverrides?.overrides ?? {};
+    const isOverridden = path => [overrides.base, overrides[this.type]]
+      .some(o => o && foundry.utils.getProperty(o, path) != null);
+
+    // Apply a default unless the GM overrides it. Unless forced, also skip it
+    // when the creation data sets it, so compendium imports and duplicates
+    // keep their own token settings.
+    const prototypeToken = {};
+    const setDefault = (path, value, force = false) => {
+      if (isOverridden(path)) return;
+      if (!force && foundry.utils.hasProperty(data, `prototypeToken.${path}`)) return;
+      foundry.utils.setProperty(prototypeToken, path, value);
+    };
+
+    setDefault("bar1.attribute", "attributes.hp");
+    setDefault("bar2.attribute", isCharacter ? "attributes.xp" : null);
+    setDefault("displayBars", CONST.TOKEN_DISPLAY_MODES.OWNER_HOVER);
+
+    // Characters are always linked, friendly, and have vision.
+    if (isCharacter) {
+      prototypeToken.actorLink = true;
+      setDefault("disposition", CONST.TOKEN_DISPOSITIONS.FRIENDLY, true);
+      setDefault("sight.enabled", true, true);
     }
+    else {
+      setDefault("disposition", CONST.TOKEN_DISPOSITIONS.HOSTILE);
+    }
+
+    this.updateSource({ prototypeToken });
   }
 
   /** @override */
@@ -442,12 +465,8 @@ export class ActorDw extends Actor {
 
     if (!options.diff || !context || updateData.system === undefined) return; // Nothing to do.
 
-    // Exit early if not owner.
-    let displayText = this.isOwner;
-    if (this.permission.default > 1) displayText = true;
-    if (this.permission[game.userId] !== undefined && this.permission[game.userId] > 1) displayText = true;
-
-    if (!displayText) return;
+    // Exit early if this user can't at least observe the actor.
+    if (!this.testUserPermission(game.user, "OBSERVER")) return;
 
     // Prepare the scrolling text update.
     if (updateData.system?.attributes?.hp?.value !== undefined) {
