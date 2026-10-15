@@ -1,0 +1,1094 @@
+// Character sheet (ApplicationV2).
+//
+// Self-contained: the sheet doesn't carry the .dungeonworld class, so none of
+// the legacy sheet styles apply. Colors are custom properties so the dark
+// theme only has to swap the palette.
+
+.dw-character {
+  // Parchment light theme.
+  --dw-ground: #e6dcc3;
+  --dw-surface: #f6efdc;
+  --dw-sunken: #efe5cc;
+  --dw-ink: #2a2318;
+  --dw-muted: #5c513e;
+  --dw-line: #d3c4a2;
+  --dw-navy: #2d3748;
+  --dw-on-navy: #f6efdc;
+  --dw-chip: #ebe0c5;
+  --dw-chip-hover: #e1d3b2;
+  --dw-accent: #9a3f3f;
+  --dw-on-accent: #ffffff;
+  --dw-good: #1a5fa8;
+  --dw-mid: #a8700f;
+  --dw-bad: #a81818;
+  --dw-deb: #f3d5c8;
+  --dw-deb-ink: #7d2a1e;
+  --dw-focus: #5b7094;
+
+  &.dw-dark {
+    --dw-ground: #141922;
+    --dw-surface: #1e2531;
+    --dw-sunken: #192029;
+    --dw-ink: #e8ecf2;
+    --dw-muted: #a6b0c0;
+    --dw-line: #333c4b;
+    --dw-navy: #c9d3e3;
+    --dw-on-navy: #141922;
+    --dw-chip: #262f3d;
+    --dw-chip-hover: #2f3a4b;
+    --dw-accent: #d06a6a;
+    --dw-on-accent: #141922;
+    --dw-good: #7fb2ee;
+    --dw-mid: #e0b45a;
+    --dw-bad: #f08a8a;
+    --dw-deb: #4a2a2e;
+    --dw-deb-ink: #f3b9b9;
+    --dw-focus: #7fb2ee;
+  }
+
+  // The move search hides rows and sections with the hidden attribute; keep
+  // it working on elements that set their own display.
+  [hidden] {
+    display: none !important;
+  }
+
+  // Layout: each template part is a direct child of the window content.
+  .window-content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 250px;
+    grid-template-rows: auto auto auto auto minmax(0, 1fr);
+    grid-template-areas:
+      "header header"
+      "vitals vitals"
+      "stats stats"
+      "nav sidebar"
+      "panel sidebar";
+    gap: 8px 10px;
+    padding: 10px;
+    overflow: hidden;
+    background: var(--dw-ground);
+    color: var(--dw-ink);
+    font-family: $font-stack-base;
+    font-size: 15px;
+    line-height: 1.35;
+  }
+
+  [data-application-part="header"] { grid-area: header; }
+  [data-application-part="vitals"] { grid-area: vitals; }
+  [data-application-part="stats"] { grid-area: stats; }
+  [data-application-part="tabs"] { grid-area: nav; }
+  [data-application-part="sidebar"] { grid-area: sidebar; }
+  .dw-panel { grid-area: panel; }
+
+  // Shared pieces.
+  .dw-card {
+    background: var(--dw-surface);
+    border: 1px solid var(--dw-line);
+    border-radius: 10px;
+  }
+
+  .dw-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--dw-muted);
+  }
+
+  .dw-hint {
+    font-size: 13px;
+    color: var(--dw-muted);
+  }
+
+  .dw-section-title {
+    font-family: $font-stack-secondary;
+    font-size: 18px;
+    color: var(--dw-navy);
+  }
+
+  .dw-pill,
+  .dw-count {
+    font-size: 12px;
+    color: var(--dw-muted);
+    background: var(--dw-chip);
+    border-radius: 20px;
+    padding: 1px 8px;
+    white-space: nowrap;
+  }
+
+  .dw-warning {
+    margin: 0;
+    font-size: 13px;
+    color: var(--dw-bad);
+  }
+
+  .dw-of {
+    color: var(--dw-muted);
+  }
+
+  // Form controls.
+  input[type="text"],
+  input[type="number"],
+  input[type="search"],
+  select {
+    height: 30px;
+    padding: 0 8px;
+    border: 1px solid var(--dw-line);
+    border-radius: 6px;
+    background: var(--dw-sunken);
+    color: var(--dw-ink);
+    font-family: $font-stack-base;
+    font-size: 15px;
+    box-shadow: none;
+
+    &:focus {
+      outline: 2px solid var(--dw-focus);
+      outline-offset: 0;
+      border-color: transparent;
+    }
+  }
+
+  input[type="number"] {
+    width: 56px;
+    text-align: center;
+    appearance: textfield;
+    -moz-appearance: textfield;
+
+    &::-webkit-inner-spin-button,
+    &::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+  }
+
+  // Generic button reset, scoped to the sheet content (not the window
+  // header, whose icon buttons need Font Awesome). :where() keeps the
+  // specificity low so every component rule below overrides it. Core buttons
+  // are centered and fixed height, which most of ours shouldn't be.
+  :where(.window-content button) {
+    height: auto;
+    min-height: 0;
+    padding: 0;
+    gap: 0;
+    font-family: $font-stack-base;
+    font-size: inherit;
+    line-height: 1.2;
+    color: var(--dw-ink);
+    box-shadow: none;
+    cursor: pointer;
+  }
+
+  .window-content button:focus-visible {
+    outline: 2px solid var(--dw-focus);
+    outline-offset: 1px;
+  }
+
+  .dw-icon-btn,
+  .dw-step,
+  .dw-add {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    min-width: 0;
+    padding: 0;
+    border-radius: 6px;
+    line-height: 1;
+    font-size: 13px;
+  }
+
+  .dw-icon-btn {
+    border: 0;
+    background: transparent;
+    color: var(--dw-muted);
+
+    &:hover {
+      background: var(--dw-chip-hover);
+      color: var(--dw-ink);
+    }
+  }
+
+  .dw-step,
+  .dw-add {
+    border: 1px solid var(--dw-line);
+    background: var(--dw-sunken);
+
+    &:hover {
+      background: var(--dw-chip-hover);
+    }
+  }
+
+  .dw-stepper {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+
+    .dw-step {
+      width: 24px;
+      height: 24px;
+    }
+
+    input[type="number"] {
+      width: 44px;
+      height: 26px;
+    }
+  }
+
+  .dw-bar {
+    height: 8px;
+    border-radius: 8px;
+    background: var(--dw-chip);
+    overflow: hidden;
+  }
+
+  .dw-bar-fill {
+    height: 100%;
+    border-radius: 8px;
+    background: var(--dw-navy);
+  }
+
+  .dw-bar-fill--hp-high { background: var(--dw-good); }
+  .dw-bar-fill--hp-mid { background: var(--dw-mid); }
+  .dw-bar-fill--hp-low { background: var(--dw-bad); }
+
+  prose-mirror {
+    min-height: 90px;
+    background: var(--dw-sunken);
+    border: 1px solid var(--dw-line);
+    border-radius: 6px;
+    color: var(--dw-ink);
+
+    .editor-content {
+      padding: 8px 12px;
+    }
+
+    &.dw-compact {
+      min-height: 70px;
+    }
+  }
+
+  // Header.
+  .dw-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 12px;
+  }
+
+  .dw-portrait {
+    flex: 0 0 76px;
+    width: 76px;
+    height: 76px;
+    object-fit: cover;
+    border: 1px solid var(--dw-line);
+    border-radius: 10px;
+    background: var(--dw-navy);
+    cursor: pointer;
+  }
+
+  .dw-identity {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  input.dw-name {
+    height: 36px;
+    padding: 0 4px;
+    font-family: $font-stack-secondary;
+    font-size: 26px;
+    color: var(--dw-navy);
+    background: transparent;
+    border-color: transparent;
+
+    &:hover {
+      border-color: var(--dw-line);
+    }
+  }
+
+  .dw-identity-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+  }
+
+  input.dw-class-input {
+    width: 170px;
+  }
+
+  .dw-level {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 6px;
+    color: var(--dw-muted);
+
+    input {
+      width: 48px;
+    }
+  }
+
+  .dw-xp {
+    flex: 0 0 190px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+
+    .dw-stepper {
+      justify-content: flex-end;
+    }
+  }
+
+  .dw-xp-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    .dw-label {
+      flex: 1;
+    }
+  }
+
+  .dw-xp-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 700;
+
+    input {
+      width: 44px;
+      height: 26px;
+    }
+  }
+
+  .dw-levelup {
+    flex: 0 0 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    text-align: center;
+  }
+
+  .dw-levelup-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 38px;
+    border: 1px dashed var(--dw-line);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--dw-muted);
+    font-weight: 700;
+
+    &[disabled] {
+      cursor: not-allowed;
+    }
+
+    &.ready {
+      border: 0;
+      background: var(--dw-accent);
+      color: var(--dw-on-accent);
+
+      &:hover {
+        filter: brightness(1.08);
+      }
+    }
+  }
+
+  // Vitals.
+  .dw-vitals {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .dw-vital {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    min-width: 0;
+  }
+
+  .dw-vital-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    min-height: 26px;
+  }
+
+  .dw-vital-value {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 20px;
+    font-weight: 700;
+
+    input[type="number"] {
+      height: 30px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    input.dw-small {
+      width: 48px;
+      font-size: 15px;
+      font-weight: 400;
+    }
+  }
+
+  .dw-vital--encumbered {
+    border-color: var(--dw-bad);
+
+    .dw-hint {
+      color: var(--dw-bad);
+      font-weight: 700;
+    }
+  }
+
+  .dw-roll-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding: 0 8px;
+    border: 1px solid var(--dw-line);
+    border-radius: 6px;
+    background: var(--dw-surface);
+    color: var(--dw-navy);
+    font-size: 14px;
+    font-weight: 700;
+
+    &:hover {
+      background: var(--dw-navy);
+      color: var(--dw-on-navy);
+    }
+  }
+
+  .dw-damage-inputs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    select {
+      width: 64px;
+      padding: 0 4px;
+    }
+
+    input {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  // Stats.
+  .dw-stats {
+    display: flex;
+    gap: 8px;
+  }
+
+  .dw-abilities {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .dw-ability {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    overflow: hidden;
+    background: var(--dw-surface);
+    border: 1px solid var(--dw-line);
+    border-radius: 10px;
+
+    &.has-debility {
+      border-color: var(--dw-deb-ink);
+    }
+  }
+
+  .dw-ability-roll {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0;
+    padding: 6px 4px 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+
+    &:hover {
+      background: var(--dw-chip);
+    }
+  }
+
+  .dw-ability-mod {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  input.dw-ability-score {
+    align-self: center;
+    width: 52px;
+    height: 22px;
+    margin: 0 0 4px;
+    font-size: 14px;
+    color: var(--dw-muted);
+    background: transparent;
+    border-color: transparent;
+
+    &:hover {
+      border-color: var(--dw-line);
+    }
+  }
+
+  .dw-debility {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    margin-top: auto;
+    padding: 4px;
+    border-top: 1px solid var(--dw-line);
+    font-size: 13px;
+    color: var(--dw-muted);
+    cursor: pointer;
+
+    // The checkbox stays for the form, but the whole strip is the control.
+    input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    &:hover {
+      background: var(--dw-chip);
+    }
+
+    &:focus-within {
+      outline: 2px solid var(--dw-focus);
+      outline-offset: -2px;
+    }
+
+    &.on {
+      background: var(--dw-deb);
+      color: var(--dw-deb-ink);
+      font-weight: 700;
+    }
+  }
+
+  .dw-modifiers {
+    flex: 0 0 250px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 8px 10px;
+    box-sizing: border-box;
+  }
+
+  .dw-modifier {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .dw-segmented {
+    display: flex;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--dw-line);
+    border-radius: 8px;
+    overflow: hidden;
+
+    legend {
+      // Kept for screen readers; the buttons read on their own visually.
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+    }
+
+    label {
+      flex: 1;
+      position: relative;
+      padding: 5px 2px;
+      text-align: center;
+      font-size: 13px;
+      cursor: pointer;
+
+      & + label {
+        border-left: 1px solid var(--dw-line);
+      }
+
+      &.on {
+        background: var(--dw-navy);
+        color: var(--dw-on-navy);
+        font-weight: 700;
+      }
+
+      &:focus-within {
+        outline: 2px solid var(--dw-focus);
+        outline-offset: -2px;
+      }
+    }
+
+    input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+  }
+
+  // Tabs and panels. The nav and the active panel read as one card.
+  .dw-tabs {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    gap: 2px;
+    margin: 0;
+    padding: 0 8px;
+    background: var(--dw-surface);
+    border: 1px solid var(--dw-line);
+    border-bottom: 0;
+    border-radius: 10px 10px 0 0;
+  }
+
+  .dw-tab {
+    flex: 0 0 auto;
+    width: auto;
+    padding: 9px 14px 7px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    border-radius: 0;
+    outline: 0;
+    box-shadow: none;
+    text-shadow: none;
+    background: transparent;
+    color: var(--dw-muted);
+    font-size: 16px;
+
+    &:hover {
+      color: var(--dw-ink);
+    }
+
+    &.active {
+      color: var(--dw-ink);
+      font-weight: 700;
+      border-bottom-color: var(--dw-accent);
+    }
+  }
+
+  .dw-panel {
+    min-height: 0;
+    overflow-y: auto;
+    margin-top: -8px; // Sit flush under the nav despite the grid gap.
+    padding: 10px 12px 14px;
+    background: var(--dw-surface);
+    border: 1px solid var(--dw-line);
+    border-radius: 0 0 10px 10px;
+
+    &.active {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+  }
+
+  // Move search.
+  .dw-move-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid var(--dw-line);
+    border-radius: 8px;
+    background: var(--dw-sunken);
+    color: var(--dw-muted);
+
+    input {
+      flex: 1;
+      height: 32px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+
+      &:focus {
+        outline: 0;
+      }
+    }
+
+    &:focus-within {
+      outline: 2px solid var(--dw-focus);
+    }
+  }
+
+  // Sections.
+  .dw-section {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .dw-section-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+  }
+
+  .dw-section-toggle {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 4px 2px;
+    border: 0;
+    background: transparent;
+    text-align: left;
+
+    &:hover .dw-section-title {
+      text-decoration: underline;
+    }
+  }
+
+  .dw-chevron {
+    width: 14px;
+    color: var(--dw-muted);
+    transition: transform 0.15s ease-in-out;
+  }
+
+  .dw-section.collapsed {
+    .dw-chevron {
+      transform: rotate(-90deg);
+    }
+
+    .dw-rows,
+    .dw-empty {
+      display: none;
+    }
+  }
+
+  // While searching, every section with a match is shown open.
+  .is-searching .dw-section.collapsed {
+    .dw-rows {
+      display: flex;
+    }
+
+    .dw-chevron {
+      transform: none;
+    }
+  }
+
+  .dw-rows {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .dw-empty,
+  .dw-no-matches {
+    margin: 2px 4px 6px;
+    font-size: 14px;
+    color: var(--dw-muted);
+  }
+
+  // Rows.
+  .dw-row {
+    border-radius: 8px;
+
+    &:hover {
+      background: var(--dw-sunken);
+    }
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  .dw-row-main {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 4px;
+  }
+
+  .dw-star {
+    color: var(--dw-muted);
+
+    &.on {
+      color: var(--dw-accent);
+    }
+  }
+
+  .dw-roll {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid var(--dw-line);
+    border-radius: 6px;
+    background: var(--dw-surface);
+    color: var(--dw-navy);
+
+    &:hover {
+      background: var(--dw-navy);
+      color: var(--dw-on-navy);
+    }
+
+    &.dw-roll--none {
+      border-color: transparent;
+      background: transparent;
+      color: var(--dw-muted);
+    }
+  }
+
+  .dw-row-name {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 4px 2px;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    font-size: 16px;
+  }
+
+  .dw-row-img {
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
+    border: 0;
+    border-radius: 4px;
+    object-fit: cover;
+  }
+
+  .dw-row-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .dw-badge {
+    flex: 0 0 auto;
+    padding: 0 4px;
+    border: 1px solid var(--dw-line);
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--dw-muted);
+  }
+
+  .dw-stat {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--dw-muted);
+    white-space: nowrap;
+  }
+
+  .dw-row-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .dw-counter,
+  .dw-toggle {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 8px;
+    border: 1px solid var(--dw-line);
+    border-radius: 12px;
+    background: var(--dw-chip);
+    font-size: 12px;
+    white-space: nowrap;
+
+    &:hover {
+      background: var(--dw-chip-hover);
+    }
+  }
+
+  .dw-toggle.on {
+    border-color: var(--dw-navy);
+    background: var(--dw-navy);
+    color: var(--dw-on-navy);
+  }
+
+  // Edit/delete only show on hover or keyboard focus.
+  .dw-row-actions {
+    display: flex;
+    opacity: 0;
+  }
+
+  .dw-row:hover .dw-row-actions,
+  .dw-row:focus-within .dw-row-actions,
+  .dw-bond:hover .dw-row-actions,
+  .dw-bond:focus-within .dw-row-actions {
+    opacity: 1;
+  }
+
+  .dw-row-details {
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    margin: 2px 6px 8px 40px;
+    padding: 10px 12px;
+    background: var(--dw-sunken);
+    border-radius: 8px;
+    font-size: 15px;
+
+    p {
+      margin: 0 0 6px;
+    }
+
+    > :last-child p:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .dw-row.expanded .dw-row-details {
+    display: flex;
+  }
+
+  .dw-result {
+    display: flex;
+    gap: 8px;
+
+    strong {
+      flex: 0 0 auto;
+      min-width: 34px;
+    }
+  }
+
+  .dw-result--success strong { color: var(--dw-good); }
+  .dw-result--failure strong { color: var(--dw-bad); }
+
+  .dw-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .dw-tag {
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: var(--dw-chip);
+    font-size: 12px;
+  }
+
+  // Character tab.
+  .dw-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .dw-field--grow {
+    flex: 1;
+
+    prose-mirror {
+      flex: 1;
+      min-height: 180px;
+    }
+  }
+
+  // Sidebar.
+  .dw-sidebar {
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dw-side-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+  }
+
+  .dw-side-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .dw-bonds {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .dw-bond {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 6px 0;
+    border-top: 1px solid var(--dw-line);
+    font-size: 15px;
+
+    &:first-child {
+      border-top: 0;
+    }
+  }
+
+  .dw-bond-text {
+    flex: 1;
+    min-width: 0;
+
+    p {
+      margin: 0;
+    }
+  }
+
+  .dw-resource {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    .dw-stepper input[type="number"] {
+      width: 38px;
+    }
+  }
+
+  input.dw-resource-label {
+    height: 24px;
+    padding: 0;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--dw-muted);
+    background: transparent;
+    border-color: transparent;
+
+    &:hover {
+      border-color: var(--dw-line);
+    }
+  }
+}

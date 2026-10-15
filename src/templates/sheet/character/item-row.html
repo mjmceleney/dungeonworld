@@ -1,0 +1,60 @@
+{{!-- One owned item (move, equipment or spell). Expects `editable` in the hash. --}}
+<li class="dw-row draggable {{#if expanded}}expanded{{/if}}" data-item-id="{{id}}" data-name="{{name}}">
+  <div class="dw-row-main">
+    {{#if isMove}}
+    <button type="button" class="dw-icon-btn dw-star {{#if favorite}}on{{/if}}" data-action="toggleFavorite" aria-pressed="{{#if favorite}}true{{else}}false{{/if}}"
+      data-tooltip="{{#if favorite}}DW.Sheet.Unfavorite{{else}}DW.Sheet.Favorite{{/if}}" aria-label="{{#if favorite}}{{localize "DW.Sheet.Unfavorite"}}{{else}}{{localize "DW.Sheet.Favorite"}}{{/if}}">
+      <i class="{{#if favorite}}fas{{else}}far{{/if}} fa-star" inert></i>
+    </button>
+    {{/if}}
+
+    <button type="button" class="dw-roll dw-roll--{{rollIcon}}" data-action="rollItem" aria-label="{{localize "DW.Sheet.Roll" name=name}}" {{#if (eq rollIcon "none")}}data-tooltip="DW.Sheet.NoRoll"{{/if}}>
+      {{#if (eq rollIcon "dice")}}<i class="fas fa-dice-d6" inert></i>{{/if}}
+      {{#if (eq rollIcon "formula")}}<i class="fas fa-dice-d20" inert></i>{{/if}}
+      {{#if (eq rollIcon "none")}}<i class="fas fa-book" inert></i>{{/if}}
+    </button>
+
+    <button type="button" class="dw-row-name" data-action="toggleDetails" aria-expanded="{{#if expanded}}true{{else}}false{{/if}}">
+      <img class="dw-row-img" src="{{img}}" alt="" width="24" height="24"/>
+      <span class="dw-row-title">{{name}}</span>
+      {{#if badge}}<span class="dw-badge">{{badge}}</span>{{/if}}
+    </button>
+
+    {{#if stat}}<span class="dw-stat">{{stat}}</span>{{/if}}
+
+    {{#if isEquipment}}
+    <span class="dw-row-meta">
+      {{#if uses}}<button type="button" class="dw-counter" data-action="adjustCounter" data-field="uses" data-tooltip="DW.Uses">{{localize "DW.Uses"}} {{uses}}</button>{{/if}}
+      {{#if quantity}}<button type="button" class="dw-counter" data-action="adjustCounter" data-field="quantity" data-tooltip="DW.Qty">{{localize "DW.Qty"}} {{quantity}}</button>{{/if}}
+      {{#if weight}}<span class="dw-stat">{{localize "DW.Wt"}} {{weight}}</span>{{/if}}
+      <button type="button" class="dw-toggle {{#if equipped}}on{{/if}}" data-action="toggleEquipped" aria-pressed="{{#if equipped}}true{{else}}false{{/if}}">{{localize "DW.Equipped"}}</button>
+    </span>
+    {{/if}}
+
+    {{#if isSpell}}
+    <button type="button" class="dw-toggle {{#if prepared}}on{{/if}}" data-action="togglePrepared" aria-pressed="{{#if prepared}}true{{else}}false{{/if}}">
+      {{#if prepared}}{{localize "DW.Prepared"}}{{else}}{{localize "DW.Unprepared"}}{{/if}}
+    </button>
+    {{/if}}
+
+    {{#if editable}}
+    <span class="dw-row-actions">
+      <button type="button" class="dw-icon-btn" data-action="editItem" aria-label="Edit {{name}}"><i class="fas fa-edit" inert></i></button>
+      <button type="button" class="dw-icon-btn" data-action="deleteItem" aria-label="Delete {{name}}"><i class="fas fa-trash" inert></i></button>
+    </span>
+    {{/if}}
+  </div>
+
+  <div class="dw-row-details">
+    {{#if tagList.length}}
+    <div class="dw-tags">{{#each tagList}}<span class="dw-tag">{{this}}</span>{{/each}}</div>
+    {{/if}}
+    {{#if description}}<div class="dw-description">{{{description}}}</div>{{/if}}
+    {{#each results}}
+    <div class="dw-result dw-result--{{css}}"><strong>{{label}}</strong><div>{{{html}}}</div></div>
+    {{/each}}
+    {{#if choices}}
+    <div class="dw-result dw-result--choices"><strong>{{localize "DW.Choices"}}</strong><div>{{{choices}}}</div></div>
+    {{/if}}
+  </div>
+</li>

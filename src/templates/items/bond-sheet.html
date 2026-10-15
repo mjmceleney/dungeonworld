@@ -1,10 +1,10 @@
-<form class="{{cssClass}} item-form flexcol" autocomplete="off">
+<div class="{{cssClass}} item-form flexcol">
   <div class="sheet-wrapper flexcol">
     {{!-- Sheet Body --}}
     <section class="sheet-body">
       <div class="cell cell--bond">
-      {{editor item.nameEnriched target="name" button=true owner=owner editable=editable engine="prosemirror"}}
+      <prose-mirror name="name" value="{{item.name}}" toggled>{{{nameEnriched}}}</prose-mirror>
       </div>
     </section>
   </div>
-</form>
+</div>

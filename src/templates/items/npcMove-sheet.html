@@ -1,9 +1,9 @@
-<form class="{{cssClass}} item-form flexcol" autocomplete="off">
+<div class="{{cssClass}} item-form flexcol">
   <div class="sheet-wrapper flexcol">
 
     <header class="sheet-header flexrow">
       <div class="cell cell--image">
-        <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}"/>
+        <img class="profile-img" src="{{item.img}}" data-edit="img" data-action="editImage" title="{{item.name}}"/>
       </div>
       <div class="header-fields">
         <h1 class="charname"><input name="name" type="text" value="{{item.name}}" placeholder="{{localize "DW.Common.Name"}}"/></h1>
@@ -12,18 +12,18 @@
 
     {{!-- Sheet Tab Navigation --}}
     <nav class="sheet-navigation sheet-tabs tabs" data-group="primary">
-      <a class="item" data-tab="description">{{localize "DW.Common.Description" }}</a>
-      <a class="item" data-tab="details">{{localize "DW.Common.Details" }}</a>
+      <a class="item {{tabs.description.cssClass}}" data-action="tab" data-group="primary" data-tab="description">{{localize "DW.Common.Description" }}</a>
+      <a class="item {{tabs.details.cssClass}}" data-action="tab" data-group="primary" data-tab="details">{{localize "DW.Common.Details" }}</a>
     </nav>
 
     {{!-- Sheet Body --}}
     <section class="sheet-body">
 
         {{!-- Description Tab --}}
-        <div class="tab" data-group="primary" data-tab="description">
+        <div class="tab {{tabs.description.cssClass}}" data-group="primary" data-tab="description">
           <div class="resource">
             <label>{{localize "DW.Description"}}</label>
-            {{editor system.descriptionEnriched target="system.description" button=true owner=owner editable=editable engine="prosemirror"}}
+            <prose-mirror name="system.description" value="{{system.description}}" toggled>{{{system.descriptionEnriched}}}</prose-mirror>
           </div>
 
           {{!-- TODO: Add moveResults here later if needed. --}}
@@ -31,7 +31,7 @@
         </div>
 
         {{!-- Details Tab --}}
-        <div class="tab" data-group="primary" data-tab="details">
+        <div class="tab {{tabs.details.cssClass}}" data-group="primary" data-tab="details">
           <div class="resource">
             <label>{{localize "DW.RollFormula"}}</label>
             <input type="text" name="system.rollFormula" value="{{system.rollFormula}}" placeholder="ex: 2d12kh+2" data-dtype="String"/>
@@ -47,4 +47,4 @@
         </div>
     </section>
   </div>
-</form>
+</div>

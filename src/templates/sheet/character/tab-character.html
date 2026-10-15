@@ -1,0 +1,17 @@
+<section class="tab dw-panel {{tab.cssClass}}" data-group="primary" data-tab="character">
+  <div class="dw-field">
+    <span class="dw-label">{{localize "DW.Look"}}</span>
+    <prose-mirror name="system.details.look" value="{{system.details.look}}" toggled>{{{enriched.look}}}</prose-mirror>
+  </div>
+
+  <div class="dw-field">
+    <span class="dw-label">{{localizeOverride "DW.Race" "raceSingle"}}</span>
+    <input type="text" name="system.details.race.value" value="{{system.details.race.value}}" aria-label="{{localizeOverride "DW.Race" "raceSingle"}}"/>
+    <prose-mirror name="system.details.race.description" value="{{system.details.race.description}}" toggled>{{{enriched.race}}}</prose-mirror>
+  </div>
+
+  <div class="dw-field dw-field--grow">
+    <span class="dw-label">{{localize "DW.Biography"}}</span>
+    <prose-mirror name="system.details.biography" value="{{system.details.biography}}" toggled>{{{enriched.biography}}}</prose-mirror>
+  </div>
+</section>

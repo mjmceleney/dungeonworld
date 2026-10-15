@@ -4,7 +4,9 @@ $c-nightmode-light: #444;
 $c-blue: #65a3e1;
 $c-blue-dark: #344460;
 
-.window-app.nightmode {
+// V1 windows use .window-app; ApplicationV2 windows use .application.
+.window-app.nightmode,
+.application.nightmode {
   .window-content {
     background: $c-nightmode;
     background-image:
@@ -43,7 +45,8 @@ $c-blue-dark: #344460;
     input[type="text"],
     input[type="number"],
     textarea,
-    .editor {
+    .editor,
+    prose-mirror {
       background: $c-nightmode-light !important;
       color: $c-white !important;
       box-shadow: 0 0 12px 0 rgba($c-black, 0.25);

@@ -1,0 +1,34 @@
+<section class="tab dw-panel {{tab.cssClass}}" data-group="primary" data-tab="moves">
+  <label class="dw-move-search">
+    <i class="fas fa-search" inert></i>
+    <input type="search" placeholder="{{localize "DW.Sheet.SearchMoves"}}" aria-label="{{localize "DW.Sheet.SearchMoves"}}"/>
+  </label>
+
+  {{#each moveSections}}
+  <section class="dw-section {{#if collapsed}}collapsed{{/if}}" data-section="{{id}}">
+    <header class="dw-section-head">
+      <button type="button" class="dw-section-toggle" data-action="toggleSection" aria-expanded="{{#if collapsed}}false{{else}}true{{/if}}">
+        <i class="fas fa-chevron-down dw-chevron" inert></i>
+        <span class="dw-section-title">{{title}}</span>
+        <span class="dw-count">{{count}}</span>
+        {{#if hint}}<span class="dw-pill">{{hint}}</span>{{/if}}
+      </button>
+      {{#if canCreate}}{{#if ../editable}}
+      <button type="button" class="dw-add" data-action="createItem" data-type="move" data-move-type="{{createType}}" aria-label="{{localize "DW.MoveCreate"}}">
+        <i class="fas fa-plus" inert></i>
+      </button>
+      {{/if}}{{/if}}
+    </header>
+    <ol class="dw-rows">
+      {{#each rows}}
+      {{> "systems/dungeonworld/templates/sheet/character/item-row.html" editable=../../editable}}
+      {{/each}}
+    </ol>
+    {{#unless rows.length}}
+    <p class="dw-empty">{{emptyText}}</p>
+    {{/unless}}
+  </section>
+  {{/each}}
+
+  <p class="dw-no-matches" hidden>{{localize "DW.Sheet.NoMatches"}}</p>
+</section>

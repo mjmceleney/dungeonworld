@@ -1,0 +1,49 @@
+<header class="dw-card dw-header">
+  <img class="dw-portrait" src="{{actor.img}}" data-edit="img" data-action="editImage" alt="{{actor.name}}" title="{{actor.name}}" width="84" height="84"/>
+
+  <div class="dw-identity">
+    <input class="dw-name" type="text" name="name" value="{{actor.name}}" placeholder="Name" aria-label="Name"/>
+    <div class="dw-identity-row">
+      <input class="dw-class-input" type="text" name="system.details.class" value="{{system.details.class}}" placeholder="Class" aria-label="Class" list="dw-classlist-{{actor.id}}"/>
+      <datalist id="dw-classlist-{{actor.id}}">
+        {{#each classlist}}
+        <option value="{{this}}"></option>
+        {{/each}}
+      </datalist>
+      <button type="button" class="dw-icon-btn" data-action="viewClass" data-tooltip="DW.ClassViewer" aria-label="{{localize "DW.ClassViewer"}}"><i class="fas fa-book" inert></i></button>
+      {{#each multiclass}}
+      <span class="dw-pill" data-tooltip="DW.Sheet.MulticlassTag">+ {{this}}</span>
+      {{/each}}
+      <label class="dw-level">
+        <span>{{localize "DW.Level"}}</span>
+        <input type="number" name="system.attributes.level.value" value="{{system.attributes.level.value}}" min="1" max="10" step="1"/>
+      </label>
+    </div>
+    {{#if isToken}}
+    <p class="dw-warning">{{localize "DW.Sheet.UnlinkedTokenWarning"}}</p>
+    {{/if}}
+  </div>
+
+  <div class="dw-xp">
+    <div class="dw-xp-head">
+      <span class="dw-label">{{localize "DW.Sheet.Experience"}}</span>
+      <span class="dw-xp-count">
+        <input type="number" name="system.attributes.xp.value" value="{{xp}}" min="0" step="1" aria-label="{{localize "DW.XP"}}"/>
+        <span>/ {{xpMax}}</span>
+      </span>
+    </div>
+    <div class="dw-bar"><div class="dw-bar-fill dw-bar-fill--xp" style="width: {{xpPct}}%"></div></div>
+    <div class="dw-stepper">
+      <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.xp.value" data-delta="-1" aria-label="{{localize "DW.Sheet.RemoveXp"}}"><i class="fas fa-minus" inert></i></button>
+      <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.xp.value" data-delta="1" aria-label="{{localize "DW.Sheet.MarkXp"}}"><i class="fas fa-plus" inert></i></button>
+    </div>
+  </div>
+
+  <div class="dw-levelup">
+    <button type="button" class="dw-levelup-btn {{#if levelUp.ready}}ready{{/if}}" data-action="levelUp" {{#unless levelUp.ready}}disabled{{/unless}}>
+      <i class="fas fa-user-plus" inert></i>
+      <span>{{localize "DW.Sheet.LevelUp"}}</span>
+    </button>
+    <span class="dw-hint">{{levelUp.hint}}</span>
+  </div>
+</header>
