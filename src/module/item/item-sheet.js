@@ -256,13 +256,7 @@ export class DwItemSheet extends foundry.appv1.sheets.ItemSheet {
       }
     }
     // Reduce duplicates.
-    let tagNames = [];
-    for (let tag of tags) {
-      let tagName = tag.toLowerCase();
-      if (tagNames.includes(tagName) === false) {
-        tagNames.push(tagName);
-      }
-    }
+    let tagNames = [...new Set(tags.map(tag => tag.toLowerCase()))];
 
     // Sort the tagnames list.
     tagNames.sort((a, b) => {

@@ -69,7 +69,7 @@
       align-items: center;
       justify-content: center;
       padding: 0;
-      transition: all ease-in-out 0.25s;
+      transition: opacity ease-in-out 0.25s, color ease-in-out 0.25s;
       text-align: center;
       background: $c-black;
       color: $c-white;
@@ -129,7 +129,7 @@
       height: 0;
       margin-top: 2px;
       border-bottom: 2px solid;
-      transition: all ease-in-out 0.25s;
+      transition: width ease-in-out 0.25s;
     }
 
     &:hover {
@@ -143,7 +143,7 @@
     }
 
     .fas {
-      transition: all ease-in-out 0.25s;
+      transition: transform ease-in-out 0.25s;
     }
 
     &.open {
@@ -163,7 +163,7 @@
     height: 16px;
     text-align: center;
     border-radius: 5px;
-    transition: all ease-in-out 0.25s;
+    transition: transform ease-in-out 0.25s;
   }
 
   .rollable {

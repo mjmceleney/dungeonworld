@@ -23,7 +23,6 @@ import * as chat from "./chat.js";
 
 const { Actors, Items } = foundry.documents.collections;
 const { ActorSheet, ItemSheet } = foundry.appv1.sheets;
-const { renderTemplate } = foundry.applications.handlebars;
 
 /* -------------------------------------------- */
 /*  Foundry VTT Initialization                  */
@@ -309,6 +308,7 @@ Hooks.once("init", async function() {
 
   // Preload template partials.
   preloadHandlebarsTemplates();
+  chat.preloadDamageButtons();
 });
 
 Hooks.once("ready", async function() {
@@ -356,41 +356,8 @@ Hooks.once("ready", async function() {
     // one that made the move, that happens directly in the actor update.
     if (data?.combatantUpdate) {
       game.combat.updateEmbeddedDocuments('Combatant', Array.isArray(data.combatantUpdate) ? data.combatantUpdate : [data.combatantUpdate]);
-      ui.combat.render();
     }
   });
-});
-
-Hooks.on('createChatMessage', async (message, options, id) => {
-  // @todo expand this to work with multiple rolls.
-  if (message?.rolls) {
-    // Limit this to a single user.
-    let firstGM = game.users.find(u => u.active && u.role == CONST.USER_ROLES.GAMEMASTER);
-    if (!game.user.isGM || game.user.id !== firstGM.id) return;
-    // Exit early if this is a rollable table.
-    if (message?.flags?.core?.RollTable) return;
-    // Retrieve the roll.
-    let r = message.rolls[0] ?? null;
-    // Re-render the roll.
-    if (r) {
-      r.render().then(rTemplate => {
-        // Render the damage buttons.
-        renderTemplate(`systems/dungeonworld/templates/parts/chat-buttons.html`, {}).then(buttonTemplate => {
-          if (message?.flags?.dungeonworld?.damageButtons) return;
-          // Update the chat message with the appended buttons.
-          message.update({
-            content: rTemplate + buttonTemplate,
-            'flags.dungeonworld.damageButtons': true,
-          })
-          // Update the chat log scroll position.
-            .then(m => {
-              let chatLog = document.querySelector('#chat-log');
-              chatLog.scrollTop = chatLog.scrollHeight;
-            });
-        })
-      });
-    }
-  }
 });
 
 Hooks.on('renderChatMessageHTML', (app, html, data) => {
@@ -404,6 +371,11 @@ Hooks.on('renderChatMessageHTML', (app, html, data) => {
     html.querySelectorAll('.dice-total').forEach(e => e.innerText = '?');
     html.querySelectorAll('.dice-tooltip').forEach(e => e.remove());
   }
+
+  // Add damage buttons to plain roll messages (e.g. /roll). Done at render
+  // time rather than by rewriting the message, which cost a database write and
+  // a re-render on every client for each roll.
+  chat.appendDamageButtons(app, html);
 
   chat.displayChatActionButtons(app, html, data);
 });
@@ -521,12 +493,20 @@ Hooks.on('createActor', async (actor, options, id) => {
   }
 });
 
-// Update the item list on new item creation.
-Hooks.on('createItem', async (item, options, id) => {
+// Clear cached item lists when the underlying items change. Items embedded on
+// actors are never part of these lists, so ignore them.
+const invalidateItemCaches = (item) => {
+  if (item.parent) return;
   if (item.type == 'equipment') {
-    DwUtility.getEquipment(true);
+    game.dungeonworld.equipment = null;
   }
-})
+  else if (item.type == 'class') {
+    DwClassList.invalidate();
+  }
+};
+Hooks.on('createItem', invalidateItemCaches);
+Hooks.on('updateItem', invalidateItemCaches);
+Hooks.on('deleteItem', invalidateItemCaches);
 
 Hooks.on('preUpdateActor', (actor, updateData, options, id) => {
   if (actor.type == 'character') {

@@ -39,57 +39,57 @@ DW.rollResults = {
 };
 
 export class DwClassList {
+  /**
+   * Promise resolving to the sorted, de-duplicated list of class items. Kept
+   * between calls because loading compendium documents requires a server
+   * round-trip. Cleared by DwClassList.invalidate() when class items change.
+   */
+  static _cache = null;
+
   static async getClasses(labels_only = true) {
+    if (!this._cache) {
+      this._cache = this._loadClasses().catch(err => {
+        this._cache = null;
+        throw err;
+      });
+    }
+    const classes = await this._cache;
+    return labels_only ? classes.map(c => c.name) : [...classes];
+  }
+
+  static invalidate() {
+    this._cache = null;
+  }
+
+  static async _loadClasses() {
     // First, retrieve any custom or overridden classes so that we can
     // prioritize those.
     let classes = game.items.filter(item => item.type == 'class');
 
-    classes.push(...(await DwUtility.loadCompendia('classes')))
+    classes.push(...(await DwUtility.loadCompendia('classes')));
 
     // Reduce duplicates. Because item classes happen first, this will prevent
     // duplicate compendium entries from overriding the items.
-    let charClassNames = [];
-    for (let charClass of classes) {
-      let charClassName = charClass.name;
-      if (charClassNames.includes(charClassName) !== false) {
-        classes = classes.filter(item => item.id != charClass.id);
-      }
-      else {
-        charClassNames.push(charClassName);
-      }
-    }
+    const charClassNames = new Set();
+    classes = classes.filter(charClass => {
+      if (charClassNames.has(charClass.name)) return false;
+      charClassNames.add(charClass.name);
+      return true;
+    });
 
-    // Sort the charClassNames list.
-    if (labels_only) {
-      charClassNames.sort((a, b) => {
-        const aSort = a.toLowerCase();
-        const bSort = b.toLowerCase();
-        if (aSort < bSort) {
-          return -1;
-        }
-        if (aSort > bSort) {
-          return 1;
-        }
-        return 0;
-      });
-
-      return charClassNames;
-    }
     // Sort the class objects list.
-    else {
-      classes.sort((a, b) => {
-        const aSort = a.name.toLowerCase();
-        const bSort = b.name.toLowerCase();
-        if (aSort < bSort) {
-          return -1;
-        }
-        if (aSort > bSort) {
-          return 1;
-        }
-        return 0;
-      });
+    classes.sort((a, b) => {
+      const aSort = a.name.toLowerCase();
+      const bSort = b.name.toLowerCase();
+      if (aSort < bSort) {
+        return -1;
+      }
+      if (aSort > bSort) {
+        return 1;
+      }
+      return 0;
+    });
 
-      return classes;
-    }
+    return classes;
   }
 }

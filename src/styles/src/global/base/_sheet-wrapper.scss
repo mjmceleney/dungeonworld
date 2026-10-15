@@ -68,7 +68,7 @@
       align-items: center;
       justify-content: center;
       background: transparent;
-      transition: all ease-in-out 0.25s;
+      transition: background-color ease-in-out 0.25s, margin ease-in-out 0.25s;
       height: 225px;
 
       &:hover {
@@ -84,7 +84,7 @@
       }
 
       .fas {
-        transition: all ease-in-out 0.25s;
+        transition: transform ease-in-out 0.25s;
       }
 
       &.closed {

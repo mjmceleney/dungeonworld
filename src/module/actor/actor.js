@@ -41,6 +41,7 @@ export class ActorDw extends Actor {
     }, {});
 
     const noAbilityScores = game.settings.get('dungeonworld', 'noAbilityScores');
+    const disDebility = game.settings.get("dungeonworld", "disDebility");
 
     // Ability Scores
     for (let [a, abl] of Object.entries(data.abilities)) {
@@ -68,7 +69,7 @@ export class ActorDw extends Actor {
       abl.label = CONFIG.DW.abilities[a];
       abl.debilityLabel = debilities[a];
       // Adjust mod based on debility.
-      if (abl.debility && !game.settings.get("dungeonworld", "disDebility")) {
+      if (abl.debility && !disDebility) {
         abl.mod -= 1;
       }
     }
@@ -133,8 +134,21 @@ export class ActorDw extends Actor {
     let xpRequiredFormula = game.settings.get('dungeonworld', 'xpFormula');
     let xpRequired = parseInt(xpRequiredFormula)
     if (isNaN(xpRequired)) {
+      // Plain arithmetic (such as the default formula) can be computed
+      // directly, which is much cheaper than building and evaluating a Roll.
+      const replaced = Roll.replaceFormulaData(xpRequiredFormula, rollData);
+      if (/^[\d\s.+\-*/()]+$/.test(replaced)) {
+        try {
+          xpRequired = Roll.safeEval(replaced);
+        }
+        catch (error) {
+          xpRequired = NaN;
+        }
+      }
+    }
+    if (isNaN(xpRequired)) {
       // Evaluate the max XP roll.
-      let xpRequiredRoll = new Roll(xpRequiredFormula, this.getRollData());
+      let xpRequiredRoll = new Roll(xpRequiredFormula, rollData);
       xpRequiredRoll.evaluateSync();
       xpRequired = xpRequiredRoll?.total ?? Number(data.attributes.level.value) + 7;
     }
