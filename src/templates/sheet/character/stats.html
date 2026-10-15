@@ -1,12 +1,15 @@
 <section class="dw-card dw-stats">
   <div class="dw-abilities">
     {{#each abilities}}
-    <div class="dw-ability {{#if debility}}has-debility{{/if}}">
-      <button type="button" class="dw-ability-roll" data-action="rollAbility" data-ability="{{key}}" aria-label="{{label}}">
-        <span class="dw-label">{{abbr}}</span>
-        <span class="dw-ability-mod">{{modText}}</span>
-      </button>
-      <input class="dw-ability-score" type="number" name="system.abilities.{{key}}.value" value="{{value}}" step="1" aria-label="{{label}}"/>
+    <div class="dw-ability dw-ability--{{key}} {{#if debility}}has-debility{{/if}}">
+      <i class="fas {{icon}} dw-ability-watermark" inert></i>
+      <div class="dw-ability-head">
+        <span class="dw-label"><i class="fas {{icon}}" inert></i> {{abbr}}</span>
+      </div>
+      <div class="dw-ability-values">
+        <button type="button" class="dw-ability-roll" data-action="rollAbility" data-ability="{{key}}" aria-label="{{label}}">{{modText}}</button>
+        <input class="dw-ability-score" type="number" name="system.abilities.{{key}}.value" value="{{value}}" step="1" aria-label="{{label}}" data-tooltip="{{label}}"/>
+      </div>
       <label class="dw-debility {{#if debility}}on{{/if}}">
         <input type="checkbox" name="system.abilities.{{key}}.debility" {{checked debility}}/>
         <span>{{debilityLabel}}</span>

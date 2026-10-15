@@ -12,6 +12,16 @@ const TEMPLATES = "systems/dungeonworld/templates/sheet/character";
 /** Sections that start collapsed until the player opens them. */
 const DEFAULT_COLLAPSED = ['special', 'other'];
 
+/** Font Awesome icon for each ability (all in the free set, V6 and V7). */
+const ABILITY_ICONS = {
+  str: 'fa-hand-fist',
+  dex: 'fa-person-running',
+  con: 'fa-heart-pulse',
+  int: 'fa-brain',
+  wis: 'fa-eye',
+  cha: 'fa-masks-theater',
+};
+
 /** Spell levels, in display order. */
 const SPELL_LEVELS = [0, 1, 3, 5, 7, 9];
 
@@ -189,7 +199,9 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       noAbilityScores: game.settings.get('dungeonworld', 'noAbilityScores'),
       tabs: this._prepareSheetTabs(),
 
-      // Header.
+      // Header. The portrait doubles as a faded banner behind the header,
+      // except for the default silhouette.
+      bannerImg: actor.img && actor.img !== CONST.DEFAULT_TOKEN ? actor.img : null,
       classlist: classlist,
       multiclass: moveSections.multiclass,
       level: level,
@@ -267,26 +279,26 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
    * @return {{ready: boolean, hint: string}}
    */
   _prepareLevelUp({ level, xp, xpMax, classlist, startingMoves }) {
+    // Same check as the level up dialog, which needs the exact class name.
     const className = this.actor.system.details.class ?? '';
-    const known = classlist.includes(className) || classlist.some(c => classKey(c) == classKey(className));
+    const known = classlist.includes(className) || classlist.includes(className.trim());
 
     if (this.actor.token != null) {
       return { ready: false, hint: game.i18n.localize('DW.Sheet.UnlinkedToken') };
     }
-    if (!known) {
-      return { ready: false, hint: game.i18n.localize('DW.Sheet.ClassUnknown') };
-    }
-    // A new character can always use the builder to pick starting moves.
-    if (level === 1 && startingMoves < 1) {
-      return { ready: true, hint: game.i18n.localize('DW.Sheet.LevelUpReady') };
-    }
     if (level >= 10) {
       return { ready: false, hint: game.i18n.localize('DW.Sheet.MaxLevel') };
     }
-    if (xp >= xpMax) {
-      return { ready: true, hint: game.i18n.localize('DW.Sheet.LevelUpReady') };
+    // A new character can always use the builder to pick starting moves.
+    const eligible = xp >= xpMax || (level === 1 && startingMoves < 1);
+    if (!eligible) {
+      return { ready: false, hint: game.i18n.format('DW.Sheet.NeedsXp', { xp: xpMax - xp }) };
     }
-    return { ready: false, hint: game.i18n.format('DW.Sheet.NeedsXp', { xp: xpMax - xp }) };
+    // Only mention the class once it's what's actually blocking the level up.
+    if (!known) {
+      return { ready: false, hint: game.i18n.localize('DW.Sheet.ClassUnknown') };
+    }
+    return { ready: true, hint: game.i18n.localize('DW.Sheet.LevelUpReady') };
   }
 
   _prepareAbilities() {
@@ -294,6 +306,7 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     for (let [key, ability] of Object.entries(this.actor.system.abilities ?? {})) {
       abilities.push({
         key: key,
+        icon: ABILITY_ICONS[key] ?? 'fa-circle',
         abbr: game.i18n.localize(`DW.${key.toUpperCase()}`),
         label: ability.label ?? key,
         value: ability.value,
@@ -475,7 +488,8 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     for (let [key, group] of classGroups) {
       // Starting moves first; the sort is stable, so sheet order is kept otherwise.
       const rows = group.moves.sort((a, b) => (a.moveType == 'starting' ? 0 : 1) - (b.moveType == 'starting' ? 0 : 1));
-      if (!group.primary && rows.length < 1) continue;
+      // Class sections only appear when they have moves.
+      if (rows.length < 1) continue;
       if (!group.primary) multiclass.push(group.label);
       const title = group.label
         ? game.i18n.format('DW.Sheet.ClassMoves', { class: group.label })
@@ -532,6 +546,16 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       });
     }
 
+    // Shrink the character name to fit, rather than cutting it off.
+    const nameInput = this.element.querySelector('input.dw-name');
+    this.#nameObserver?.disconnect();
+    if (nameInput) {
+      this._fitName(nameInput);
+      nameInput.addEventListener('input', () => this._fitName(nameInput));
+      this.#nameObserver = new ResizeObserver(() => this._fitName(nameInput));
+      this.#nameObserver.observe(nameInput);
+    }
+
     // Move search filters rows in place, without re-rendering.
     const search = this.element.querySelector('.dw-move-search input');
     if (search) {
@@ -542,6 +566,51 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       });
       this._applyMoveFilter();
     }
+  }
+
+  /**
+   * Size the name's font so the whole name fits in its field. Below the
+   * minimum size the name scrolls, and the tooltip shows it all.
+   *
+   * The text is measured in its real font once that font has loaded;
+   * measuring earlier uses a narrower fallback font and gets it wrong.
+   *
+   * @param {HTMLInputElement} input
+   */
+  async _fitName(input) {
+    const maxSize = 24;
+    const minSize = 14;
+    input.title = input.value;
+
+    const style = getComputedStyle(input);
+    const family = style.fontFamily;
+    try {
+      await document.fonts.load(`${maxSize}px ${family}`, input.value);
+    } catch (e) {
+      // Measure with whatever font is available.
+    }
+
+    const context = (DwCharacterSheet.#measureContext ??= document.createElement('canvas').getContext('2d'));
+    context.font = `${style.fontWeight} ${maxSize}px ${family}`;
+    const textWidth = context.measureText(input.value || input.placeholder || '').width;
+    const available = input.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - 4;
+    if (available <= 0 || textWidth <= 0) return;
+
+    const size = Math.max(minSize, Math.min(maxSize, Math.floor(maxSize * available / textWidth)));
+    input.style.fontSize = `${size}px`;
+  }
+
+  /** Canvas context used to measure text. */
+  static #measureContext = null;
+
+  /** Re-fits the name when its field changes width. */
+  #nameObserver = null;
+
+  /** @inheritdoc */
+  _onClose(options) {
+    super._onClose(options);
+    this.#nameObserver?.disconnect();
+    this.#nameObserver = null;
   }
 
   /**
