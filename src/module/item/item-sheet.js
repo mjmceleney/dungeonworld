@@ -1,150 +1,176 @@
 import { DwClassList } from "../config.js";
 import { DwUtility } from "../utility.js";
 
+const { HandlebarsApplicationMixin } = foundry.applications.api;
+const { ItemSheetV2 } = foundry.applications.sheets;
 const { TextEditor } = foundry.applications.ux;
-const { renderTemplate } = foundry.applications.handlebars;
 
 /**
- * Extend the basic ItemSheet with some very simple modifications
- * @extends {ItemSheet}
+ * Item sheet for all Dungeon World item types, built on ApplicationV2.
+ * @extends {ItemSheetV2}
  */
-export class DwItemSheet extends foundry.appv1.sheets.ItemSheet {
+export class DwItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
 
   /** @inheritdoc */
-  constructor(...args) {
-    super(...args);
+  constructor(options = {}) {
+    super(options);
 
     this.tagify = null;
-    this.needsRender = false;
+
+    // Tab to show when the sheet is first opened.
+    this.tabGroups.primary ??= "description";
   }
 
   /** @override */
-  static get defaultOptions() {
-    let options = foundry.utils.mergeObject(super.defaultOptions, {
-      classes: ["dungeonworld", "sheet", "item"],
+  static DEFAULT_OPTIONS = {
+    classes: ["dungeonworld", "sheet", "item"],
+    position: {
       width: 520,
       height: 480,
-      tabs: [{ navSelector: ".sheet-tabs", contentSelector: ".sheet-body", initial: "description" }],
+    },
+    window: {
+      resizable: true,
+    },
+    form: {
       submitOnChange: true,
-    });
+    },
+  };
 
-    if (DwUtility.nightmode) {
-      options.classes.push('nightmode');
-    }
+  /** @override */
+  static PARTS = {
+    sheet: {
+      // Replaced with the item type's template in _configureRenderParts().
+      template: "systems/dungeonworld/templates/items/move-sheet.html",
+      scrollable: [".sheet-body"],
+    },
+  };
 
+  /* -------------------------------------------- */
+
+  /** @inheritdoc */
+  _initializeApplicationOptions(options) {
+    options = super._initializeApplicationOptions(options);
+
+    // Core applies its light or dark theme to V2 windows, either from the
+    // sheet's own theme setting or from the global color scheme. Use the same
+    // choice for the system's dark styles so text and backgrounds match.
+    let dark = DwUtility.nightmode;
+    if (options.classes.includes('theme-dark')) dark = true;
+    else if (options.classes.includes('theme-light')) dark = false;
+    if (dark) options.classes.push('nightmode');
     return options;
   }
 
-  /* -------------------------------------------- */
-
   /** @override */
-  get template() {
-    const path = "systems/dungeonworld/templates/items";
-    return `${path}/${this.item.type}-sheet.html`;
+  get title() {
+    return this.document.name;
   }
-
-  /* -------------------------------------------- */
 
   /** @inheritdoc */
-  async close(options={}) {
-    await super.close(options);
-
-    if (this.tagify) {
-      // Destroy the tagify instance.
-      this.tagify.destroy();
-      // Re-render the parent actor.
-      if (this.needsRender && this.object?.parent) this.object.parent.render(true);
-    }
-
+  _configureRenderParts(options) {
+    const parts = super._configureRenderParts(options);
+    parts.sheet.template = `systems/dungeonworld/templates/items/${this.item.type}-sheet.html`;
+    return parts;
   }
 
   /* -------------------------------------------- */
 
   /** @override */
-  async getData() {
-    let isOwner = false;
-    let isEditable = this.isEditable;
-    const context = super.getData();
-    const itemData = this.item.toObject(false);
-    context.system = itemData.system;
-    // const data = foundry.utils.deepClone(this.object.data);
-    let items = {};
-    let effects = {};
-    let actor = null;
-
-    context.system = foundry.utils.duplicate(this.item.system);
-
-    this.options.title = this.document.name;
-    isOwner = this.document.isOwner;
-    isEditable = this.isEditable;
-
-    // Copy Active Effects
-    effects = this.object.effects.map(e => foundry.utils.deepClone(e));
-    context.effects = effects;
-
-    // Grab the parent actor, if any.
-    actor = this.object?.parent;
-
-    context.dtypes = ["String", "Number", "Boolean"];
-    // Add classlist.
-    context.system.classlist = await DwClassList.getClasses();
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options);
+    const item = this.item;
+    const isEditable = this.isEditable;
+    const system = foundry.utils.duplicate(item.system);
 
     // Prepare enrichment options.
     const enrichmentOptions = {
-      async: true,
-      documents: true,
-      secrets: this.item.isOwner,
-      rollData: this.item.getRollData(),
-      relativeTo: this.item
+      secrets: item.isOwner,
+      rollData: item.getRollData(),
+      relativeTo: item
     };
+    const enrich = (text) => TextEditor.implementation.enrichHTML(text ?? '', enrichmentOptions);
 
-    // Handle enriched fields.
-    context.system.descriptionEnriched = await TextEditor.enrichHTML(context.system.description, enrichmentOptions);
+    // Load the class list and enrich every field concurrently.
+    const hasMoveResults = (item.type == 'move' || item.type == 'npcMove') && system.moveResults;
+    const moveResults = hasMoveResults ? Object.entries(system.moveResults) : [];
+    const [classlist, descriptionEnriched, choicesEnriched, nameEnriched, ...moveResultsEnriched] = await Promise.all([
+      DwClassList.getClasses(),
+      enrich(system.description),
+      system.choices ? enrich(system.choices) : null,
+      item.type == 'bond' ? enrich(item.name) : null,
+      ...moveResults.map(([key, result]) => enrich(result.value)),
+    ]);
+
+    system.classlist = classlist;
+    system.descriptionEnriched = descriptionEnriched;
+    if (system.choices) system.choicesEnriched = choicesEnriched;
+    moveResults.forEach(([key, result], i) => {
+      result.key = `system.moveResults.${key}.value`;
+      result.enriched = moveResultsEnriched[i];
+    });
 
     // Handle preprocessing for tagify data.
-    if (itemData.type == 'equipment') {
+    if (item.type == 'equipment') {
       // If there are tags, convert it into a string.
-      if (context.system.tags != undefined && context.system.tags != '') {
+      if (system.tags != undefined && system.tags != '') {
         let tagArray = [];
         try {
-          tagArray = JSON.parse(context.system.tags);
+          tagArray = JSON.parse(system.tags);
         } catch (e) {
-          tagArray = [context.system.tags];
+          tagArray = [system.tags];
         }
-        context.system.tagsString = tagArray.map((item) => {
-          return item.value;
+        system.tagsString = tagArray.map((tag) => {
+          return tag.value;
         }).join(', ');
       }
       // Otherwise, set tags equal to the string.
       else {
-        context.system.tags = context.system.tagsString;
+        system.tags = system.tagsString;
       }
     }
 
-    // Handle move results.
-    if (itemData.type == 'move' || itemData.type == 'npcMove') {
-      if (context.system.moveResults) {
-        for (let key of Object.keys(context.system.moveResults)) {
-          context.system.moveResults[key].key = `system.moveResults.${key}.value`;
-          context.system.moveResults[key].enriched = await TextEditor.enrichHTML(context.system.moveResults[key].value, enrichmentOptions);
-        }
-      }
-    }
+    return Object.assign(context, {
+      item: item,
+      system: system,
+      nameEnriched: nameEnriched,
+      cssClass: isEditable ? "editable" : "locked",
+      editable: isEditable,
+      owner: item.isOwner,
+      limited: item.limited,
+      selects: this._prepareSelects(system),
+      tabs: this._prepareSheetTabs(),
+    });
+  }
 
-    // Handle choices.
-    if (context.system?.choices) {
-      context.system.choicesEnriched = await TextEditor.enrichHTML(context.system.choices, enrichmentOptions);
+  /**
+   * Prepare the active state of each tab in the primary tab group.
+   *
+   * @return {Object} Tab state keyed by tab id, e.g. tabs.details.cssClass.
+   */
+  _prepareSheetTabs() {
+    const activeTab = this.tabGroups.primary;
+    const tabs = {};
+    for (let id of ['description', 'details', 'equipment']) {
+      tabs[id] = {
+        active: activeTab == id,
+        cssClass: activeTab == id ? 'active' : '',
+      };
     }
+    return tabs;
+  }
 
-    // Handle bonds.
-    if (itemData.type == 'bond') {
-      context.item.nameEnriched = await TextEditor.enrichHTML(context.item.name, enrichmentOptions);
-    }
-
-    // Handle select options.
-    context.selects = {};
-    if (itemData.type == 'equipment') {
-      context.selects.itemTypes = {
+  /**
+   * Prepare the options for each select element on the sheet.
+   *
+   * @param {Object} system The item's prepared system data.
+   *
+   * @return {Object}
+   */
+  _prepareSelects(system) {
+    const type = this.item.type;
+    const selects = {};
+    if (type == 'equipment') {
+      selects.itemTypes = {
         weapon: 'DW.Weapon',
         armor: 'DW.Armor',
         dungeongear: 'DW.DungeonGear',
@@ -158,27 +184,27 @@ export class DwItemSheet extends foundry.appv1.sheets.ItemSheet {
         hoard: 'DW.Hoard',
       };
     }
-    if (itemData.type == 'spell' || itemData.type == 'move') {
-      context.selects.classes = {};
-      for (let k of context.system.classlist) {
-        context.selects.classes[k] = k;
+    if (type == 'spell' || type == 'move') {
+      selects.classes = {};
+      for (let k of system.classlist) {
+        selects.classes[k] = k;
       }
     }
-    if (itemData.type == 'npcMove') {
-      context.selects.moveTypes = {
+    if (type == 'npcMove') {
+      selects.moveTypes = {
         basic: 'DW.MoveBasic',
         special: 'DW.MoveSpecial',
       };
     }
-    if (itemData.type == 'move') {
-      context.selects.moveTypes = {
+    if (type == 'move') {
+      selects.moveTypes = {
         basic: 'DW.MoveBasic',
         starting: 'DW.MoveStarting',
         advanced: 'DW.MoveAdvanced',
         special: 'DW.MoveSpecial',
       };
 
-      context.selects.rollTypes = {
+      selects.rollTypes = {
         STR: 'DW.STR',
         DEX: 'DW.DEX',
         CON: 'DW.CON',
@@ -190,61 +216,55 @@ export class DwItemSheet extends foundry.appv1.sheets.ItemSheet {
         FORMULA: 'DW.FORMULA',
       };
     }
-    if (itemData.type == 'class') {
-      context.selects.damages = {
+    if (type == 'class') {
+      selects.damages = {
         d4: 'd4',
         d6: 'd6',
         d8: 'd8',
         d10: 'd10',
         d12: 'd12',
       };
-      context.selects.equipmentGroupModes = {
+      selects.equipmentGroupModes = {
         radio: 'DW.ChooseOne',
         checkbox: 'DW.ChooseAny',
       };
     }
-
-    let returnData = {
-      item: this.object,
-      cssClass: isEditable ? "editable" : "locked",
-      editable: isEditable,
-      system: context.system,
-      effects: effects,
-      selects: context.selects,
-      limited: this.object.limited,
-      options: this.options,
-      owner: isOwner,
-      title: context.name
-    };
-
-    return returnData;
+    return selects;
   }
 
   /* -------------------------------------------- */
 
-  /** @override */
-  async activateListeners(html) {
-    super.activateListeners(html);
+  /** @inheritdoc */
+  async _onRender(context, options) {
+    await super._onRender(context, options);
+    this._tagify(this.isEditable);
+  }
 
-    this._tagify(html, this.isEditable);
+  /** @inheritdoc */
+  _onClose(options) {
+    super._onClose(options);
+    this._destroyTagify();
+  }
 
-    // Everything below here is only needed if the sheet is editable
-    if (!this.isEditable) return;
+  /* -------------------------------------------- */
 
-    this.html = html;
-
-    // Add or Remove Attribute
-    html.find(".class-fields").on("click", ".class-control", this._onClickClassControl.bind(this));
-
-    // TODO: Create tags that don't already exist on focus out. This is a
-    // nice-to-have, but it's high risk due to how easy it will make it to
-    // create extra tags unintentionally.
+  _destroyTagify() {
+    if (this.tagify) {
+      this.tagify.destroy();
+      this.tagify = null;
+    }
   }
 
   /**
    * Add tagging widget.
    */
-  async _tagify(html, editable) {
+  _tagify(editable) {
+    // The previous instance belongs to markup that has been replaced.
+    this._destroyTagify();
+
+    const input = this.element.querySelector('.tags-input-source');
+    if (!input) return;
+
     // Build the tags list.
     let tags = game.items.filter(item => item.type == 'tag').map(item => item.name);
     for (let c of game.packs) {
@@ -272,216 +292,23 @@ export class DwItemSheet extends foundry.appv1.sheets.ItemSheet {
     });
 
     // Tagify!
-    var $input = html.find('.tags-input-source');
-    if ($input.length > 0) {
-      if (!editable) {
-        $input.attr('readonly', true);
-      }
-
-      // init Tagify script on the above inputs
-      this.tagify = new Tagify($input[0], {
-        whitelist: tagNames,
-        maxTags: 'Infinity',
-        dropdown: {
-          maxItems: 20,           // <- mixumum allowed rendered suggestions
-          classname: "tags-look", // <- custom classname for this dropdown, so it could be targeted
-          enabled: 0,             // <- show suggestions on focus
-          closeOnSelect: false    // <- do not hide the suggestions dropdown once an item has been selected
-        }
-      });
-
-      // @todo this version of tagify updates has a strange race condition.
-      // We've temporarily switched to just using the `system.tags` name prop.
-
-      // // Update document with the changes.
-      // this.tagify.on('change', e => {
-      //   // Grab the raw tags.
-      //   let newTags = e.detail.value;
-      //   // Parse it into a string.
-      //   let tagArray = [];
-      //   try {
-      //     tagArray = JSON.parse(newTags);
-      //   } catch (e) {
-      //     tagArray = [newTags];
-      //   }
-      //   let newTagsString = tagArray.map((item) => {
-      //     return item.value;
-      //   }).join(', ');
-
-      //   // Apply the update.
-      //   this.document.update({
-      //     'system.tags': newTags,
-      //     'system.tagsString': newTagsString
-      //   }, {render: false});
-
-      //   this.needsRender = true;
-      // });
-    }
-  }
-
-  /* -------------------------------------------- */
-
-  /**
-   * Listen for click events on an attribute control to modify the composition of attributes in the sheet
-   * @param {MouseEvent} event    The originating left click event
-   * @private
-   */
-  async _onClickClassControl(event) {
-    event.preventDefault();
-    const a = event.currentTarget;
-    const action = a.dataset.action;
-    const field_type = a.dataset.type;
-    const form = this.form;
-
-    let field_types = {
-      'races': 'race',
-      'alignments': 'alignment'
-    };
-
-    // // Add new attribute
-    if (action === "create") {
-      if (Object.keys(field_types).includes(field_type)) {
-        const field_values = this.object.system[field_type];
-        const nk = Object.keys(field_values).length + 1;
-        let newKey = document.createElement("div");
-        newKey.innerHTML = `<li class="item ${field_types[field_type]}" data-index="${nk}">
-    <div class="flexrow">
-      <input type="text" class="input input--title" name="system.${field_type}.${nk}.label" value="" data-dtype="string"/>
-      <a class="class-control" data-action="delete" data-type="${field_type}"><i class="fas fa-trash"></i></a>
-    </div>
-    <textarea class="${field_types[field_type]}" name="system.${field_type}.${nk}.description" rows="5" title="What's your ${field_types[field_type]}?" data-dtype="String"></textarea>
-  </li>`;
-        newKey = newKey.children[0];
-        form.appendChild(newKey);
-        await this._onSubmit(event);
-      }
-      else if (field_type == 'equipment-groups') {
-        const field_values = this.object.system.equipment;
-        const nk = Object.keys(field_values).length + 1;
-        let template = '/systems/dungeonworld/templates/items/_class-sheet--equipment-group.html';
-        let templateData = {
-          group: nk
-        };
-        let newKey = document.createElement('div');
-        newKey.innerHTML = await renderTemplate(template, templateData);
-        newKey = newKey.children[0];
-
-        let update = {
-          system: foundry.utils.duplicate(this.object.system)
-        };
-        update.system.equipment[nk] = {
-          label: '',
-          mode: 'radio',
-          items: [],
-          objects: []
-        };
-
-        await this.object.update(update);
-
-        form.appendChild(newKey);
-        await this._onSubmit(event);
-      }
+    if (!editable) {
+      input.readOnly = true;
     }
 
-    // Remove existing attribute
-    else if (action === "delete") {
-      const field_type = a.dataset.type;
-      if (field_type == 'equipment-groups') {
-        let elem = a.closest('.equipment-group');
-        const nk = elem.dataset.index;
-        elem.parentElement.removeChild(elem);
-        let update = {};
-        update[`system.equipment.-=${nk}`] = null;
-        await this.object.update(update);
-        await this._onSubmit(event);
+    this.tagify = new Tagify(input, {
+      whitelist: tagNames,
+      maxTags: 'Infinity',
+      dropdown: {
+        maxItems: 20,           // <- mixumum allowed rendered suggestions
+        classname: "tags-look", // <- custom classname for this dropdown, so it could be targeted
+        enabled: 0,             // <- show suggestions on focus
+        closeOnSelect: false    // <- do not hide the suggestions dropdown once an item has been selected
       }
-      else {
-        const li = a.closest(".item");
-        const nk = li.dataset.index;
-        li.parentElement.removeChild(li);
-        let update = {};
-        update[`system.${field_type}.-=${nk}`] = null;
-        await this.object.update(update);
-        await this._onSubmit(event);
-      }
-    }
-  }
-
-  /* -------------------------------------------- */
-
-  /** @override */
-  _updateObject(event, formData) {
-
-    // Exit early for other item types.
-    if (this.object.type != 'class') {
-      return this.object.update(formData);
-    }
-
-    // Handle the freeform lists on classes.
-    const formObj = foundry.utils.expandObject(formData);
-
-    // Re-index the equipment.
-    let i = 0;
-    let deletedKeys = [];
-    if (typeof formObj.system.equipment == 'object') {
-      for (let [k, v] of Object.entries(formObj.system.equipment)) {
-        if (i != k) {
-          v.items = foundry.utils.duplicate(this.object.system.equipment[k]?.items ?? []);
-          formObj.system.equipment[i] = v;
-          delete formObj.system.equipment[k];
-          deletedKeys.push(`equipment.${k}`);
-        }
-        i++;
-      }
-    }
-
-    // Re-index the races.
-    i = 0;
-    if (typeof formObj.system.races == 'object') {
-      for (let [k, v] of Object.entries(formObj.system.races)) {
-        if (i != k) {
-          formObj.system.races[i] = v;
-          delete formObj.system.races[k];
-          deletedKeys.push(`races.${k}`);
-        }
-        i++;
-      }
-    }
-
-    // Re-index the alignments.
-    i = 0;
-    if (typeof formObj.system.alignments == 'object') {
-      for (let [k, v] of Object.entries(formObj.system.alignments)) {
-        if (i != k) {
-          formObj.system.alignments[i] = v;
-          delete formObj.system.alignments[k];
-          deletedKeys.push(`alignments.${k}`);
-        }
-        i++;
-      }
-    }
-
-    // Remove deleted keys.
-    for (let k of deletedKeys) {
-      const keys = k.split('.');
-      if (formObj.system[keys[0]][keys[1]] == undefined) {
-        formObj.system[keys[0]][`-=${keys[1]}`] = null;
-      }
-    }
-
-    // Re-combine formData
-    formData = Object.entries(formData).filter(e => !e[0].match(/system\.(equipment|alignments|races)/g)).reduce((obj, e) => {
-      obj[e[0]] = e[1];
-      return obj;
-    }, {
-      _id: this.object.id,
-      "system.equipment": formObj.system.equipment,
-      "system.races": formObj.system.races,
-      "system.alignments": formObj.system.alignments
     });
 
-
-    // Update the Item
-    return this.object.update(formData);
+    // TODO: Create tags that don't already exist on focus out. This is a
+    // nice-to-have, but it's high risk due to how easy it will make it to
+    // create extra tags unintentionally.
   }
 }

@@ -6,6 +6,20 @@
   padding: 4px;
 }
 
+// ApplicationV2 sheets use the <prose-mirror> element instead of .editor.
+prose-mirror {
+  min-height: 80px;
+  box-sizing: border-box;
+  background: rgba($c-black, 0.05);
+  border-radius: 4px;
+
+  // Core absolutely positions the text area to fill the element (inset: 0),
+  // which ignores the element's own padding, so pad the text area itself.
+  .editor-content {
+    padding: 8px 12px;
+  }
+}
+
 // Active ProseMirror editor (V1 sheets add the .prosemirror class to .editor).
 .editor.prosemirror {
   display: flex;

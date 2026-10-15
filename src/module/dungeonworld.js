@@ -11,6 +11,7 @@ import { ActorDw } from "./actor/actor.js";
 import { ItemDw } from "./item/item.js";
 import { DwItemSheet } from "./item/item-sheet.js";
 import { DwActorSheet } from "./actor/actor-sheet.js";
+import { DwCharacterSheet } from "./actor/character-sheet.js";
 import { DwActorNpcSheet } from "./actor/actor-npc-sheet.js";
 import { DwClassItemSheet } from "./item/class-item-sheet.js";
 import { DwRegisterHelpers } from "./handlebars.js";
@@ -48,9 +49,16 @@ Hooks.once("init", async function() {
 
   // Register sheet application classes
   Actors.unregisterSheet("core", ActorSheet);
+  Actors.registerSheet("dungeonworld", DwCharacterSheet, {
+    types: ['character'],
+    makeDefault: true,
+    label: "DW.Sheet.Character"
+  });
+  // The previous character sheet stays available from Configure Sheet.
   Actors.registerSheet("dungeonworld", DwActorSheet, {
     types: ['character'],
-    makeDefault: true
+    makeDefault: false,
+    label: "DW.Sheet.Legacy"
   });
   Actors.registerSheet("dungeonworld", DwActorNpcSheet, {
     types: ['npc'],

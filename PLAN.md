@@ -105,7 +105,20 @@ This phase isn't needed for V14. Track it separately; each item is a sizeable PR
 1. **DataModels.** Replace `template.yml` with `TypeDataModel` classes (`module/data/`) registered in `CONFIG.Actor.dataModels` / `CONFIG.Item.dataModels`. Move derived data out of `ActorDw#prepareData`. Remove `template.json` from the build.
 2. **Dialogs → `DialogV2`.** `rolls.js` (ask/bond dialogs), `actor-sheet.js` level-up dialogs (×2). Replace the global `renderDialog` hook with listeners inside the dialog's render callback.
 3. **Item sheets → `ItemSheetV2` + `HandlebarsApplicationMixin`** (`item-sheet.js`, `class-item-sheet.js`, ~630 lines). Start here; they're smaller than the actor sheet.
+   - [~] Ported; needs the manual test in [TESTING.md §9b](TESTING.md). Notes:
+     - One template part per sheet, chosen by item type in `_configureRenderParts`. Templates render a `<div>` root, since the application element is the form.
+     - Tabs use `tabGroups` + the built-in `tab` action, not `static TABS`, so they don't depend on V13-vs-V14 differences.
+     - `{{editor}}` → `<prose-mirror toggled>`; image picking → the core `editImage` action.
+     - Class sheet: race, alignment and equipment-group add/delete are actions that update the item directly and re-index keys. This replaces the DOM edits and the `_updateObject` re-indexing. The `_class-sheet--equipment-group.html` partial is gone.
+     - Equipment drop areas handle `drop` themselves (and stop propagation), so they don't depend on whether the base sheet binds a `DragDrop`.
 4. **Actor sheets → `ActorSheetV2`** (`actor-sheet.js` ~1,630 lines, `actor-npc-sheet.js`). Convert `activateListeners` to `actions` / `_onRender`, `getData` to `_prepareContext`, and `{{editor}}` to `<prose-mirror>` elements.
+   - [~] **Character sheet:** built as a new, redesigned V2 sheet (`character-sheet.js`, templates in `templates/sheet/character/`, styles in `_character-v2.scss`) instead of a 1:1 port. Needs the manual test in [TESTING.md §9b](TESTING.md). The design is in the mockup: https://claude.ai/artifact/SAbndXnqEMXVVmKNZe8yWz
+     - The old sheet stays registered as "Legacy Character Sheet" (not default) as a fallback.
+     - Level up and the class viewer moved to `actor/level-up.js` (`DwLevelUp`), used by both sheets. The dialogs themselves are still V1 `Dialog` (item 2 above).
+     - The new sheet doesn't carry the `.dungeonworld` class, so no legacy styles apply. It uses its own light (parchment) and dark palettes.
+     - New per-character state: `flags.dungeonworld.favorite` on moves and `flags.dungeonworld.sheetDisplay.collapsed.<section>` on the actor.
+   - [ ] NPC sheet: still V1 (`DwActorNpcSheet` extends the legacy sheet).
+   - [ ] Later: the level-up dialog's multiclass picker and unknown-class support (see the mockup's decision notes), then remove the legacy sheet.
 5. **Remove jQuery** from `chat.js`, `combat/combat.js`, `dungeonworld.js`.
 6. **Combat tracker.** Replace the global `$('body').on(...)` delegation with hooks scoped to the tracker element.
 

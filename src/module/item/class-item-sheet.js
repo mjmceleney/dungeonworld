@@ -2,32 +2,39 @@ import { DwItemSheet } from './item-sheet.js';
 import { DwUtility } from "../utility.js";
 
 /**
- * Extend the basic ItemSheet with some very simple modifications
- * @extends {ItemSheet}
+ * Item sheet for class items: races, alignments, settings, and the starting
+ * equipment groups that the level up dialog offers.
+ * @extends {DwItemSheet}
  */
 export class DwClassItemSheet extends DwItemSheet {
 
+  /** @inheritdoc */
+  constructor(options = {}) {
+    super(options);
+
+    // Class sheets open on the equipment tab.
+    this.tabGroups.primary = "equipment";
+  }
+
   /** @override */
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      classes: ["dungeonworld", "sheet", "item", "class"],
+  static DEFAULT_OPTIONS = {
+    classes: ["class"],
+    position: {
       width: 960,
       height: 640,
-      tabs: [{ navSelector: ".sheet-tabs", contentSelector: ".sheet-body", initial: "equipment" }],
-      submitOnChange: true,
-    });
-  }
+    },
+    actions: {
+      addListEntry: DwClassItemSheet.#onAddListEntry,
+      deleteListEntry: DwClassItemSheet.#onDeleteListEntry,
+      removeEquipment: DwClassItemSheet.#onRemoveEquipment,
+    },
+  };
 
   /* -------------------------------------------- */
 
   /** @override */
-  get template() {
-    const path = "systems/dungeonworld/templates/items";
-    return `${path}/${this.item.type}-sheet.html`;
-  }
-
-  async getData() {
-    const context = await super.getData();
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options);
     let equipmentObjects = await this.item._getEquipmentObjects();
     for (let [group, group_items] of Object.entries(equipmentObjects)) {
       context.system.equipment[group]['objects'] = group_items;
@@ -35,102 +42,148 @@ export class DwClassItemSheet extends DwItemSheet {
     return context;
   }
 
-  async activateListeners(html) {
-    super.activateListeners(html);
+  /** @inheritdoc */
+  async _onRender(context, options) {
+    await super._onRender(context, options);
 
-    // Add drag events.
-    html.find('.drop-area')
-      .on('dragover', this._onDragOver.bind(this))
-      .on('dragleave', this._onDragLeave.bind(this))
-      .on('drop', this._onDrop.bind(this));
-
-    // Delete equipment.
-    html.find('.delete-equipment').on('click', this._onItemDelete.bind(this));
+    // Equipment drop targets. These handle the drop themselves so that it
+    // doesn't also reach the sheet's default drop handling.
+    for (let dropArea of this.element.querySelectorAll('.drop-area')) {
+      dropArea.addEventListener('dragover', this._onDragOverEquipment.bind(this));
+      dropArea.addEventListener('dragleave', this._onDragLeaveEquipment.bind(this));
+      dropArea.addEventListener('drop', this._onDropEquipment.bind(this));
+    }
   }
 
   /* -------------------------------------------- */
 
-  async _onDragOver(ev) {
-    let $self = $(ev.originalEvent.target);
-    let $dropTarget = $self;
-    $dropTarget.addClass('drop-hover');
-    return false;
+  _onDragOverEquipment(event) {
+    event.preventDefault();
+    event.currentTarget.classList.add('drop-hover');
   }
 
-  async _onDragLeave(ev) {
-    let $self = $(ev.originalEvent.target);
-    let $dropTarget = $self;
-    $dropTarget.removeClass('drop-hover');
-    return false;
+  _onDragLeaveEquipment(event) {
+    event.currentTarget.classList.remove('drop-hover');
   }
 
-  async _onDrop(ev) {
-    // Get the journal ID and drop target.
-    // let journalId = ev.originalEvent.dataTransfer.getData('gm-screen-id');
-    let $self = $(ev.originalEvent.target);
-    let $dropTarget = $self;
-    let updated = false;
+  async _onDropEquipment(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const dropTarget = event.currentTarget;
+    dropTarget.classList.remove('drop-hover');
+    if (!this.isEditable) return;
 
     // Get data.
     let itemData;
     try {
-      itemData = JSON.parse(ev.originalEvent.dataTransfer.getData('text/plain'));
+      itemData = JSON.parse(event.dataTransfer.getData('text/plain'));
       if (itemData.type !== "Item") return;
     } catch (err) {
-      return false;
+      return;
     }
 
     const item = await Item.fromDropData(itemData);
-    const group = $dropTarget.data('group');
-    this._createEquipment(item.id, group);
-
-    $dropTarget.removeClass('drop-hover');
-
-    return false;
+    if (!item) return;
+    await this._createEquipment(item.id, dropTarget.dataset.group);
   }
 
-  async _onItemDelete(event) {
+  /* -------------------------------------------- */
+
+  /**
+   * The list fields that can be added to and removed from on the class sheet.
+   *
+   * Each list is stored as an object keyed by index ("0", "1", ...). The level
+   * up dialog relies on those keys, so they're kept contiguous.
+   */
+  static LIST_DEFAULTS = {
+    races: () => ({ label: '', description: '' }),
+    alignments: () => ({ label: '', description: '' }),
+    equipment: () => ({ label: '', mode: 'radio', items: [], objects: [] }),
+  };
+
+  /**
+   * Add an empty entry to a race, alignment, or equipment group list.
+   * @this {DwClassItemSheet}
+   * @param {PointerEvent} event
+   * @param {HTMLElement} target
+   */
+  static async #onAddListEntry(event, target) {
     event.preventDefault();
-    const item = event.currentTarget.closest('.tag');
-    const itemId = item.dataset.itemId;
-    const group = event.currentTarget.closest('.item-container');
-    const groupId = group.dataset.group;
-    this._deleteEquipment(item.dataset.itemId, groupId);
+    const field = target.dataset.type;
+    const createEntry = DwClassItemSheet.LIST_DEFAULTS[field];
+    if (!createEntry) return;
+
+    const entries = this.item.system[field] ?? {};
+    const nextKey = Object.keys(entries).length;
+    await this.item.update({ [`system.${field}.${nextKey}`]: createEntry() });
   }
+
+  /**
+   * Delete an entry from a race, alignment, or equipment group list, then
+   * re-index the remaining entries so the keys stay contiguous.
+   * @this {DwClassItemSheet}
+   * @param {PointerEvent} event
+   * @param {HTMLElement} target
+   */
+  static async #onDeleteListEntry(event, target) {
+    event.preventDefault();
+    const field = target.dataset.type;
+    if (!DwClassItemSheet.LIST_DEFAULTS[field]) return;
+    const deleteKey = target.closest('[data-index]')?.dataset.index;
+    if (deleteKey === undefined) return;
+
+    const entries = this.item.system[field] ?? {};
+    const oldKeys = Object.keys(entries);
+    const remaining = Object.entries(entries).filter(([key]) => key != deleteKey).map(([key, value]) => {
+      // Equipment groups can hold prepared item documents in `objects`;
+      // those are display-only and must not be saved.
+      const { objects, ...data } = foundry.utils.deepClone(value);
+      return field == 'equipment' ? { ...data, objects: [] } : data;
+    });
+
+    const update = {};
+    remaining.forEach((value, index) => {
+      update[`system.${field}.${index}`] = value;
+    });
+    for (let key of oldKeys) {
+      if (Number(key) >= remaining.length || isNaN(Number(key))) {
+        update[`system.${field}.-=${key}`] = null;
+      }
+    }
+    await this.item.update(update);
+  }
+
+  /**
+   * Remove a single item from an equipment group.
+   * @this {DwClassItemSheet}
+   * @param {PointerEvent} event
+   * @param {HTMLElement} target
+   */
+  static async #onRemoveEquipment(event, target) {
+    event.preventDefault();
+    const itemId = target.closest('.tag')?.dataset.itemId;
+    const groupId = target.closest('.item-container')?.dataset.group;
+    if (!itemId || groupId === undefined) return;
+    await this._deleteEquipment(itemId, groupId);
+  }
+
+  /* -------------------------------------------- */
 
   async _deleteEquipment(equipmentId, groupId) {
-    let originalData = foundry.utils.duplicate(this.item);
-    let itemData = {};
-
-    // Filter items.
-    let newItems = originalData.system.equipment[groupId]['items'].filter(i => i != equipmentId);
-    itemData[`system.equipment.${groupId}.items`] = newItems;
-
-    // Update the entity.
-    await this.item.update(itemData);
+    const items = this.item.system.equipment?.[groupId]?.items ?? [];
+    await this.item.update({
+      [`system.equipment.${groupId}.items`]: items.filter(i => i != equipmentId),
+    });
   }
 
   async _createEquipment(equipmentId, groupId) {
-    let originalData = foundry.utils.duplicate(this.item);
-    let itemData = {};
+    let items = this.item.system.equipment?.[groupId]?.items;
+    items = DwUtility.isEmpty(items) ? [] : [...items];
 
-    // Filter items.
-    let existing_items = [];
-
-    if (!DwUtility.isEmpty(originalData.system.equipment[groupId]['items'])) {
-      existing_items = originalData.system.equipment[groupId]['items'];
-    }
-    else {
-      existing_items = [];
-    }
     // Append our item.
-    if (!existing_items.includes(equipmentId)) {
-      existing_items.push(equipmentId);
-      itemData[`system.equipment.${groupId}.items`] = existing_items;
-      // Update the entity.
-      await this.item.update(itemData);
+    if (!items.includes(equipmentId)) {
+      items.push(equipmentId);
+      await this.item.update({ [`system.equipment.${groupId}.items`]: items });
     }
-
   }
-
 }

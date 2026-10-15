@@ -1,0 +1,64 @@
+<section class="dw-vitals">
+  <div class="dw-card dw-vital dw-vital--hp">
+    <div class="dw-vital-head">
+      <span class="dw-label"><i class="fas fa-heart" inert></i> {{localize "DW.HP"}}</span>
+      <span class="dw-stepper">
+        <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.hp.value" data-delta="-1" aria-label="{{localize "DW.Sheet.Decrease"}} {{localize "DW.HP"}}"><i class="fas fa-minus" inert></i></button>
+        <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.hp.value" data-delta="1" aria-label="{{localize "DW.Sheet.Increase"}} {{localize "DW.HP"}}"><i class="fas fa-plus" inert></i></button>
+      </span>
+    </div>
+    <div class="dw-vital-value">
+      <input type="number" name="system.attributes.hp.value" value="{{hp}}" step="1" aria-label="{{localize "DW.HP"}}"/>
+      <span class="dw-of">/</span>
+      <input class="dw-small" type="number" name="system.attributes.hp.max" value="{{hpMax}}" step="1" aria-label="Max {{localize "DW.HP"}}"/>
+    </div>
+    <div class="dw-bar"><div class="dw-bar-fill dw-bar-fill--hp-{{hpState}}" style="width: {{hpPct}}%"></div></div>
+  </div>
+
+  <div class="dw-card dw-vital">
+    <span class="dw-label"><i class="fas fa-shield-alt" inert></i> {{localize "DW.Armor"}}</span>
+    <div class="dw-vital-value">
+      <input type="number" name="system.attributes.ac.value" value="{{system.attributes.ac.value}}" step="1" aria-label="{{localize "DW.Armor"}}"/>
+    </div>
+  </div>
+
+  <div class="dw-card dw-vital dw-vital--damage">
+    <div class="dw-vital-head">
+      <span class="dw-label"><i class="fas fa-dice-d20" inert></i> {{localize "DW.Damage"}}</span>
+      <button type="button" class="dw-roll-chip" data-action="rollDamage" aria-label="{{localize "DW.Damage"}} {{damageFormula}}">
+        <i class="fas fa-dice-d20" inert></i>
+        <span>{{damageFormula}}</span>
+      </button>
+    </div>
+    <div class="dw-damage-inputs">
+      <select name="system.attributes.damage.value" aria-label="{{localize "DW.Damage"}}">
+        {{selectOptions damages selected=system.attributes.damage.value blank="—"}}
+      </select>
+      <span>+</span>
+      <input type="text" name="system.attributes.damage.misc" value="{{system.attributes.damage.misc}}" placeholder="{{localize "DW.Misc"}}" aria-label="{{localize "DW.Misc"}}"/>
+    </div>
+  </div>
+
+  <div class="dw-card dw-vital {{#if encumbered}}dw-vital--encumbered{{/if}}">
+    <span class="dw-label"><i class="fas fa-weight-hanging" inert></i> {{localize "DW.Weight"}}</span>
+    <div class="dw-vital-value">
+      <span class="dw-readonly">{{weight}}</span>
+      <span class="dw-of">/</span>
+      <input class="dw-small" type="number" name="system.attributes.weight.max" value="{{weightMax}}" step="1" aria-label="Max {{localize "DW.Weight"}}"/>
+    </div>
+    <span class="dw-hint">{{#if encumbered}}{{localize "DW.Sheet.Encumbered"}}{{else}}{{localize "DW.Sheet.ToSpare" weight=weightSpare}}{{/if}}</span>
+  </div>
+
+  <div class="dw-card dw-vital">
+    <div class="dw-vital-head">
+      <span class="dw-label"><i class="fas fa-coins" inert></i> {{localize "DW.Coin"}}</span>
+      <span class="dw-stepper">
+        <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.coin.value" data-delta="-1" aria-label="{{localize "DW.Sheet.Decrease"}} {{localize "DW.Coin"}}"><i class="fas fa-minus" inert></i></button>
+        <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.coin.value" data-delta="1" aria-label="{{localize "DW.Sheet.Increase"}} {{localize "DW.Coin"}}"><i class="fas fa-plus" inert></i></button>
+      </span>
+    </div>
+    <div class="dw-vital-value">
+      <input type="number" name="system.attributes.coin.value" value="{{system.attributes.coin.value}}" step="1" aria-label="{{localize "DW.Coin"}}"/>
+    </div>
+  </div>
+</section>

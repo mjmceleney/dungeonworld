@@ -1,0 +1,18 @@
+<section class="tab dw-panel {{tab.cssClass}}" data-group="primary" data-tab="equipment">
+  <section class="dw-section">
+    <header class="dw-section-head">
+      <span class="dw-section-title">{{localize "DW.Equipment"}}</span>
+      <span class="dw-count">{{equipment.length}}</span>
+      {{#if editable}}
+      <button type="button" class="dw-add" data-action="createItem" data-type="equipment" aria-label="{{localize "DW.Add"}} {{localize "DW.Equipment"}}">
+        <i class="fas fa-plus" inert></i>
+      </button>
+      {{/if}}
+    </header>
+    <ol class="dw-rows">
+      {{#each equipment}}
+      {{> "systems/dungeonworld/templates/sheet/character/item-row.html" editable=../editable}}
+      {{/each}}
+    </ol>
+  </section>
+</section>

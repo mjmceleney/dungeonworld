@@ -1,0 +1,46 @@
+<section class="dw-stats">
+  <div class="dw-abilities">
+    {{#each abilities}}
+    <div class="dw-ability {{#if debility}}has-debility{{/if}}">
+      <button type="button" class="dw-ability-roll" data-action="rollAbility" data-ability="{{key}}" aria-label="{{label}}">
+        <span class="dw-label">{{abbr}}</span>
+        <span class="dw-ability-mod">{{modText}}</span>
+      </button>
+      <input class="dw-ability-score" type="number" name="system.abilities.{{key}}.value" value="{{value}}" step="1" aria-label="{{label}}"/>
+      <label class="dw-debility {{#if debility}}on{{/if}}">
+        <input type="checkbox" name="system.abilities.{{key}}.debility" {{checked debility}}/>
+        <i class="fas fa-circle-exclamation" inert></i>
+        <span>{{debilityLabel}}</span>
+      </label>
+    </div>
+    {{/each}}
+  </div>
+
+  <div class="dw-card dw-modifiers">
+    <div class="dw-modifier">
+      <span class="dw-label">{{localize "DW.Forward"}}</span>
+      <span class="dw-stepper">
+        <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.forward.value" data-delta="-1" aria-label="{{localize "DW.Sheet.Decrease"}} {{localize "DW.Forward"}}"><i class="fas fa-minus" inert></i></button>
+        <input type="number" name="system.attributes.forward.value" value="{{system.attributes.forward.value}}" step="1" aria-label="{{localize "DW.Forward"}}"/>
+        <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.forward.value" data-delta="1" aria-label="{{localize "DW.Sheet.Increase"}} {{localize "DW.Forward"}}"><i class="fas fa-plus" inert></i></button>
+      </span>
+    </div>
+    <div class="dw-modifier">
+      <span class="dw-label">{{localize "DW.Ongoing"}}</span>
+      <span class="dw-stepper">
+        <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.ongoing.value" data-delta="-1" aria-label="{{localize "DW.Sheet.Decrease"}} {{localize "DW.Ongoing"}}"><i class="fas fa-minus" inert></i></button>
+        <input type="number" name="system.attributes.ongoing.value" value="{{system.attributes.ongoing.value}}" step="1" aria-label="{{localize "DW.Ongoing"}}"/>
+        <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.ongoing.value" data-delta="1" aria-label="{{localize "DW.Sheet.Increase"}} {{localize "DW.Ongoing"}}"><i class="fas fa-plus" inert></i></button>
+      </span>
+    </div>
+    <fieldset class="dw-segmented">
+      <legend class="dw-label">{{localize "DW.RollMode"}}</legend>
+      {{#each rollModes}}
+      <label class="{{#if checked}}on{{/if}}">
+        <input type="radio" name="flags.dungeonworld.rollMode" value="{{value}}" {{checked checked}}/>
+        <span>{{localize label}}</span>
+      </label>
+      {{/each}}
+    </fieldset>
+  </div>
+</section>
