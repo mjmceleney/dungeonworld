@@ -401,27 +401,34 @@ export class ActorDw extends Actor {
     if (allowed === false) return false;
 
     const isCharacter = this.type === "character";
-    const tokenDefaults = {
-      bar1: { attribute: "attributes.hp" },
-      bar2: { attribute: isCharacter ? "attributes.xp" : null },
-      displayBars: CONST.TOKEN_DISPLAY_MODES.OWNER_HOVER,
-      disposition: isCharacter ? CONST.TOKEN_DISPOSITIONS.FRIENDLY : CONST.TOKEN_DISPOSITIONS.HOSTILE
+
+    // Never override the GM's core Prototype Token Overrides setting.
+    const overrides = foundry.data.PrototypeTokenOverrides?.overrides ?? {};
+    const isOverridden = path => [overrides.base, overrides[this.type]]
+      .some(o => o && foundry.utils.getProperty(o, path) != null);
+
+    // Apply a default unless the GM overrides it. Unless forced, also skip it
+    // when the creation data sets it, so compendium imports and duplicates
+    // keep their own token settings.
+    const prototypeToken = {};
+    const setDefault = (path, value, force = false) => {
+      if (isOverridden(path)) return;
+      if (!force && foundry.utils.hasProperty(data, `prototypeToken.${path}`)) return;
+      foundry.utils.setProperty(prototypeToken, path, value);
     };
 
-    // Only fill in defaults the creation data doesn't already set, so
-    // compendium imports and duplicates keep their own token settings.
-    const prototypeToken = {};
-    for (const [key, value] of Object.entries(tokenDefaults)) {
-      if (!foundry.utils.hasProperty(data, `prototypeToken.${key}`)) prototypeToken[key] = value;
-    }
+    setDefault("bar1.attribute", "attributes.hp");
+    setDefault("bar2.attribute", isCharacter ? "attributes.xp" : null);
+    setDefault("displayBars", CONST.TOKEN_DISPLAY_MODES.OWNER_HOVER);
 
     // Characters are always linked, friendly, and have vision.
     if (isCharacter) {
-      Object.assign(prototypeToken, {
-        actorLink: true,
-        disposition: CONST.TOKEN_DISPOSITIONS.FRIENDLY,
-        sight: { enabled: true }
-      });
+      prototypeToken.actorLink = true;
+      setDefault("disposition", CONST.TOKEN_DISPOSITIONS.FRIENDLY, true);
+      setDefault("sight.enabled", true, true);
+    }
+    else {
+      setDefault("disposition", CONST.TOKEN_DISPOSITIONS.HOSTILE);
     }
 
     this.updateSource({ prototypeToken });

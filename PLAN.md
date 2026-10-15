@@ -10,11 +10,9 @@ Status key: `[ ]` todo · `[x]` done · `[~]` in progress / needs verification
 
 ## Phase 0: Environment setup
 
-- [ ] Install Foundry V14 separately from V13. V14 can't be updated in place: uninstall and reinstall, or use a separate install directory. V14 requires Node 24+ (local Node is v25.2.1, which works).
-- [ ] Copy an existing V13 test world into the V14 data directory. Never open the original world in V14, because the world migration is one-way.
-- [ ] Update `foundry-config.yaml` (from `example.foundry-config.yaml`) / symlinks so `dist/` is served to the V14 install (`npm run symlinks:create`).
-- [ ] Run `npm ci`, then confirm `npm run build` still works (gulp 4 on Node 24+). `node_modules` isn't installed yet. Phase 1's SCSS was checked with a standalone `sass` compile.
-- [ ] Baseline: launch the world on V14 **before** making changes and record console errors and deprecation warnings in the "Findings" section at the bottom.
+- [x] Foundry V14 (14.369) installed at `C:\Program Files\Foundry Virtual Tabletop v14`.
+- [x] `npm ci` + `npm run build` work on Node 25.2.1 (gulp 4 toolchain OK).
+- [ ] **V13 and V14 share the default data folder** (`%LOCALAPPDATA%\FoundryVTT`), which holds live worlds (e.g. `aldruant-dw`). Run V14 with its own `--dataPath`, junction `dist/` into it, and copy worlds in. Steps are in [TESTING.md §0](TESTING.md). (`npm run symlinks:create` only links Foundry's source into the repo for IntelliSense; it doesn't deploy the system.)
 
 ## Phase 1: Required changes
 
@@ -75,6 +73,8 @@ These bugs are already broken on V13 too. They're cheap to fix while we're testi
   - Characters still force `actorLink`, friendly disposition and vision, as before.
   - `_preCreate` now calls `super._preCreate` (it didn't before).
 - [x] Removed the unused `browserDefaultColor` variable.
+- [x] Found during testing: `_preCreate` token defaults now also skip anything set in core's **Prototype Token Overrides** world setting (`foundry.data.PrototypeTokenOverrides`). Before, our defaults ran after core applied the GM's overrides and would have overwritten them. This includes the forced character disposition and vision; `actorLink` is still always forced.
+- [x] Found during testing: [chat.js](src/module/chat.js) `actor.owner` → `actor.isOwner`. `owner` doesn't exist, so actor owners other than the roller never saw a card's action buttons.
 - Correction to an earlier note: the nightmode theme is **not** dead. `DwUtility.nightmode` follows core's dark theme (`body.theme-dark`), so the Phase 1 ProseMirror dark-mode override is live. Check it in dark mode.
 
 **Phase 2 tests** (add to the smoke test):
@@ -86,22 +86,8 @@ These bugs are already broken on V13 too. They're cheap to fix while we're testi
 
 ## Phase 3: Test pass and release
 
-### Smoke test checklist (run on V14, then again on V13 if `minimum` stays 13)
-
-- [ ] World loads with no errors; review the deprecation warnings
-- [ ] Create a character: basic moves auto-added, look defaulted, token linked
-- [ ] Create an NPC: token defaults correct
-- [ ] Character sheet: every tab renders; edit and save look/alignment/race/biography; counters, resources, equip, prepare spells, item create/edit/delete, item drag-drop, tags (Tagify)
-- [ ] NPC sheet: biography editor, moves, rolls
-- [ ] Each item sheet type (move, npcMove, equipment, spell, bond, tag, class): description/choices/moveResults editors save
-- [ ] Class item sheet: equipment drop area and delete
-- [ ] Level up: open the dialog, ability score selects disable correctly (the `renderDialog` hook), apply level up
-- [ ] Rolls: ability, move (with and without advantage/forward), damage, bond/ask dialogs (`rolls.js` `new Dialog`)
-- [ ] Chat: damage/heal buttons apply to selected tokens; scrolling text on HP change
-- [ ] Hotbar: drag an owned item, then run the macro
-- [ ] Combat: add combatants, move counter increments (as GM and as player via socket), HP bars visibility
-- [ ] Each system setting toggles without errors (several reload the page)
-- [ ] Each compendium opens; import an item and an actor
+- [x] Automated / static checks (all pass): build, V14 manifest validation, Handlebars compile of all templates, JS syntax, real `_preCreate` vs the V14 `PrototypeToken` schema, bond unwrap cases, and an API/hook existence audit against the V14 source. Details are at the top of [TESTING.md](TESTING.md).
+- [ ] Manual test pass in V14, then the V13 regression: **[TESTING.md](TESTING.md)**. Record issues in its Findings table.
 
 ### Release
 
