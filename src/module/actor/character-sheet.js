@@ -38,9 +38,10 @@ function classLabel(name) {
 /**
  * The Dungeon World character sheet, built on ApplicationV2.
  *
- * Each region of the sheet is a separate template part (header, vitals,
- * stats, tab navigation, one part per tab, and the sidebar). The parts are
- * laid out with CSS grid on the window content.
+ * Each region of the sheet is a separate template part (header with HP,
+ * armor and damage; abilities and roll modifiers; tab navigation; one part
+ * per tab; and the sidebar). The parts are laid out with CSS grid on the
+ * window content. Load and coin live on the Equipment tab.
  * @extends {ActorSheetV2}
  */
 export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
@@ -97,7 +98,6 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   /** @override */
   static PARTS = {
     header: { template: `${TEMPLATES}/header.html` },
-    vitals: { template: `${TEMPLATES}/vitals.html` },
     stats: { template: `${TEMPLATES}/stats.html` },
     tabs: { template: `${TEMPLATES}/tabs.html` },
     moves: {

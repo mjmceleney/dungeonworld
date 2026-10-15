@@ -289,6 +289,7 @@ DW.Scrolling.armorPiercing: '{piercing} Armor ignored'
 DW.Sheet.Character: "Dungeon World Character Sheet"
 DW.Sheet.Legacy: "Legacy Character Sheet"
 DW.Sheet.Experience: "Experience"
+DW.Sheet.HitPoints: "Hit Points"
 DW.Sheet.LevelUp: "Level up"
 DW.Sheet.LevelUpReady: "Ready to advance"
 DW.Sheet.NeedsXp: "Needs {xp} more XP"
