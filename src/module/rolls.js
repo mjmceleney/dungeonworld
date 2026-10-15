@@ -188,10 +188,7 @@ export class DwRolls {
       user: game.user.id,
       speaker: ChatMessage.getSpeaker({ actor: this.actor })
     };
-    let rollMode = game.settings.get("core", "rollMode");
-    if (["gmroll", "blindroll"].includes(rollMode)) chatData["whisper"] = ChatMessage.getWhisperRecipients("GM");
-    if (rollMode === "selfroll") chatData["whisper"] = [game.user.id];
-    if (rollMode === "blindroll") chatData["blind"] = true;
+    DwUtility.applyMessageMode(chatData);
     // Define tags.
     let baseTags = this.item?.system?.tags ?? this.actor?.system?.tags;
     let tags = [];
