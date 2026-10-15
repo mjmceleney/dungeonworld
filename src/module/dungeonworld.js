@@ -137,11 +137,6 @@ Hooks.once("init", async function() {
     default: true
   });
 
-  let browserDefaultColor = false;
-  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    browserDefaultColor = true;
-  }
-
   game.settings.register("dungeonworld", "alignmentSingle", {
     name: game.i18n.localize("DW.Settings.alignmentSingle.name"),
     hint: game.i18n.localize("DW.Settings.alignmentSingle.hint"),
@@ -435,89 +430,45 @@ Hooks.once("setup", function() {
 /* -------------------------------------------- */
 /*  Actor Updates                               */
 /* -------------------------------------------- */
-Hooks.on('createActor', async (actor, options, id) => {
+Hooks.on('createActor', async (actor, options, userId) => {
+  // Only the user who created the actor sets it up, so other connected clients
+  // (including additional GMs) don't add duplicate moves.
+  if (userId !== game.user.id) return;
+  if (actor.type != 'character') return;
+
   // Prepare updates object.
   let updates = {};
 
-  if (actor.type == 'character') {
-    // Allow the character to levelup up when their level changes.
-    await actor.setFlag('dungeonworld', 'levelup', true);
+  // Allow the character to levelup up when their level changes.
+  updates['flags.dungeonworld.levelup'] = true;
 
-    // Get the item moves as the priority.
-    let moves = game.items.filter(i => i.type == 'move' && (i.system.moveType == 'basic' || i.system.moveType == 'special'));
-    const compendium = await DwUtility.loadCompendia('basic-moves');
-    let actorMoves = [];
-
-    actorMoves = actor.items.filter(i => i.type == 'move');
-
-    // Get the compendium moves next.
-    let moves_compendium = compendium.filter(m => {
-      const notTaken = actorMoves.filter(i => i.name == m.name);
-      return notTaken.length < 1;
-    });
-    // Append compendium moves to the item moves.
-    let moves_list = moves.map(m => {
-      return m.name;
-    })
-    for (let move of moves_compendium) {
-      if (!moves_list.includes(move.name)) {
-        moves.push(move);
-        moves_list.push(move.name);
-      }
+  // Get the item moves as the priority, then the compendium moves, skipping
+  // any the actor already has.
+  const actorMoveNames = actor.items.filter(i => i.type == 'move').map(i => i.name);
+  const moves = [];
+  const moves_list = [...actorMoveNames];
+  const worldMoves = game.items.filter(i => i.type == 'move' && (i.system.moveType == 'basic' || i.system.moveType == 'special'));
+  const compendium = await DwUtility.loadCompendia('basic-moves');
+  for (let move of [...worldMoves, ...compendium]) {
+    if (!moves_list.includes(move.name)) {
+      moves.push(move);
+      moves_list.push(move.name);
     }
+  }
 
-    // Sort the moves and build our groups.
-    moves.sort((a, b) => {
-      const aSort = a.name.toLowerCase();
-      const bSort = b.name.toLowerCase();
-      if (aSort < bSort) {
-        return -1;
-      }
-      if (aSort > bSort) {
-        return 1;
-      }
-      return 0;
-    });
+  // Sort the moves alphabetically.
+  moves.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
-    // Add default look.
+  // Add default look, unless the actor already has one (e.g. a duplicate).
+  if (!actor.system.details?.look) {
     updates['system.details.look'] = game.i18n.localize('DW.DefaultLook');
-
-    // Link the token.
-    updates['token.actorLink'] = true;
-    updates['token.bar1'] = { attribute: 'attributes.hp' };
-    updates['token.bar2'] = { attribute: 'attributes.xp' };
-    updates['token.displayBars'] = 20;
-    updates['token.disposition'] = 1;
-
-    // Add to the actor.
-    const movesToAdd = moves.map(m => foundry.utils.duplicate(m));
-
-    // Only execute the function once.
-    const owners = [];
-    Object.entries(actor.permission).forEach(([uid, role]) => {
-      // @todo unhardcode this role ID (owner).
-      if (role == 3) owners.push(uid);
-    });
-    const isOwner = owners.includes(game.user.id);
-    // @todo improve this to better handle multiple GMs/owers.
-    const allowMoveAdd = game.user.isGM || (isOwner && game.users.filter(u => u.role == CONST.USER_ROLES.GAMEMASTER && u.document.active).length < 1);
-
-    // If there are moves and we haven't already add them, add them.
-    if (movesToAdd.length > 0 && allowMoveAdd) {
-      await actor.createEmbeddedDocuments('Item', movesToAdd, {});
-      console.log(movesToAdd);
-    }
   }
 
-  if (actor.type == 'npc') {
-    updates['token.bar1'] = { attribute: 'attributes.hp' };
-    updates['token.bar2'] = { attribute: null };
-    updates['token.displayBars'] = 20;
-    updates['token.disposition'] = -1;
-  }
+  await actor.update(updates);
 
-  if (updates && Object.keys(updates).length > 0) {
-    await actor.update(updates);
+  // Add the moves to the actor.
+  if (moves.length > 0) {
+    await actor.createEmbeddedDocuments('Item', moves.map(m => m.toObject()));
   }
 });
 

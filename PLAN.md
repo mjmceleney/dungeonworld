@@ -60,11 +60,29 @@ In the V14 source, reading `core.rollMode` logs a deprecation warning (removal i
 
 These bugs are already broken on V13 too. They're cheap to fix while we're testing.
 
-- [ ] `actor.permission` is misused. On V10+ it's a number (the current user's level), not a `{userId: level}` map.
-  - [ ] [dungeonworld.js:497](src/module/dungeonworld.js#L497): `Object.entries(actor.permission)` always gives `[]`, so `isOwner` is always false. Replace with `actor.isOwner` (or `actor.testUserPermission(game.user, "OWNER")`).
-  - [ ] [actor.js:430-431](src/module/actor/actor.js#L430-L431): `this.permission.default` is always undefined. Use `this.ownership.default >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER` and `this.testUserPermission(game.user, "OBSERVER")`.
-- [ ] Dead `token.*` updates in the `createActor` hook ([dungeonworld.js:486-490, 513-516](src/module/dungeonworld.js#L486-L490)). `token` was renamed `prototypeToken` in V10. `ActorDw#_preCreate` ([actor.js:~405](src/module/actor/actor.js#L405)) already sets prototype token data, so move any missing fields (bars, displayBars, disposition) there and delete these lines.
-- [ ] Remove the leftover `browserDefaultColor` variable ([dungeonworld.js:140-143](src/module/dungeonworld.js#L140-L143)). It's unused since the nightmode setting was removed.
+- [x] `actor.permission` misuse. In V13/V14 it returns the current user's level as a number, not a `{userId: level}` map.
+  - [x] `ActorDw#_onUpdate` scrolling text: the three-line check is now `this.testUserPermission(game.user, "OBSERVER")` (GMs always pass).
+  - [x] `createActor` hook: the owner/GM detection is removed (see below). It was also hiding a latent crash: `u.document.active` would have thrown once the owner check stopped short-circuiting.
+- [x] **`createActor` hook rewritten** ([dungeonworld.js](src/module/dungeonworld.js)):
+  - Runs only on the creating user's client (`userId === game.user.id`). Before, every connected client ran it: multiple GMs added duplicate moves, and non-owner players hit permission errors on `setFlag`. This resolves the old `@todo` about multiple GMs/owners.
+  - Character-only now. The NPC branch only did dead `token.*` updates.
+  - World-item basic/special moves are now skipped if the actor already has a move with that name. Previously only compendium moves were deduplicated, so duplicating a character re-added world moves.
+  - The default look is only set when `look` is empty. Previously, duplicating a character wiped its look.
+  - The `levelup` flag and look are saved in a single `actor.update` instead of `setFlag` + `update`.
+- [x] Dead `token.*` updates moved into `ActorDw#_preCreate` ([actor.js](src/module/actor/actor.js)) as `prototypeToken` defaults:
+  - bar1 = HP, bar2 = XP (characters) / none (NPCs), `displayBars` = owner hover, disposition friendly / hostile.
+  - Each value is only applied if the creation data doesn't set it, so compendium monsters keep their own token config.
+  - Characters still force `actorLink`, friendly disposition and vision, as before.
+  - `_preCreate` now calls `super._preCreate` (it didn't before).
+- [x] Removed the unused `browserDefaultColor` variable.
+- Correction to an earlier note: the nightmode theme is **not** dead. `DwUtility.nightmode` follows core's dark theme (`body.theme-dark`), so the Phase 1 ProseMirror dark-mode override is live. Check it in dark mode.
+
+**Phase 2 tests** (add to the smoke test):
+- [ ] New character as GM: basic moves added once, look defaulted, level-up available, token linked with HP/XP bars.
+- [ ] New character as a player with a second GM client connected: moves added once, no console errors on either client.
+- [ ] Duplicate a character: look and moves are not reset or duplicated.
+- [ ] New NPC: HP bar, hostile. Import a compendium monster: its token settings are unchanged.
+- [ ] HP/armor scrolling text appears for owners and observers, not for limited/none.
 
 ## Phase 3: Test pass and release
 

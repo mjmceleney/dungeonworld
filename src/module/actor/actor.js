@@ -397,15 +397,34 @@ export class ActorDw extends Actor {
 
   /** @override */
   async _preCreate(data, options, user) {
-    if (this.type === "character") {
-      this.updateSource({
-        prototypeToken: {
-          actorLink: true,
-          disposition: CONST.TOKEN_DISPOSITIONS.FRIENDLY,
-          sight: { enabled: true }
-        }
+    const allowed = await super._preCreate(data, options, user);
+    if (allowed === false) return false;
+
+    const isCharacter = this.type === "character";
+    const tokenDefaults = {
+      bar1: { attribute: "attributes.hp" },
+      bar2: { attribute: isCharacter ? "attributes.xp" : null },
+      displayBars: CONST.TOKEN_DISPLAY_MODES.OWNER_HOVER,
+      disposition: isCharacter ? CONST.TOKEN_DISPOSITIONS.FRIENDLY : CONST.TOKEN_DISPOSITIONS.HOSTILE
+    };
+
+    // Only fill in defaults the creation data doesn't already set, so
+    // compendium imports and duplicates keep their own token settings.
+    const prototypeToken = {};
+    for (const [key, value] of Object.entries(tokenDefaults)) {
+      if (!foundry.utils.hasProperty(data, `prototypeToken.${key}`)) prototypeToken[key] = value;
+    }
+
+    // Characters are always linked, friendly, and have vision.
+    if (isCharacter) {
+      Object.assign(prototypeToken, {
+        actorLink: true,
+        disposition: CONST.TOKEN_DISPOSITIONS.FRIENDLY,
+        sight: { enabled: true }
       });
     }
+
+    this.updateSource({ prototypeToken });
   }
 
   /** @override */
@@ -425,12 +444,8 @@ export class ActorDw extends Actor {
 
     if (!options.diff || !context || updateData.system === undefined) return; // Nothing to do.
 
-    // Exit early if not owner.
-    let displayText = this.isOwner;
-    if (this.permission.default > 1) displayText = true;
-    if (this.permission[game.userId] !== undefined && this.permission[game.userId] > 1) displayText = true;
-
-    if (!displayText) return;
+    // Exit early if this user can't at least observe the actor.
+    if (!this.testUserPermission(game.user, "OBSERVER")) return;
 
     // Prepare the scrolling text update.
     if (updateData.system?.attributes?.hp?.value !== undefined) {
