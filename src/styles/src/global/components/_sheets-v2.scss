@@ -1,49 +1,16 @@
-// Character sheet (ApplicationV2).
+// New-style sheets (ApplicationV2): character, NPC and item sheets.
 //
-// Self-contained: the sheet doesn't carry the .dungeonworld class, so none of
-// the legacy sheet styles apply. Colors are custom properties so the dark
-// theme only has to swap the palette.
+// Every one carries .dw-v2: the palette, theme and shared controls below. The
+// sheets don't carry the .dungeonworld class, so no legacy styles apply.
+// The palette itself is in _palette.scss.
+// Character and NPC sheets also carry .dw-character (grid layout below);
+// item sheets carry .dw-item (_item-v2.scss).
 
-.dw-character {
-  // Parchment light theme.
-  --dw-ground: #e6dcc3;
-  --dw-surface: #f6efdc;
-  --dw-sunken: #efe5cc;
-  --dw-ink: #2a2318;
-  --dw-muted: #5c513e;
-  --dw-line: #d3c4a2;
-  --dw-navy: #2d3748;
-  --dw-on-navy: #f6efdc;
-  --dw-chip: #ebe0c5;
-  --dw-chip-hover: #e1d3b2;
-  --dw-accent: #9a3f3f;
-  --dw-on-accent: #ffffff;
-  --dw-good: #1a5fa8;
-  --dw-mid: #a8700f;
-  --dw-bad: #a81818;
-  --dw-deb: #f3d5c8;
-  --dw-deb-ink: #7d2a1e;
-  --dw-focus: #5b7094;
+.dw-v2 {
+  @include dw-palette;
 
   &.dw-dark {
-    --dw-ground: #141922;
-    --dw-surface: #1e2531;
-    --dw-sunken: #192029;
-    --dw-ink: #e8ecf2;
-    --dw-muted: #a6b0c0;
-    --dw-line: #333c4b;
-    --dw-navy: #c9d3e3;
-    --dw-on-navy: #141922;
-    --dw-chip: #262f3d;
-    --dw-chip-hover: #2f3a4b;
-    --dw-accent: #d06a6a;
-    --dw-on-accent: #141922;
-    --dw-good: #7fb2ee;
-    --dw-mid: #e0b45a;
-    --dw-bad: #f08a8a;
-    --dw-deb: #4a2a2e;
-    --dw-deb-ink: #f3b9b9;
-    --dw-focus: #7fb2ee;
+    @include dw-palette-dark;
   }
 
   // The move search hides rows and sections with the hidden attribute; keep
@@ -52,8 +19,19 @@
     display: none !important;
   }
 
-  // Layout: each template part is a direct child of the window content.
   .window-content {
+    padding: 10px;
+    overflow: hidden;
+    background: var(--dw-ground);
+    color: var(--dw-ink);
+    font-family: $font-stack-base;
+    font-size: 15px;
+    line-height: 1.35;
+  }
+
+  // Character and NPC sheets: each template part is a direct child of the
+  // window content, laid out with grid.
+  &.dw-character .window-content {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 250px;
     grid-template-rows: auto auto auto minmax(0, 1fr);
@@ -63,13 +41,6 @@
       "nav sidebar"
       "panel sidebar";
     gap: 8px 10px;
-    padding: 10px;
-    overflow: hidden;
-    background: var(--dw-ground);
-    color: var(--dw-ink);
-    font-family: $font-stack-base;
-    font-size: 15px;
-    line-height: 1.35;
   }
 
   [data-application-part="header"] { grid-area: header; }
@@ -230,6 +201,36 @@
     input[type="number"] {
       width: 44px;
       height: 26px;
+    }
+  }
+
+  // A button with a label (item sheets, level up).
+  .dw-text-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 12px;
+    border: 1px solid var(--dw-line);
+    border-radius: 6px;
+    background: var(--dw-sunken);
+    white-space: nowrap;
+
+    &:hover {
+      background: var(--dw-chip-hover);
+    }
+  }
+
+  // The main action of a window, such as confirming a level up.
+  .dw-primary-btn {
+    border-color: var(--dw-accent);
+    background: var(--dw-accent);
+    color: var(--dw-on-accent);
+    font-weight: 700;
+
+    &:hover {
+      background: var(--dw-accent);
+      filter: brightness(1.1);
     }
   }
 
@@ -1392,5 +1393,92 @@
     &:hover {
       border-color: var(--dw-line);
     }
+  }
+
+  // NPC sheet: one column, no sidebar.
+  &.dw-npc .window-content {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+    grid-template-areas:
+      "header"
+      "stats"
+      "nav"
+      "panel";
+  }
+
+  .dw-npc-header {
+    .dw-portrait {
+      flex: 0 0 96px;
+      width: 96px;
+      height: 96px;
+    }
+
+    .dw-identity {
+      gap: 6px;
+    }
+  }
+
+  input.dw-qualities {
+    height: 28px;
+    font-style: italic;
+  }
+
+  // HP, armor and damage in one band, centered segments.
+  .dw-npc-stats {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+    padding: 8px 14px;
+  }
+
+  .dw-npc-stat {
+    flex: 1;
+    min-width: 0;
+
+    .dw-bar {
+      align-self: stretch;
+    }
+  }
+
+  .dw-npc-stat--armor {
+    flex: 0 0 72px;
+  }
+
+  .dw-npc-stat--damage {
+    flex: 1.3;
+
+    // The formula and piercing fields share the segment's width.
+    .dw-damage-inputs {
+      align-self: stretch;
+
+      input {
+        flex: 1 1 0;
+        width: 0;
+        min-width: 0;
+      }
+    }
+  }
+
+  // Tagify (NPC tags), in the sheet's palette.
+  .tagify {
+    --tags-border-color: var(--dw-line);
+    --tags-hover-border-color: var(--dw-line);
+    --tags-focus-border-color: var(--dw-focus);
+    --tag-bg: var(--dw-chip);
+    --tag-hover: var(--dw-chip-hover);
+    --tag-text-color: var(--dw-ink);
+    --tag-text-color--edit: var(--dw-ink);
+    --tag-remove-bg: var(--dw-deb);
+    --tag-remove-btn-color: var(--dw-muted);
+    --tag-remove-btn-bg--hover: var(--dw-bad);
+    --placeholder-color: var(--dw-muted);
+    --placeholder-color-focus: var(--dw-muted);
+    --input-color: var(--dw-ink);
+    --tag-pad: 0.2em 0.6em;
+    min-height: 30px;
+    border-radius: 6px;
+    background: var(--dw-sunken);
+    font-family: $font-stack-base;
+    font-size: 14px;
   }
 }

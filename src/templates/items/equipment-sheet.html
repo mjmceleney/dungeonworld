@@ -1,72 +1,51 @@
-<div class="{{cssClass}} item-form flexcol">
-  <div class="sheet-wrapper flexcol">
-    <header class="sheet-header flexrow">
-      <div class="cell cell--image">
-        <img class="profile-img" src="{{item.img}}" data-edit="img" data-action="editImage" title="{{item.name}}"/>
-      </div>
-      <div class="header-fields">
-          <h1 class="charname"><input name="name" type="text" value="{{item.name}}" placeholder="{{localize "DW.Common.Name"}}"/></h1>
-      </div>
-    </header>
+<div class="dw-item-sheet">
+  {{> "systems/dungeonworld/templates/items/parts/item-header.html"}}
 
-    {{!-- Sheet Tab Navigation --}}
-    <nav class="sheet-navigation sheet-tabs tabs" data-group="primary">
-        <a class="item {{tabs.description.cssClass}}" data-action="tab" data-group="primary" data-tab="description">{{localize "DW.Common.Description" }}</a>
-        <a class="item {{tabs.details.cssClass}}" data-action="tab" data-group="primary" data-tab="details">{{localize "DW.Common.Details" }}</a>
-    </nav>
+  <nav class="dw-tabs tabs">
+    <button type="button" class="dw-tab {{tabs.description.cssClass}}" data-action="tab" data-group="primary" data-tab="description">{{localize "DW.Common.Description"}}</button>
+    <button type="button" class="dw-tab {{tabs.details.cssClass}}" data-action="tab" data-group="primary" data-tab="details">{{localize "DW.Common.Details"}}</button>
+  </nav>
 
-    {{!-- Sheet Body --}}
-    <section class="sheet-body">
+  <section class="tab dw-panel {{tabs.description.cssClass}}" data-group="primary" data-tab="description">
+    <div class="dw-field dw-field--grow">
+      <span class="dw-label">{{localize "DW.Description"}}</span>
+      <prose-mirror name="system.description" value="{{system.description}}" toggled>{{{system.descriptionEnriched}}}</prose-mirror>
+    </div>
+  </section>
 
-        {{!-- Description Tab --}}
-        <div class="tab {{tabs.description.cssClass}}" data-group="primary" data-tab="description">
-            <prose-mirror name="system.description" value="{{system.description}}" toggled>{{{system.descriptionEnriched}}}</prose-mirror>
-        </div>
+  <section class="tab dw-panel {{tabs.details.cssClass}}" data-group="primary" data-tab="details">
+    <div class="dw-fields">
+      <span class="dw-label">{{localize "DW.ItemType"}}</span>
+      <select name="system.itemType">
+        {{selectOptions selects.itemTypes selected=system.itemType blank='—' localize=true}}
+      </select>
 
-        {{!-- Details Tab --}}
-        <div class="tab {{tabs.details.cssClass}}" data-group="primary" data-tab="details">
-          <div class="resource">
-            <label for="tag" class="control-label">{{localize "DW.Tags"}}</label>
-            <div class="help-text"><p>{{localize "DW.TagsHelp" }}</p></div>
-            <input class='tags-input-source' name="system.tags" placeholder='write some tags' value='{{ system.tags }}'/>
-          </div>
-          <div class="resource">
-            <label>{{localize "DW.Equipped"}}</label>
-            <input type="checkbox" name="system.equipped" {{checked system.equipped}}/>
-          </div>
-          <div class="resource">
-            <label>{{localize "DW.Quantity"}}</label>
-            <input type="text" name="system.quantity" value="{{system.quantity}}" data-dtype="Number"/>
-          </div>
-          <div class="resource">
-            <label>{{localize "DW.Uses"}}</label>
-            <input type="text" name="system.uses" value="{{system.uses}}" data-dtype="Number"/>
-          </div>
-          <div class="resource">
-            <label>{{localize "DW.Weight"}}</label>
-            <input type="text" name="system.weight" value="{{system.weight}}" data-dtype="Number"/>
-          </div>
-          <div class="resource">
-            <label>{{localize "DW.Price"}}</label>
-            <input type="text" name="system.price" value="{{system.price}}" data-dtype="Number"/>
-          </div>
-          {{#if (eq system.itemType "weapon")}}
-          <div class="resource">
-            <label>{{localize "DW.DamageOverride"}}</label>
-            <input type="text" name="system.rollFormula" value="{{system.rollFormula}}" placeholder="e.g. 1d4+3" data-dtype="String"/>
-          </div>
-          {{/if}}
-          <div class="resource">
-            <label>{{localize "DW.MagicItem"}}</label>
-            <input type="checkbox" name="system.magic" {{checked system.magic}}/>
-          </div>
-          <div class="resource">
-            <label>{{localize "DW.ItemType"}}</label>
-            <select name="system.itemType" data-dtype="String">
-              {{selectOptions selects.itemTypes selected=system.itemType blank='—' localize=true}}
-            </select>
-          </div>
-        </div>
-    </section>
-  </div>
+      <span class="dw-label">{{localize "DW.Tags"}}</span>
+      <input class="tags-input-source" type="text" name="system.tags" value="{{system.tags}}" placeholder="{{localize "DW.Tags"}}"/>
+      <span class="dw-fields-hint">{{localize "DW.TagsHelp"}}</span>
+
+      <span class="dw-label">{{localize "DW.Equipped"}}</span>
+      <input type="checkbox" name="system.equipped" {{checked system.equipped}}/>
+
+      <span class="dw-label">{{localize "DW.MagicItem"}}</span>
+      <input type="checkbox" name="system.magic" {{checked system.magic}}/>
+
+      <span class="dw-label">{{localize "DW.Quantity"}}</span>
+      <input type="number" name="system.quantity" value="{{system.quantity}}" step="1"/>
+
+      <span class="dw-label">{{localize "DW.Uses"}}</span>
+      <input type="number" name="system.uses" value="{{system.uses}}" step="1"/>
+
+      <span class="dw-label">{{localize "DW.Weight"}}</span>
+      <input type="number" name="system.weight" value="{{system.weight}}" step="1"/>
+
+      <span class="dw-label">{{localize "DW.Price"}}</span>
+      <input type="number" name="system.price" value="{{system.price}}" step="1"/>
+
+      {{#if (eq system.itemType "weapon")}}
+      <span class="dw-label">{{localize "DW.DamageOverride"}}</span>
+      <input type="text" name="system.rollFormula" value="{{system.rollFormula}}" placeholder="e.g. 1d4+3"/>
+      {{/if}}
+    </div>
+  </section>
 </div>

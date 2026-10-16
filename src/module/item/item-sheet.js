@@ -23,10 +23,10 @@ export class DwItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
 
   /** @override */
   static DEFAULT_OPTIONS = {
-    classes: ["dungeonworld", "sheet", "item"],
+    classes: ["dw-v2", "dw-item"],
     position: {
-      width: 520,
-      height: 480,
+      width: 560,
+      height: 600,
     },
     window: {
       resizable: true,
@@ -41,7 +41,8 @@ export class DwItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     sheet: {
       // Replaced with the item type's template in _configureRenderParts().
       template: "systems/dungeonworld/templates/items/move-sheet.html",
-      scrollable: [".sheet-body"],
+      templates: ["systems/dungeonworld/templates/items/parts/item-header.html"],
+      scrollable: [".dw-panel"],
     },
   };
 
@@ -57,7 +58,7 @@ export class DwItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     let dark = DwUtility.nightmode;
     if (options.classes.includes('theme-dark')) dark = true;
     else if (options.classes.includes('theme-light')) dark = false;
-    if (dark) options.classes.push('nightmode');
+    if (dark) options.classes.push('dw-dark');
     return options;
   }
 
@@ -139,7 +140,30 @@ export class DwItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       limited: item.limited,
       selects: this._prepareSelects(system),
       tabs: this._prepareSheetTabs(),
+      typeLabel: this._prepareTypeLabel(system),
     });
+  }
+
+  /**
+   * A short description of the item for the header, e.g. "Move · Advanced"
+   * or "Spell · Level 3".
+   *
+   * @param {Object} system The item's prepared system data.
+   *
+   * @return {string}
+   */
+  _prepareTypeLabel(system) {
+    const type = this.item.type;
+    const parts = [game.i18n.localize(CONFIG.Item.typeLabels?.[type] ?? type)];
+    const detail = {
+      move: { basic: 'DW.MoveBasic', starting: 'DW.MoveStarting', advanced: 'DW.MoveAdvanced', special: 'DW.MoveSpecial' }[system.moveType],
+      npcMove: { basic: 'DW.MoveBasic', special: 'DW.MoveSpecial' }[system.moveType],
+      spell: system.spellLevel !== undefined && system.spellLevel !== null ? `DW.Spells${system.spellLevel}` : null,
+      equipment: this._prepareSelects(system).itemTypes?.[system.itemType],
+    }[type];
+    if (detail) parts.push(game.i18n.localize(detail));
+    if ((type == 'move' || type == 'spell') && system.class) parts.push(system.class);
+    return parts.join(' · ');
   }
 
   /**

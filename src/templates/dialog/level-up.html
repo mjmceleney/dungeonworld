@@ -1,218 +1,199 @@
-<form>
-  <div class="dialog-wrapper level-up">
-
-    <header class="cell cell--description">
-      <h1 class="cell__title">{{char_class_name}}</h1>
-      {{#if blurb}}
-        <div class="cell__description">{{{blurb}}}</div>
-      {{/if}}
+{{!-- Level up and class viewer. In the class viewer (viewer: true) nothing
+     is chosen: every race, alignment, move and spell is listed without inputs. --}}
+<div class="dw-levelup">
+  <div class="dw-levelup-body">
+    <header class="dw-card dw-levelup-head">
+      <div class="dw-levelup-title">
+        <h1 class="dw-levelup-class">{{char_class_name}}</h1>
+        {{#if level_label}}<span class="dw-pill">{{level_label}}</span>{{/if}}
+      </div>
+      {{#if blurb}}<div class="dw-levelup-blurb">{{{blurb}}}</div>{{/if}}
     </header>
 
-    <div class="grid grid-3col">
-
+    {{#ifor races alignments}}
+    <div class="dw-levelup-grid">
       {{#if races}}
-        <section class="cell cell--races">
-          <h2 class="cell__title">{{localize "DW.ChooseRace"}}</h2>
-          <ul class="selection-list">
-            {{#each races as |race key|}}
-              <li>
-                <div class="selection-control">
-                  <input type="radio" name="race-selection" data-race="{{key}}">
-                </div>
-                <div class="selection-content">
-                  <h3>{{race.label}}</h3>
-                  <p>{{race.description}}</p>
-                </div>
-              </li>
-            {{/each}}
-          </ul>
-        </section>
+      <section class="dw-card dw-levelup-section">
+        <h2 class="dw-section-title">{{#if viewer}}{{localize "DW.Race"}}{{else}}{{localize "DW.ChooseRace"}}{{/if}}</h2>
+        <div class="dw-choices">
+          {{#each races as |race key|}}
+          <label class="dw-choice {{#if @root.viewer}}is-static{{/if}}">
+            {{#unless @root.viewer}}<input type="radio" name="race-selection" data-race="{{key}}">{{/unless}}
+            <span class="dw-choice-body">
+              <span class="dw-choice-name">{{race.label}}</span>
+              <span class="dw-choice-text">{{race.description}}</span>
+            </span>
+          </label>
+          {{/each}}
+        </div>
+      </section>
       {{/if}}
 
       {{#if alignments}}
-        <section class="cell cell--alignments">
-          <h2 class="cell__title">{{localize "DW.ChooseAlignment"}}</h2>
-          <ul class="selection-list">
-            {{#each alignments as |alignment key|}}
-              <li>
-                <div class="selection-control">
-                  <input type="radio" name="alignment-selection" data-alignment="{{key}}">
-                </div>
-                <div class="selection-content">
-                  <h3>{{alignment.label}}</h3>
-                  <p>{{alignment.description}}</p>
-                </div>
-              </li>
-            {{/each}}
-          </ul>
-        </section>
-      {{/if}}
-
-      {{#if ability_scores}}
-        <section class="cell cell--ability-scores">
-          <h2 class="cell__title">{{localize "DW.ChooseAbilityScores"}}</h2>
-          <ul class="selection-list">
-            {{#each ability_labels as |ability ability_key|}}
-              <li>
-                <div class="selection-control">
-                  <select name="ability_score.{{ability.short}}" value="" data-ability={{ability.short}}>
-                    <option value="">—</option>
-                    {{#each ../ability_scores as |ability_score key|}}
-                      <option value="{{ability_score}}">{{ability_score}}</option>
-                    {{/each}}
-                  </select>
-                </div>
-                <div class="selection-content">
-                  <h3 class="ability-score">{{ability.long}}</h3>
-                </div>
-              </li>
-            {{/each}}
-          </ul>
-        </section>
-      {{/if}}
-
-    </div>
-
-
-    {{#if no_ability_increase}}
-      {{!-- Hack to make a not condition. --}}
-    {{else}}
-      {{#if ability_scores}}
-        {{!-- Hack to make a not condition. --}}
-      {{else}}
-        <div class="flexrow center">
-          <section class="cell cell--ability-scores">
-            <h2 class="cell__title">{{localize "DW.ChooseAbilityScoresIncrease"}}</h2>
-            <ul class="selection-list">
-              {{#each ability_labels as |ability ability_key|}}
-                <li>
-                  <div class="selection-control">
-                    <input type="radio" name="ability_score.increase" value="{{ability.short}}" data-type="ability-increase" {{#if ability.disabled}}disabled="disabled" readonly{{/if}}>
-                  </div>
-                  <div class="selection-content">
-                    <h3 class="ability-score">{{ability.long}}</h3>
-                  </div>
-                </li>
-              {{/each}}
-            </ul>
-          </section>
+      <section class="dw-card dw-levelup-section">
+        <h2 class="dw-section-title">{{#if viewer}}{{localize "DW.Alignment"}}{{else}}{{localize "DW.ChooseAlignment"}}{{/if}}</h2>
+        <div class="dw-choices">
+          {{#each alignments as |alignment key|}}
+          <label class="dw-choice {{#if @root.viewer}}is-static{{/if}}">
+            {{#unless @root.viewer}}<input type="radio" name="alignment-selection" data-alignment="{{key}}">{{/unless}}
+            <span class="dw-choice-body">
+              <span class="dw-choice-name">{{alignment.label}}</span>
+              <span class="dw-choice-text">{{alignment.description}}</span>
+            </span>
+          </label>
+          {{/each}}
         </div>
+      </section>
       {{/if}}
+    </div>
+    {{/ifor}}
+
+    {{#if ability_scores}}
+    <section class="dw-card dw-levelup-section">
+      <h2 class="dw-section-title">{{localize "DW.ChooseAbilityScores"}}</h2>
+      <div class="dw-levelup-abilities">
+        {{#each ability_labels as |ability|}}
+        <label class="dw-levelup-ability">
+          <span class="dw-label"><i class="fas {{ability.icon}}" inert></i> {{ability.long}}</span>
+          <select name="ability_score.{{ability.short}}" data-ability="{{ability.short}}">
+            <option value="">—</option>
+            {{#each @root.ability_scores as |score|}}
+            <option value="{{score}}">{{score}}</option>
+            {{/each}}
+          </select>
+        </label>
+        {{/each}}
+      </div>
+    </section>
+    {{/if}}
+
+    {{#if ability_increase}}
+    <section class="dw-card dw-levelup-section">
+      <h2 class="dw-section-title">{{localize "DW.ChooseAbilityScoresIncrease"}}</h2>
+      <div class="dw-levelup-abilities">
+        {{#each ability_labels as |ability|}}
+        <label class="dw-choice dw-levelup-increase {{#if ability.disabled}}is-disabled{{/if}}">
+          <input type="radio" name="ability_score.increase" value="{{ability.short}}" data-type="ability-increase" {{#if ability.disabled}}disabled{{/if}}>
+          <span class="dw-label"><i class="fas {{ability.icon}}" inert></i> {{ability.long}}</span>
+          <span class="dw-levelup-increase-value">{{ability.value}} <i class="fas fa-arrow-right" inert></i> {{ability.next}}</span>
+        </label>
+        {{/each}}
+      </div>
+    </section>
     {{/if}}
 
     {{#if equipment}}
-      <div class="grid grid-2col">
-        {{#each equipment as |equipmentGroup groupId|}}
-          <section class="cell cell--equipment">
-            <h2 class="cell__title">{{equipmentGroup.label}}</h2>
-            <ul class="selection-list">
-              {{#each equipmentGroup.objects as |item key|}}
-                <li>
-                  <div class="selection-control">
-                    {{#ifEquals equipmentGroup.mode "radio"}}
-                      <input type="radio" name="equipment.{{groupId}}" data-item-id="{{item._id}}" data-type="equipment">
-                    {{else}}
-                      <input type="checkbox" name="equipment.{{groupId}}.{{key}}" data-item-id="{{item._id}}" data-type="equipment">
-                    {{/ifEquals}}
-                  </div>
-                  <div class="selection-content flexrow item">
-                    <h4 class="item-name">
-                      <span class="item-label">{{item.name}}<span class="item-details-toggle"><i class="fas fa-chevron-down"></i></span></span>
-                    </h4>
-
-                    <div class="item-meta tags">
-                      {{#if item.system.equipped }}<span class="tag equipped" data-action="equipped">{{localize "DW.Equipped"}}</span>{{/if}}
-                      {{#if item.system.uses }}<a class="tag counter uses" data-action="uses">{{localize "DW.Uses"}}: {{item.system.uses}}</a>{{/if}}
-                      {{#if item.system.quantity }}<a class="tag counter quantity" data-action="quantity">{{localize "DW.Qty"}}: {{item.system.quantity}}</a>{{/if}}
-                      {{#if item.system.weight }}<span class="tag">{{localize "DW.Wt"}}: {{item.system.weight}}</span>{{/if}}
-                    </div>
-                    <div class="item-description">
-                      {{#if item.system.tags}}{{{dwTags item.system.tags}}}{{/if}}
-                      <div class="description">{{{item.system.description}}}</div>
-                    </div>
-                  </div>
-                </li>
-              {{/each}}
-            </ul>
-          </section>
-        {{/each}}
-      </div>
+    <div class="dw-levelup-grid">
+      {{#each equipment as |group groupId|}}
+      <section class="dw-card dw-levelup-section">
+        <h2 class="dw-section-title">{{group.label}}</h2>
+        <div class="dw-choices">
+          {{#each group.objects as |item key|}}
+          <div class="dw-choice dw-choice--item {{#if @root.viewer}}is-static{{/if}}">
+            <label class="dw-choice-main">
+              {{#unless @root.viewer}}
+                {{#ifEquals group.mode "radio"}}
+                <input type="radio" name="equipment.{{groupId}}" data-item-id="{{item._id}}" data-type="equipment">
+                {{else}}
+                <input type="checkbox" name="equipment.{{groupId}}.{{key}}" data-item-id="{{item._id}}" data-type="equipment">
+                {{/ifEquals}}
+              {{/unless}}
+              <img class="dw-row-img" src="{{item.img}}" alt="" width="24" height="24"/>
+              <span class="dw-choice-name">{{item.name}}</span>
+              <span class="dw-choice-meta">
+                {{#if item.system.uses}}<span class="dw-stat">{{localize "DW.Uses"}} {{item.system.uses}}</span>{{/if}}
+                {{#if item.system.quantity}}<span class="dw-stat">{{localize "DW.Qty"}} {{item.system.quantity}}</span>{{/if}}
+                {{#if item.system.weight}}<span class="dw-stat">{{localize "DW.Wt"}} {{item.system.weight}}</span>{{/if}}
+              </span>
+            </label>
+            {{#ifor item.system.description item.system.tags}}
+            <details class="dw-choice-more">
+              <summary>{{localize "DW.LevelUp.Details"}}</summary>
+              {{#if item.system.tags}}{{{dwTags item.system.tags}}}{{/if}}
+              <div class="dw-description">{{{item.system.description}}}</div>
+            </details>
+            {{/ifor}}
+          </div>
+          {{/each}}
+        </div>
+      </section>
+      {{/each}}
+    </div>
     {{/if}}
 
     {{#if starting_moves}}
-      <section class="cell cell--starting_moves">
-        <h1 class="cell__title">{{localize "DW.ChooseStartingMoves"}}</h1>
-        <ul class="selection-list">
-          {{!-- Loop through each group of starting moves. --}}
-          {{#each starting_move_groups as |moves group|}}
-            {{!-- If a movegroup is defined, that means this should be an OR choice. --}}
-            {{#if moves.0.system.moveGroup}}
-              <h2 class="cell__subtitle">{{localize "DW.ChooseStartingOne"}}</h2>
-            {{!-- Otherwise, everything is valid. --}}
-            {{else}}
-              <h2 class="cell__subtitle">{{localize "DW.ChooseStartingAll"}}</h2>
-            {{/if}}
-            {{!-- Create the grid and loop through moves within the groups. --}}
-            <div class="grid grid-2col">
-              {{#each moves as |move key|}}
-                {{> "systems/dungeonworld/templates/parts/sheet-level-up-move.html" move=move preselect=1}}
-              {{/each}}
-            </div>
+    <section class="dw-card dw-levelup-section">
+      <h2 class="dw-section-title">{{#if viewer}}{{localize "DW.MovesStarting"}}{{else}}{{localize "DW.ChooseStartingMoves"}}{{/if}}</h2>
+      {{#each starting_move_groups as |moves group|}}
+        {{#unless @root.viewer}}
+        <p class="dw-levelup-hint">{{#if moves.0.system.moveGroup}}{{localize "DW.ChooseStartingOne"}}{{else}}{{localize "DW.ChooseStartingAll"}}{{/if}}</p>
+        {{/unless}}
+        <div class="dw-choices dw-choices--grid">
+          {{#each moves as |move|}}
+          {{> "systems/dungeonworld/templates/dialog/parts/level-up-move.html" move=move preselect=true}}
           {{/each}}
-        </ul>
-      </section>
-    {{/if}}
-
-    {{#ifor advanced_moves_2 advanced_moves_6}}
-      <section class="cell cell--advanced_moves">
-        <h1 class="cell__title">{{localize "DW.ChooseAdvancedMoves"}}</h1>
-        {{#if advanced_moves_2}}
-          <h2 class="cell__subtitle">{{localize "DW.ChooseAdvanced2"}}</h2>
-          <ul class="selection-list grid grid-2col">
-            {{#each advanced_moves_2 as |move key|}}
-              {{> "systems/dungeonworld/templates/parts/sheet-level-up-move.html" move=move}}
-            {{/each}}
-          </ul>
-        {{/if}}
-
-        {{#if advanced_moves_6}}
-          <h2 class="cell__subtitle">{{localize "DW.ChooseAdvanced6"}}</h2>
-          <ul class="selection-list grid grid-2col">
-            {{#each advanced_moves_6 as |move key|}}
-              {{> "systems/dungeonworld/templates/parts/sheet-level-up-move.html" move=move}}
-            {{/each}}
-          </ul>
-        {{/if}}
-      </section>
-    {{/ifor}}
-
-
-    {{#if cast_spells}}
-    <section class="cell cell--spells">
-      <h1 class="cell__title">{{localize "DW.ChooseSpells"}}</h1>
-      {{#each spells as |spellsByCaster casterKey|}}
-        {{#if spellsByCaster.description }}
-          <div class="cell__description">{{{spellsByCaster.description}}}</div>
-        {{/if}}
-        {{#each spellsByCaster.spells as |spellsByLevel spellLevel|}}
-          <h2 class="cell__subtitle">{{localize (concat "DW.Spells" spellLevel)}}</h2>
-          <ul class="selection-list grid grid-2col">
-            {{#each spellsByLevel as |spell key|}}
-              <li>
-                <div class="selection-control">
-                  <input type="checkbox" {{#ifEquals spellLevel 0}}checked disabled="disabled"{{/ifEquals}} data-item-id="{{spell.id}}" data-type="spell">
-                </div>
-                <div class="selection-content">
-                  <h3>{{spell.name}}</h3>
-                  <div>{{{spell.system.description}}}</div>
-                </div>
-              </li>
-            {{/each}}
-          </ul>
-        {{/each}}
+        </div>
       {{/each}}
     </section>
     {{/if}}
 
+    {{#ifor advanced_moves_2 advanced_moves_6}}
+    <section class="dw-card dw-levelup-section">
+      <h2 class="dw-section-title">{{#if viewer}}{{localize "DW.MovesAdvanced"}}{{else}}{{localize "DW.ChooseAdvancedMoves"}}{{/if}}</h2>
+      {{#if advanced_moves_2}}
+      <h3 class="dw-levelup-subtitle">{{localize "DW.LevelUp.Levels2"}}</h3>
+      {{#unless viewer}}<p class="dw-levelup-hint">{{localize "DW.ChooseAdvanced2"}}</p>{{/unless}}
+      <div class="dw-choices dw-choices--grid">
+        {{#each advanced_moves_2 as |move|}}
+        {{> "systems/dungeonworld/templates/dialog/parts/level-up-move.html" move=move}}
+        {{/each}}
+      </div>
+      {{/if}}
+
+      {{#if advanced_moves_6}}
+      <h3 class="dw-levelup-subtitle">{{localize "DW.LevelUp.Levels6"}}</h3>
+      {{#unless viewer}}<p class="dw-levelup-hint">{{localize "DW.ChooseAdvanced6"}}</p>{{/unless}}
+      <div class="dw-choices dw-choices--grid">
+        {{#each advanced_moves_6 as |move|}}
+        {{> "systems/dungeonworld/templates/dialog/parts/level-up-move.html" move=move}}
+        {{/each}}
+      </div>
+      {{/if}}
+    </section>
+    {{/ifor}}
+
+    {{#if cast_spells}}
+    <section class="dw-card dw-levelup-section">
+      <h2 class="dw-section-title">{{#if viewer}}{{localize "DW.Spells"}}{{else}}{{localize "DW.ChooseSpells"}}{{/if}}</h2>
+      {{#each spells as |caster|}}
+        {{#if caster.description}}<div class="dw-levelup-note">{{{caster.description}}}</div>{{/if}}
+        {{#each caster.spells as |spellsByLevel spellLevel|}}
+        <h3 class="dw-levelup-subtitle">{{localize (concat "DW.Spells" spellLevel)}}</h3>
+        <div class="dw-choices dw-choices--grid">
+          {{#each spellsByLevel as |spell|}}
+          {{!-- Rotes and cantrips (level 0) are always included. --}}
+          <label class="dw-choice {{#if @root.viewer}}is-static{{else}}{{#ifEquals spellLevel 0}}is-granted{{/ifEquals}}{{/if}}">
+            {{#unless @root.viewer}}<input type="checkbox" {{#ifEquals spellLevel 0}}checked disabled{{/ifEquals}} data-item-id="{{spell.id}}" data-type="spell">{{/unless}}
+            <span class="dw-choice-body">
+              <span class="dw-choice-head">
+                <span class="dw-choice-name">{{spell.name}}</span>
+                {{#unless @root.viewer}}{{#ifEquals spellLevel 0}}<span class="dw-pill">{{localize "DW.LevelUp.Included"}}</span>{{/ifEquals}}{{/unless}}
+              </span>
+              <div class="dw-description">{{{spell.system.description}}}</div>
+            </span>
+          </label>
+          {{/each}}
+        </div>
+        {{/each}}
+      {{/each}}
+    </section>
+    {{/if}}
   </div>
-</form>
+
+  {{#unless viewer}}
+  <footer class="dw-levelup-footer">
+    <button type="button" class="dw-text-btn" data-action="cancel"><i class="fas fa-times" inert></i> {{localize "DW.Cancel"}}</button>
+    <button type="submit" class="dw-text-btn dw-primary-btn"><i class="fas fa-check" inert></i> {{localize "DW.Confirm"}}</button>
+  </footer>
+  {{/unless}}
+</div>

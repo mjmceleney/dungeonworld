@@ -1,52 +1,33 @@
-<div class="{{cssClass}} item-form flexcol">
-  <div class="sheet-wrapper flexcol">
-    <header class="sheet-header flexrow">
-      <div class="cell cell--image">
-        <img class="profile-img" src="{{item.img}}" data-edit="img" data-action="editImage" title="{{item.name}}"/>
-      </div>
-      <div class="header-fields">
-          <h1 class="charname"><input name="name" type="text" value="{{item.name}}" placeholder="{{localize "DW.Common.Name"}}"/></h1>
-      </div>
-    </header>
+<div class="dw-item-sheet">
+  {{> "systems/dungeonworld/templates/items/parts/item-header.html"}}
 
-    {{!-- Sheet Tab Navigation --}}
-    <nav class="sheet-navigation sheet-tabs tabs" data-group="primary">
-        <a class="item {{tabs.description.cssClass}}" data-action="tab" data-group="primary" data-tab="description">{{localize "DW.Common.Description" }}</a>
-        <a class="item {{tabs.details.cssClass}}" data-action="tab" data-group="primary" data-tab="details">{{localize "DW.Common.Details" }}</a>
-    </nav>
+  <nav class="dw-tabs tabs">
+    <button type="button" class="dw-tab {{tabs.description.cssClass}}" data-action="tab" data-group="primary" data-tab="description">{{localize "DW.Common.Description"}}</button>
+    <button type="button" class="dw-tab {{tabs.details.cssClass}}" data-action="tab" data-group="primary" data-tab="details">{{localize "DW.Common.Details"}}</button>
+  </nav>
 
-    {{!-- Sheet Body --}}
-    <section class="sheet-body">
+  <section class="tab dw-panel {{tabs.description.cssClass}}" data-group="primary" data-tab="description">
+    <div class="dw-field dw-field--grow">
+      <span class="dw-label">{{localize "DW.Description"}}</span>
+      <prose-mirror name="system.description" value="{{system.description}}" toggled>{{{system.descriptionEnriched}}}</prose-mirror>
+    </div>
+  </section>
 
-        {{!-- Description Tab --}}
-        <div class="tab {{tabs.description.cssClass}}" data-group="primary" data-tab="description">
-            <prose-mirror name="system.description" value="{{system.description}}" toggled>{{{system.descriptionEnriched}}}</prose-mirror>
-        </div>
+  <section class="tab dw-panel {{tabs.details.cssClass}}" data-group="primary" data-tab="details">
+    <div class="dw-fields">
+      <span class="dw-label">{{localize "DW.Class"}}</span>
+      <select name="system.class">
+        {{selectOptions selects.classes selected=system.class blank='—' localize=true}}
+      </select>
 
-        {{!-- Details Tab --}}
-        <div class="tab {{tabs.details.cssClass}}" data-group="primary" data-tab="details">
-          <div class="resource">
-            <label>{{localize "DW.Class"}}</label>
-            <select name="system.class">
-              {{selectOptions selects.classes selected=system.class blank='—' localize=true}}
-            </select>
-          </div>
+      <span class="dw-label">{{localize "DW.SpellLevel"}}</span>
+      <input type="number" name="system.spellLevel" value="{{system.spellLevel}}" min="0" step="1"/>
 
-          <div class="resource">
-            <label>{{localize "DW.SpellLevel"}}</label>
-              <input type="text" name="system.spellLevel" value="{{system.spellLevel}}" data-dtype="Number"/>
-          </div>
+      <span class="dw-label">{{localize "DW.SpellPrepared"}}</span>
+      <input type="checkbox" name="system.prepared" {{checked system.prepared}}/>
 
-          <div class="resource">
-            <label>{{localize "DW.SpellPrepared"}}</label>
-            <input type="checkbox" name="system.prepared" {{checked system.prepared}}/>
-          </div>
-
-          <div class="resource">
-            <label>{{localize "DW.SpellRollFormula"}}</label>
-              <input type="text" name="system.rollFormula" value="{{system.rollFormula}}" placeholder="e.g. 1d4+3" data-dtype="String"/>
-          </div>
-        </div>
-    </section>
-  </div>
+      <span class="dw-label">{{localize "DW.SpellRollFormula"}}</span>
+      <input type="text" name="system.rollFormula" value="{{system.rollFormula}}" placeholder="e.g. 1d4+3"/>
+    </div>
+  </section>
 </div>

@@ -18,7 +18,7 @@ export class DwClassItemSheet extends DwItemSheet {
 
   /** @override */
   static DEFAULT_OPTIONS = {
-    classes: ["class"],
+    classes: ["dw-item-class"],
     position: {
       width: 960,
       height: 640,

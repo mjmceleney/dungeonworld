@@ -1,0 +1,269 @@
+// Item sheets (ApplicationV2), in the same style as the character sheet. The
+// palette and shared controls come from .dw-v2 (_sheets-v2.scss).
+
+.dw-v2.dw-item {
+  .window-content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .dw-item-sheet {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  // Header: image, name, and what kind of item this is.
+  .dw-item-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+
+    .dw-identity {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+  }
+
+  .dw-item-img {
+    flex: 0 0 56px;
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border: 2px solid var(--dw-navy);
+    border-radius: 8px;
+    background: var(--dw-sunken);
+    cursor: pointer;
+  }
+
+  input.dw-name {
+    height: 32px;
+    padding: 0 4px;
+    font-family: $font-stack-secondary;
+    font-size: 22px;
+    color: var(--dw-navy);
+    background: transparent;
+    border-color: transparent;
+
+    &:hover,
+    &:focus {
+      border-color: var(--dw-line);
+    }
+  }
+
+  .dw-item-type {
+    padding-left: 4px;
+    font-size: 13px;
+    color: var(--dw-muted);
+  }
+
+  .dw-panel {
+    flex: 1;
+  }
+
+  // A panel with no tab bar above it (tag sheet).
+  .dw-panel--solo {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 0;
+    border-radius: 10px;
+  }
+
+  // Label / value rows on the Details tab.
+  .dw-fields {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    align-items: center;
+    gap: 8px 14px;
+
+    input[type="text"],
+    select {
+      width: 100%;
+    }
+
+    input[type="number"] {
+      justify-self: start;
+      width: 72px;
+    }
+
+    input[type="checkbox"] {
+      justify-self: start;
+      margin: 0;
+    }
+
+    .tagify {
+      width: 100%;
+    }
+  }
+
+  .dw-fields-hint {
+    grid-column: 2;
+    margin-top: -4px;
+    font-size: 13px;
+    color: var(--dw-muted);
+  }
+
+  .dw-field prose-mirror {
+    min-height: 110px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 72px;
+    padding: 6px 8px;
+    box-sizing: border-box;
+    border: 1px solid var(--dw-line);
+    border-radius: 6px;
+    background: var(--dw-sunken);
+    color: var(--dw-ink);
+    font-family: $font-stack-base;
+    font-size: 14px;
+    resize: vertical;
+
+    &:focus {
+      outline: 2px solid var(--dw-focus);
+      border-color: transparent;
+    }
+  }
+
+  // Bond sheet: just the bond text.
+  .dw-bond-sheet {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+
+    prose-mirror {
+      flex: 1;
+    }
+  }
+
+  // Class sheet: races, alignments and settings side by side.
+  .dw-class-columns {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+    gap: 10px;
+  }
+
+  .dw-list-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .dw-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dw-list-entry {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-top: 8px;
+    border-top: 1px solid var(--dw-line);
+
+    &:first-child {
+      padding-top: 0;
+      border-top: 0;
+    }
+  }
+
+  .dw-list-entry-head {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    input {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  // Class equipment groups.
+  .dw-equipment-intro {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: var(--dw-muted);
+
+    p {
+      flex: 1;
+      margin: 0;
+    }
+  }
+
+  .dw-equipment-groups {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 10px;
+  }
+
+  .dw-group-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    input {
+      flex: 1;
+      min-width: 0;
+    }
+
+    select {
+      width: auto;
+    }
+  }
+
+  // Drop equipment here; each item is a removable chip.
+  .drop-area {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    min-height: 44px;
+    padding: 6px;
+    border: 1px dashed var(--dw-line);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--dw-muted);
+
+    &.drop-hover {
+      border-color: var(--dw-focus);
+      background: var(--dw-chip);
+    }
+  }
+
+  .dw-equipment-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px 2px 10px;
+    border-radius: 12px;
+    background: var(--dw-chip);
+    color: var(--dw-ink);
+    font-size: 13px;
+
+    .dw-icon-btn {
+      width: 20px;
+      height: 20px;
+      font-size: 11px;
+    }
+  }
+}

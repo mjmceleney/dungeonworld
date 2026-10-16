@@ -1,0 +1,125 @@
+// Journals: core's journal sheets in the system's fonts and colors.
+//
+// The system adds .dw-journal (and .dw-dark) to journal windows (journal.js)
+// and leaves the sheets themselves alone. Most of this sets the custom
+// properties core's journal styles already read, so core keeps its layout.
+// Text is styled in the entry window (.journal-entry-content: the title and
+// pages) and in the page editor (prose-mirror.journal-page-content).
+
+.dw-journal {
+  @include dw-palette;
+
+  &.dw-dark {
+    @include dw-palette-dark;
+  }
+
+  .journal-entry-content,
+  .journal-page-content {
+    --color-text-emphatic: var(--dw-navy);
+    --color-text-primary: var(--dw-ink);
+    --color-text-secondary: var(--dw-muted);
+
+    // Inline rolls and links to documents.
+    --content-link-background: var(--dw-chip);
+    --content-link-border-color: var(--dw-line);
+    --content-link-text-color: var(--dw-ink);
+    --content-link-icon-color: var(--dw-accent);
+
+    --table-background-color: var(--dw-surface);
+    --table-row-color-odd: var(--dw-surface);
+    --table-row-color-even: var(--dw-sunken);
+    --table-header-bg-color: var(--dw-navy);
+    --table-header-border-color: var(--dw-navy);
+    --table-header-text-color: var(--dw-on-navy);
+
+    color: var(--dw-ink);
+  }
+
+  .journal-entry-content {
+    background: var(--dw-surface);
+  }
+
+  .journal-entry-content .journal-header .title {
+    font-family: $font-stack-secondary;
+    color: var(--dw-navy);
+    background: transparent;
+    border-color: transparent;
+
+    &:hover,
+    &:focus {
+      border-color: var(--dw-line);
+    }
+  }
+
+  // Page text. Core sets the heading fonts on .journal-entry-page, which is
+  // each page in the entry window and the page editor window itself.
+  .journal-entry-page,
+  &.journal-entry-page {
+    --font-body: #{$font-stack-base};
+    --font-h1: #{$font-stack-secondary};
+    --font-h2: #{$font-stack-secondary};
+    --font-h3: #{$font-stack-secondary};
+    --font-h4: #{$font-stack-secondary};
+    --font-h5: #{$font-stack-base};
+    --font-h6: #{$font-stack-base};
+  }
+
+  .journal-entry-page,
+  .journal-page-content {
+    font-family: $font-stack-base;
+    font-size: 16px;
+    line-height: 1.4;
+
+    h1,
+    h2 {
+      border-color: var(--dw-line);
+    }
+
+    h1 {
+      border-bottom-color: var(--dw-accent);
+    }
+
+    h5,
+    h6 {
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    a:not(.content-link, .inline-roll) {
+      color: var(--dw-accent);
+    }
+
+    .content-link,
+    .inline-roll {
+      border-radius: 4px;
+    }
+
+    blockquote {
+      margin: 8px 0;
+      padding: 4px 12px;
+      border-left: 3px solid var(--dw-accent);
+      background: var(--dw-sunken);
+      color: var(--dw-ink);
+      font-family: inherit;
+      font-size: inherit;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid var(--dw-line);
+    }
+
+    table {
+      border: 1px solid var(--dw-line);
+      border-radius: 8px;
+    }
+
+    // The system's journal tables are plain rows drawn with border="1".
+    th,
+    td {
+      padding: 6px 12px;
+      border-color: var(--dw-line);
+    }
+  }
+}

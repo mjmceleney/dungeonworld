@@ -1,0 +1,12 @@
+<header class="dw-card dw-header dw-npc-header {{#if bannerImg}}dw-header--banner{{/if}}">
+  {{#if bannerImg}}
+  <div class="dw-banner-art" style="background-image: url(&quot;{{bannerImg}}&quot;)" aria-hidden="true"></div>
+  {{/if}}
+  <img class="dw-portrait" src="{{actor.img}}" data-edit="img" data-action="editImage" alt="{{actor.name}}" title="{{actor.name}}" width="96" height="96"/>
+
+  <div class="dw-identity">
+    <input class="dw-name" type="text" name="name" value="{{actor.name}}" placeholder="Name" aria-label="Name"/>
+    <input class="tags-input-source" type="text" name="system.tags" value="{{system.tags}}" placeholder="{{localize "DW.Tags"}}" aria-label="{{localize "DW.Tags"}}"/>
+    <input class="dw-qualities" type="text" name="system.attributes.specialQualities.value" value="{{system.attributes.specialQualities.value}}" placeholder="{{localize "DW.SpecialQualities"}}" aria-label="{{localize "DW.SpecialQualities"}}" data-tooltip="DW.SpecialQualities"/>
+  </div>
+</header>

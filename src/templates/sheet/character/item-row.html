@@ -1,7 +1,7 @@
 {{!-- One owned item (move, equipment or spell). Expects `editable` in the hash. --}}
 <li class="dw-row draggable {{#if expanded}}expanded{{/if}}" data-item-id="{{id}}" data-name="{{name}}">
   <div class="dw-row-main">
-    {{#if isMove}}
+    {{#if canFavorite}}
     <button type="button" class="dw-icon-btn dw-star {{#if favorite}}on{{/if}}" data-action="toggleFavorite" aria-pressed="{{#if favorite}}true{{else}}false{{/if}}"
       data-tooltip="{{#if favorite}}DW.Sheet.Unfavorite{{else}}DW.Sheet.Favorite{{/if}}" aria-label="{{#if favorite}}{{localize "DW.Sheet.Unfavorite"}}{{else}}{{localize "DW.Sheet.Favorite"}}{{/if}}">
       <i class="{{#if favorite}}fas{{else}}far{{/if}} fa-star" inert></i>

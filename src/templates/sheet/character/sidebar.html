@@ -39,6 +39,23 @@
 
   <section class="dw-card dw-side-card">
     <header class="dw-side-head">
+      <span class="dw-section-title">{{localizeOverride "DW.Race" "raceSingle"}}</span>
+    </header>
+    <input type="text" name="system.details.race.value" value="{{system.details.race.value}}" aria-label="{{localizeOverride "DW.Race" "raceSingle"}}"/>
+    <prose-mirror class="dw-compact" name="system.details.race.description" value="{{system.details.race.description}}" toggled>{{{enriched.race}}}</prose-mirror>
+  </section>
+
+  <section class="dw-card dw-side-card">
+    <header class="dw-side-head">
+      <span class="dw-section-title">{{localizeOverride "DW.Alignment" "alignmentSingle"}}</span>
+    </header>
+    <input type="text" name="system.details.alignment.value" value="{{system.details.alignment.value}}" aria-label="{{localizeOverride "DW.Alignment" "alignmentSingle"}}"/>
+    <prose-mirror class="dw-compact" name="system.details.alignment.description" value="{{system.details.alignment.description}}" toggled>{{{enriched.alignment}}}</prose-mirror>
+    <span class="dw-hint">{{localize "DW.Sheet.AlignmentHint"}}</span>
+  </section>
+
+  <section class="dw-card dw-side-card">
+    <header class="dw-side-head">
       <span class="dw-section-title">{{localizeOverride "DW.Bonds" "bondPlural"}}</span>
       {{#if editable}}
       <button type="button" class="dw-add" data-action="createItem" data-type="bond" aria-label="{{localize "DW.Add"}}"><i class="fas fa-plus" inert></i></button>
@@ -57,14 +74,5 @@
       </li>
       {{/each}}
     </ol>
-  </section>
-
-  <section class="dw-card dw-side-card">
-    <header class="dw-side-head">
-      <span class="dw-section-title">{{localizeOverride "DW.Alignment" "alignmentSingle"}}</span>
-    </header>
-    <input type="text" name="system.details.alignment.value" value="{{system.details.alignment.value}}" aria-label="{{localizeOverride "DW.Alignment" "alignmentSingle"}}"/>
-    <prose-mirror class="dw-compact" name="system.details.alignment.description" value="{{system.details.alignment.description}}" toggled>{{{enriched.alignment}}}</prose-mirror>
-    <span class="dw-hint">{{localize "DW.Sheet.AlignmentHint"}}</span>
   </section>
 </aside>

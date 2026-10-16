@@ -12,6 +12,7 @@ import { ItemDw } from "./item/item.js";
 import { DwItemSheet } from "./item/item-sheet.js";
 import { DwActorSheet } from "./actor/actor-sheet.js";
 import { DwCharacterSheet } from "./actor/character-sheet.js";
+import { DwNpcSheet } from "./actor/npc-sheet.js";
 import { DwActorNpcSheet } from "./actor/actor-npc-sheet.js";
 import { DwClassItemSheet } from "./item/class-item-sheet.js";
 import { DwRegisterHelpers } from "./handlebars.js";
@@ -19,6 +20,7 @@ import { preloadHandlebarsTemplates } from "./templates.js";
 import { DwUtility } from "./utility.js";
 import { CombatSidebarDw } from "./combat/combat.js";
 import { MigrateDw } from "./migrate/migrate.js";
+import { DwJournal } from "./journal.js";
 
 import * as chat from "./chat.js";
 import { BUILD_ID } from "./build-info.js";
@@ -65,9 +67,16 @@ Hooks.once("init", async function() {
     makeDefault: false,
     label: "DW.Sheet.Legacy"
   });
+  Actors.registerSheet("dungeonworld", DwNpcSheet, {
+    types: ['npc'],
+    makeDefault: true,
+    label: "DW.Sheet.Npc"
+  });
+  // The previous NPC sheet stays available from Configure Sheet.
   Actors.registerSheet("dungeonworld", DwActorNpcSheet, {
     types: ['npc'],
-    makeDefault: true
+    makeDefault: false,
+    label: "DW.Sheet.LegacyNpc"
   });
   Items.unregisterSheet("core", ItemSheet);
   Items.registerSheet("dungeonworld", DwItemSheet, { makeDefault: false });
@@ -314,6 +323,22 @@ Hooks.once("init", async function() {
     default: "DW.DebilityCha"
   });
 
+  game.settings.register("dungeonworld", "journalStyle", {
+    name: game.i18n.localize("DW.Settings.journalStyle.name"),
+    hint: game.i18n.localize("DW.Settings.journalStyle.hint"),
+    scope: 'world',
+    config: true,
+    type: String,
+    choices: {
+      system: game.i18n.localize("DW.Settings.journalStyle.system"),
+      all: game.i18n.localize("DW.Settings.journalStyle.all"),
+      none: game.i18n.localize("DW.Settings.journalStyle.none")
+    },
+    default: "system",
+    onChange: () => DwJournal.restyleAll()
+  });
+  DwJournal.init();
+
   // Preload template partials.
   preloadHandlebarsTemplates();
   chat.preloadDamageButtons();
@@ -480,69 +505,6 @@ Hooks.on('preUpdateActor', (actor, updateData, options, id) => {
         actor.setFlag('dungeonworld', 'levelup', true);
       }
     }
-  }
-});
-
-/* -------------------------------------------- */
-/*  Level Up Listeners                          */
-/* -------------------------------------------- */
-Hooks.on('renderDialog', (dialog, html, options) => {
-  // If this is the levelup dialog, we need to add listeners to it.
-  if (dialog.id && dialog.id == 'level-up') {
-    // If an ability score is chosen, we need to update the available options.
-    html.find('.cell--ability-scores select').on('change', () => {
-      // Build the list of selected score values.
-      let scores = [];
-      html.find('.cell--ability-scores select').each((index, item) => {
-        let $self = $(item);
-        const val = parseInt($self.val())
-        if (!isNaN(val)) {
-          scores.push(val);
-        } else {
-          const val = parseInt($self.find('option:selected').val())
-          if (!isNaN(val)) {
-            scores.push(val);
-          }
-        }
-      });
-      // Loop over the list again, disabling invalid options.
-      html.find('.cell--ability-scores select').each((index, item) => {
-        let $self = $(item);
-        // Loop over the options in the select to get the possible value counts
-        const valueCounts = {}
-        $self.find('option').each((opt_index, opt_item) => {
-          const $opt = $(opt_item);
-          const val = parseInt($opt.attr('value'));
-          if (valueCounts[val]) {
-            valueCounts[val] ++
-          } else {
-            valueCounts[val] = 1
-          }
-        })
-        // Loop over the options in the select.
-        $self.find('option').each((opt_index, opt_item) => {
-          let $opt = $(opt_item);
-          let val = parseInt($opt.attr('value'));
-          const noAbilityScores = game.settings.get('dungeonworld', 'noAbilityScores');
-          if (!isNaN(val)) {
-            if (noAbilityScores) {
-              const alreadySelected = scores.filter(v => v == val) || [];
-              if (alreadySelected.length >= valueCounts[val]) {
-                $opt.attr('disabled', true);
-              } else {
-                $opt.attr('disabled', false);
-              }
-            } else {
-              if (scores.includes(val) && $self.val() != val) {
-                $opt.attr('disabled', true);
-              } else {
-                $opt.attr('disabled', false);
-              }
-            }
-          }
-        });
-      });
-    })
   }
 });
 

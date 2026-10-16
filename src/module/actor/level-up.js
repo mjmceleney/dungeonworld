@@ -1,7 +1,99 @@
-import { DwClassList } from "../config.js";
+import { DwClassList, ABILITY_ICONS } from "../config.js";
 import { DwUtility } from "../utility.js";
 
-const { renderTemplate } = foundry.applications.handlebars;
+const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
+
+/**
+ * The level up and class viewer window, in the same style as the sheets.
+ *
+ * Renders the context it's given with the level up template. On submit it
+ * passes its form element to the onSubmit option, then closes.
+ */
+class DwLevelUpWindow extends HandlebarsApplicationMixin(ApplicationV2) {
+
+  /** @override */
+  static DEFAULT_OPTIONS = {
+    tag: "form",
+    classes: ["dw-v2", "dw-levelup-window"],
+    position: {
+      width: 920,
+      height: 680,
+    },
+    window: {
+      resizable: true,
+    },
+    form: {
+      handler: DwLevelUpWindow.#onSubmit,
+      closeOnSubmit: true,
+    },
+    actions: {
+      cancel: DwLevelUpWindow.#onCancel,
+    },
+  };
+
+  /** @override */
+  static PARTS = {
+    body: {
+      template: "systems/dungeonworld/templates/dialog/level-up.html",
+      templates: ["systems/dungeonworld/templates/dialog/parts/level-up-move.html"],
+      scrollable: [".dw-levelup-body"],
+    },
+  };
+
+  /** @inheritdoc */
+  _initializeApplicationOptions(options) {
+    options = super._initializeApplicationOptions(options);
+    // Match core's light or dark theme choice, as the sheets do.
+    let dark = DwUtility.nightmode;
+    if (options.classes.includes('theme-dark')) dark = true;
+    else if (options.classes.includes('theme-light')) dark = false;
+    if (dark) options.classes.push('dw-dark');
+    return options;
+  }
+
+  /** @override */
+  async _prepareContext(options) {
+    return this.options.context;
+  }
+
+  /** @inheritdoc */
+  _onRender(context, options) {
+    super._onRender(context, options);
+    for (const select of this.element.querySelectorAll('select[data-ability]')) {
+      select.addEventListener('change', () => this.#limitAbilityScores());
+    }
+  }
+
+  /**
+   * Each score in the list can only be assigned once, so disable the scores
+   * that the other abilities already have. With the modifiers-only setting the
+   * list has repeats (+1 twice), which can each be assigned.
+   */
+  #limitAbilityScores() {
+    const selects = [...this.element.querySelectorAll('select[data-ability]')];
+    for (const select of selects) {
+      const taken = selects.filter(s => s !== select).map(s => parseInt(s.value)).filter(v => !isNaN(v));
+      const counts = {};
+      for (const option of select.options) {
+        const value = parseInt(option.value);
+        if (!isNaN(value)) counts[value] = (counts[value] ?? 0) + 1;
+      }
+      for (const option of select.options) {
+        const value = parseInt(option.value);
+        if (isNaN(value)) continue;
+        option.disabled = taken.filter(v => v === value).length >= counts[value];
+      }
+    }
+  }
+
+  static async #onSubmit(event, form) {
+    await this.options.onSubmit?.(form);
+  }
+
+  static #onCancel() {
+    this.close();
+  }
+}
 
 /**
  * The level up and class viewer dialogs for a character.
@@ -18,15 +110,28 @@ export class DwLevelUp {
     this.actor = actor;
   }
 
-  _showItemDetails(event) {
-    event.preventDefault();
-    const toggler = $(event.currentTarget);
-    const toggleIcon = toggler.find('i');
-    const item = toggler.parents('.item');
-    const description = item.find('.item-description');
+  /**
+   * Open the level up or class viewer window, replacing one that's already
+   * open for this character.
+   */
+  static async #open(id, title, context, onSubmit = null) {
+    await foundry.applications.instances.get(id)?.close();
+    return new DwLevelUpWindow({ id, window: { title }, context, onSubmit }).render({ force: true });
+  }
 
-    toggler.toggleClass('open');
-    description.slideToggle();
+  /** Ability labels and icons for the ability score sections. */
+  #abilityLabels() {
+    return Object.entries(CONFIG.DW.abilities).map(([key, label]) => {
+      const value = Number(this.actor.system.abilities[key].value);
+      return {
+        short: key,
+        long: label,
+        icon: ABILITY_ICONS[key] ?? 'fa-circle',
+        value: value,
+        next: value + 1,
+        disabled: value > 17
+      };
+    });
   }
 
   async _onLevelUp(event) {
@@ -128,13 +233,7 @@ export class DwLevelUp {
     if (noAbilityScores) {
       ability_scores = [2, 1, 1, 0, 0, -1];
     }
-    let ability_labels = Object.entries(CONFIG.DW.abilities).map(a => {
-      return {
-        short: a[0],
-        long: a[1],
-        disabled: Number(this.actor.system.abilities[a[0]].value) > 17
-      }
-    });
+    let ability_labels = this.#abilityLabels();
 
     // Retrieve the actor's current moves so that we can hide them.
     const actorMoves = this.actor.items.filter(i => i.type == 'move');
@@ -305,26 +404,31 @@ export class DwLevelUp {
     }
 
     // Build the content.
-    const template = 'systems/dungeonworld/templates/dialog/level-up.html';
+    const isNewCharacter = actorData.attributes.xp.value == 0;
     const templateData = {
+      viewer: false,
       char_class: char_class,
       char_class_name: orig_class_name,
-      blurb: blurb.length > 0 ? blurb : null,
+      level_label: isNewCharacter
+        ? game.i18n.localize('DW.LevelUp.NewCharacter')
+        : game.i18n.format('DW.LevelUp.ToLevel', { level: char_level }),
+      // The class's story only when it's new to the character.
+      blurb: isNewCharacter && blurb?.length > 0 ? blurb : null,
       races: races.length > 0 ? races : null,
       alignments: alignments.length > 0 ? alignments : null,
       equipment: equipment ? equipment : null,
-      ability_scores: actorData.attributes.xp.value == 0 ? ability_scores : null,
+      ability_scores: isNewCharacter ? ability_scores : null,
       ability_mods_only: noAbilityScores,
       ability_labels: ability_labels ? ability_labels : null,
+      // Each level after the first raises one ability, unless that's off.
+      ability_increase: !isNewCharacter && !game.settings.get('dungeonworld', 'noAbilityIncrease'),
       starting_moves: starting_moves.length > 0 ? starting_moves : null,
       starting_move_groups: starting_move_groups,
       advanced_moves_2: advanced_moves_2.length > 0 ? advanced_moves_2 : null,
       advanced_moves_6: advanced_moves_6.length > 0 ? advanced_moves_6 : null,
       cast_spells: cast_spells.length > 0 && spells.length > 0 ? true : false,
       spells: spells.length > 0 ? spells : null,
-      no_ability_increase: game.settings.get('dungeonworld', 'noAbilityIncrease'),
     };
-    const html = await renderTemplate(template, templateData);
 
     const itemData = {
       moves: moves,
@@ -335,50 +439,22 @@ export class DwLevelUp {
       spells: spells,
     };
 
-    // Initialize dialog options.
-    const dlg_options = {
-      width: 920,
-      height: 640,
-      classes: ['dw-level-up', 'dungeonworld', 'sheet'],
-      resizable: true
-    };
-
-    if (DwUtility.nightmode) {
-      dlg_options.classes.push('nightmode');
-    }
-
-    // Render the dialog.
-    let d = new Dialog({
-      title: 'Level Up',
-      content: html,
-      id: 'level-up',
-      buttons: {
-        cancel: {
-          icon: '<i class="fas fa-times"></i>',
-          label: game.i18n.localize("DW.Cancel"),
-          callback: () => null
-        },
-        submit: {
-          icon: '<i class="fas fa-check"></i>',
-          label: game.i18n.localize("DW.Confirm"),
-          callback: dlg => this._onLevelUpSave(dlg, this.actor, itemData, this)
-          // callback: dlg => _onImportPower(dlg, this.actor)
-        }
-      },
-      render: () => {
-        $('.dw-level-up').find('.item-label').click(this._showItemDetails.bind(this));
-      }
-    }, dlg_options);
-    d.render(true);
+    await DwLevelUp.#open(
+      `dw-level-up-${actor.id}`,
+      `${game.i18n.localize('DW.LevelUp.Title')}: ${actor.name}`,
+      templateData,
+      form => this._onLevelUpSave(form, this.actor, itemData)
+    );
   }
 
   /**
    * Import moves.
+   * @param {HTMLFormElement} form The level up window's form.
    */
-  async _onLevelUpSave(dlg, actor, itemData) {
-    let $selected = $(dlg[0]).find('input:checked,select');
+  async _onLevelUpSave(form, actor, itemData) {
+    const selected = form.querySelectorAll('input:checked, select');
 
-    if ($selected.length <= 0) {
+    if (selected.length <= 0) {
       return;
     }
 
@@ -388,7 +464,7 @@ export class DwLevelUp {
     let abilities = [];
     let race = null;
     let alignment = null;
-    for (let input of $selected) {
+    for (let input of selected) {
       if (input.dataset.itemId) {
         if (input.dataset.type == 'move') {
           move_ids.push(input.dataset.itemId);
@@ -407,14 +483,15 @@ export class DwLevelUp {
         alignment = itemData.alignments[input.dataset.alignment];
       }
       else if (input.dataset.ability) {
-        let val = $(input).find('option:selected').val();
+        let val = input.value;
         let abl = input.dataset.ability;
-        if (val != null) {
+        // Abilities left at "—" keep their current score.
+        if (val !== '') {
           abilities[`abilities.${abl}.value`] = val;
         }
       }
       else if (input.dataset.type == 'ability-increase') {
-        let abl = $(input).val();
+        let abl = input.value;
         abilities[`abilities.${abl}.value`] = Number(actor.system.abilities[abl].value) + 1;
       }
     }
@@ -628,21 +705,13 @@ export class DwLevelUp {
     if (noAbilityScores) {
       ability_scores = [2, 1, 1, 0, 0, -1];
     }
-    let ability_labels = Object.entries(CONFIG.DW.abilities).map(a => {
-      return {
-        short: a[0],
-        long: a[1],
-        disabled: Number(this.actor.system.abilities[a[0]].value) > 17
-      }
-    });
+    let ability_labels = this.#abilityLabels();
 
     // Retrieve the actor's current moves so that we can hide them.
     const actorMoves = this.actor.items.filter(i => i.type == 'move');
 
     // Get the item moves as the priority.
-    let moves = game.items.filter(m => {
-      return true;
-    });
+    let moves = game.items.filter(m => m.type == 'move' && m.system.class == char_class_name);
     // Get the compendium moves next.
     let moves_compendium = compendium.filter(m => {
       return true;
@@ -786,61 +855,28 @@ export class DwLevelUp {
       }
     }
 
-    // Build the content.
-    const template = 'systems/dungeonworld/templates/dialog/class-viewer.html';
+    // Build the content. The viewer only lists the class: no ability scores
+    // to choose, and every race, alignment, move and spell.
     const templateData = {
+      viewer: true,
       char_class: char_class,
       char_class_name: orig_class_name,
-      blurb: blurb.length > 0 ? blurb : null,
+      blurb: blurb?.length > 0 ? blurb : null,
       races: races.length > 0 ? races : null,
       alignments: alignments.length > 0 ? alignments : null,
       equipment: equipment ? equipment : null,
-      ability_scores: actorData.attributes.xp.value == 0 ? ability_scores : null,
-      ability_mods_only: noAbilityScores,
-      ability_labels: ability_labels ? ability_labels : null,
       starting_moves: starting_moves.length > 0 ? starting_moves : null,
       starting_move_groups: starting_move_groups,
       advanced_moves_2: advanced_moves_2.length > 0 ? advanced_moves_2 : null,
       advanced_moves_6: advanced_moves_6.length > 0 ? advanced_moves_6 : null,
       cast_spells: cast_spells.length > 0 && spells.length > 0 ? true : false,
       spells: spells.length > 0 ? spells : null,
-      no_ability_increase: game.settings.get('dungeonworld', 'noAbilityIncrease'),
-    };
-    const html = await renderTemplate(template, templateData);
-
-    const itemData = {
-      moves: moves,
-      races: races,
-      alignments: alignments,
-      equipment: equipment_list,
-      class_item: class_item,
-      spells: spells,
     };
 
-    // Initialize dialog options.
-    const dlg_options = {
-      width: 920,
-      height: 640,
-      classes: ['dw-level-up', 'dungeonworld', 'sheet'],
-      resizable: true
-    };
-
-    if (DwUtility.nightmode) {
-      dlg_options.classes.push('nightmode');
-    }
-
-    // Render the dialog.
-    let d = new Dialog({
-      title: game.i18n.localize("DW.ClassViewer"),
-      content: html,
-      id: char_class_name,
-      buttons: {},
-      render: () => {
-        $('.dw-level-up').find('.item-label').click(this._showItemDetails.bind(this));
-      }
-    }, dlg_options);
-    d.render(true);
-
-
+    await DwLevelUp.#open(
+      `dw-class-viewer-${actor.id}`,
+      `${game.i18n.localize('DW.ClassViewer')}: ${orig_class_name}`,
+      templateData
+    );
   }
 }
