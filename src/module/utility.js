@@ -209,6 +209,31 @@ export class DwUtility {
 
   }
 
+  /**
+   * A character's level in each of their classes: their own class first, then
+   * any they've multiclassed into. Each level up raises one class, so these
+   * add up to the character's level. Without recorded class levels, each
+   * multiclass counts as level 1 and their own class has the rest.
+   * @param {Actor} actor
+   * @returns {{name: string, level: number, primary: boolean}[]}
+   */
+  static classLevels(actor) {
+    const overall = Math.max(1, Number(actor.system.attributes.level.value) || 1);
+    const stored = actor.flags?.dungeonworld?.classLevels ?? {};
+    const multiclasses = actor.flags?.dungeonworld?.multiclasses ?? [];
+    const others = multiclasses.map(name => ({ name, level: Math.max(1, Number(stored[name] ?? 1)), primary: false }));
+    const name = (actor.system.details.class ?? '').trim();
+    const taken = others.reduce((sum, c) => sum + c.level, 0);
+    const level = Math.max(1, Number(stored[name] ?? overall - taken));
+    return [{ name, level, primary: true }, ...others];
+  }
+
+  /** Whether two class names are the same class ("The Thief" and "Thief"). */
+  static sameClass(a, b) {
+    const clean = name => DwUtility.cleanClass(name ?? '').replace(/^the-/, '');
+    return clean(a) === clean(b);
+  }
+
   static get nightmode() {
     return document.querySelector('body').classList.contains('theme-dark');
   }

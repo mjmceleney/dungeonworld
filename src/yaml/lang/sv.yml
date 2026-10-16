@@ -142,8 +142,8 @@ DW.ChooseStartingMoves: Välj startdrag
 DW.ChooseStartingOne: 'Välj en av dessa som du börjar med:'
 DW.ChooseStartingAll: 'Du börjar även med alla dessa:'
 DW.ChooseAdvancedMoves: Välj avancerade drag
-DW.ChooseAdvanced2: När du går upp en nivå från 2-5, välj ett av de här dragen.
-DW.ChooseAdvanced6: När du går upp en nivå från 6-10, välj ett av de här dragen eller ett av nivå 2-5-drag.
+DW.ChooseAdvanced2: När du går upp en nivå från 2-10, välj ett av de här dragen.
+DW.ChooseAdvanced6: När du går upp en nivå från 6-10, välj ett av de här dragen eller ett av nivå 2-10-drag.
 DW.ChooseSpells: Välj besvärjelser
 DW.DefaultLook: "<ul><li>Ögon:</li><li>Hår:</li><li>Kropp:</li><li>Utsmyckningar:</li><li>Kläder:</li></ul>"
 DW.Cancel: Avbryt

@@ -134,7 +134,7 @@ DW.ChooseStartingMoves: Elige los movimientos iniciales
 DW.ChooseStartingOne: 'Elige uno de estos para iniciar con:'
 DW.ChooseStartingAll: 'Puedes iniciar con todos estos:'
 DW.ChooseAdvancedMoves: Elige los movimientos avanzados
-DW.ChooseAdvanced2: Cuando ganes un nivel de 2 a 5, elige entre estos movimientos.
+DW.ChooseAdvanced2: Cuando ganes un nivel de 2 a 10, elige entre estos movimientos.
 DW.ChooseAdvanced6: Cuando ganes un nivel del 6 al 10, elige entre estos movimientos
   o los del nivel 2 al 5.
 DW.ChooseSpells: Elige conjuros

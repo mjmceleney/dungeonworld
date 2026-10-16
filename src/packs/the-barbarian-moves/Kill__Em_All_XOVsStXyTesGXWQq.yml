@@ -24,6 +24,10 @@ system:
   requiresLevel: 6
   requiresMove: Appetite For Destruction
   moveGroup: ''
+  grants:
+    kind: move
+    classes: 'The Fighter, The Bard, The Thief'
+    levelOffset: 0
 ownership:
   default: 0
 effects: []

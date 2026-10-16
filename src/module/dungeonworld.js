@@ -158,6 +158,15 @@ Hooks.once("init", async function() {
     default: true
   });
 
+  game.settings.register("dungeonworld", "allowMulticlass", {
+    name: game.i18n.localize("DW.Settings.allowMulticlass.name"),
+    hint: game.i18n.localize("DW.Settings.allowMulticlass.hint"),
+    scope: 'world',
+    config: true,
+    type: Boolean,
+    default: false
+  });
+
   game.settings.register("dungeonworld", "alignmentSingle", {
     name: game.i18n.localize("DW.Settings.alignmentSingle.name"),
     hint: game.i18n.localize("DW.Settings.alignmentSingle.hint"),

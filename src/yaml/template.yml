@@ -128,6 +128,18 @@ Item:
     requiresMove: ''
     moveType:
     moveGroup: ''
+    # Moves such as Multiclass Dabbler grant a move (or spell) from another
+    # class, chosen after the level up. classes: comma-separated names, blank
+    # for any other class. levelOffset: -1 for "treat your level as one lower".
+    # Moves such as Divine Favor instead give named moves of the first listed
+    # class (moves) and let the character cast its spells (casting): as that
+    # class at level 1 when taken, one level higher each level after.
+    grants:
+      kind: ''
+      classes: ''
+      levelOffset: 0
+      moves: ''
+      casting: false
   npcMove:
     templates:
       - base
@@ -168,3 +180,5 @@ Item:
     hp: 10
     load: 6
     damage: d6
+    # Secret classes aren't offered for multiclassing or as "another class".
+    secret: false

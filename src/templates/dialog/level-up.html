@@ -121,71 +121,65 @@
     </div>
     {{/if}}
 
+    {{#if advancement}}
+    {{!-- A level up: an advanced move from a class the character has, or
+         multiclassing into a new one. The choices below the bar re-render
+         when either changes. --}}
+    <section class="dw-card dw-levelup-section dw-advance">
+      <div class="dw-advance-bar">
+        <h2 class="dw-section-title">{{localize "DW.LevelUp.Advancement"}}</h2>
+        {{#if advancement.allowMulticlass}}
+        <fieldset class="dw-segmented">
+          <legend class="dw-label">{{localize "DW.LevelUp.Advancement"}}</legend>
+          <label>
+            <input type="radio" name="dw-advance-mode" value="advanced" data-refresh {{#if (eq advancement.mode "advanced")}}checked{{/if}} {{#unless advancement.own.length}}disabled{{/unless}}/>
+            <span>{{localize "DW.LevelUp.AdvancedMove"}}</span>
+          </label>
+          <label>
+            <input type="radio" name="dw-advance-mode" value="multiclass" data-refresh {{#if (eq advancement.mode "multiclass")}}checked{{/if}} {{#unless advancement.others.length}}disabled{{/unless}}/>
+            <span>{{localize "DW.LevelUp.Multiclass"}}</span>
+          </label>
+        </fieldset>
+        {{/if}}
+        {{!-- With only one class to pick, there's nothing to choose. --}}
+        {{#ifor advancement.allowMulticlass advancement.classes.[1]}}
+        <label class="dw-advance-class">
+          <span class="dw-label">{{localize "DW.LevelUp.From"}}</span>
+          <select name="dw-advance-class" data-refresh>
+            {{#each advancement.classes}}
+            <option value="{{this}}" {{#if (eq this ../advancement.className)}}selected{{/if}}>{{this}}</option>
+            {{/each}}
+          </select>
+        </label>
+        {{else}}
+        <input type="hidden" name="dw-advance-class" value="{{advancement.className}}"/>
+        {{/ifor}}
+      </div>
+      <div class="dw-advance-choices">
+        {{> "systems/dungeonworld/templates/dialog/parts/level-up-advancement.html" advancement.section}}
+      </div>
+    </section>
+    {{else}}
+
     {{#if starting_moves}}
     <section class="dw-card dw-levelup-section">
       <h2 class="dw-section-title">{{#if viewer}}{{localize "DW.MovesStarting"}}{{else}}{{localize "DW.ChooseStartingMoves"}}{{/if}}</h2>
-      {{#each starting_move_groups as |moves group|}}
-        {{#unless @root.viewer}}
-        <p class="dw-levelup-hint">{{#if moves.0.system.moveGroup}}{{localize "DW.ChooseStartingOne"}}{{else}}{{localize "DW.ChooseStartingAll"}}{{/if}}</p>
-        {{/unless}}
-        <div class="dw-choices dw-choices--grid">
-          {{#each moves as |move|}}
-          {{> "systems/dungeonworld/templates/dialog/parts/level-up-move.html" move=move preselect=true}}
-          {{/each}}
-        </div>
-      {{/each}}
+      {{> "systems/dungeonworld/templates/dialog/parts/level-up-starting.html"}}
     </section>
     {{/if}}
 
     {{#ifor advanced_moves_2 advanced_moves_6}}
     <section class="dw-card dw-levelup-section">
       <h2 class="dw-section-title">{{#if viewer}}{{localize "DW.MovesAdvanced"}}{{else}}{{localize "DW.ChooseAdvancedMoves"}}{{/if}}</h2>
-      {{#if advanced_moves_2}}
-      <h3 class="dw-levelup-subtitle">{{localize "DW.LevelUp.Levels2"}}</h3>
-      {{#unless viewer}}<p class="dw-levelup-hint">{{localize "DW.ChooseAdvanced2"}}</p>{{/unless}}
-      <div class="dw-choices dw-choices--grid">
-        {{#each advanced_moves_2 as |move|}}
-        {{> "systems/dungeonworld/templates/dialog/parts/level-up-move.html" move=move}}
-        {{/each}}
-      </div>
-      {{/if}}
-
-      {{#if advanced_moves_6}}
-      <h3 class="dw-levelup-subtitle">{{localize "DW.LevelUp.Levels6"}}</h3>
-      {{#unless viewer}}<p class="dw-levelup-hint">{{localize "DW.ChooseAdvanced6"}}</p>{{/unless}}
-      <div class="dw-choices dw-choices--grid">
-        {{#each advanced_moves_6 as |move|}}
-        {{> "systems/dungeonworld/templates/dialog/parts/level-up-move.html" move=move}}
-        {{/each}}
-      </div>
-      {{/if}}
+      {{> "systems/dungeonworld/templates/dialog/parts/level-up-advanced.html"}}
     </section>
     {{/ifor}}
+    {{/if}}
 
     {{#if cast_spells}}
     <section class="dw-card dw-levelup-section">
       <h2 class="dw-section-title">{{#if viewer}}{{localize "DW.Spells"}}{{else}}{{localize "DW.ChooseSpells"}}{{/if}}</h2>
-      {{#each spells as |caster|}}
-        {{#if caster.description}}<div class="dw-levelup-note">{{{caster.description}}}</div>{{/if}}
-        {{#each caster.spells as |spellsByLevel spellLevel|}}
-        <h3 class="dw-levelup-subtitle">{{localize (concat "DW.Spells" spellLevel)}}</h3>
-        <div class="dw-choices dw-choices--grid">
-          {{#each spellsByLevel as |spell|}}
-          {{!-- Rotes and cantrips (level 0) are always included. --}}
-          <label class="dw-choice {{#if @root.viewer}}is-static{{else}}{{#ifEquals spellLevel 0}}is-granted{{/ifEquals}}{{/if}}">
-            {{#unless @root.viewer}}<input type="checkbox" {{#ifEquals spellLevel 0}}checked disabled{{/ifEquals}} data-item-id="{{spell.id}}" data-type="spell">{{/unless}}
-            <span class="dw-choice-body">
-              <span class="dw-choice-head">
-                <span class="dw-choice-name">{{spell.name}}</span>
-                {{#unless @root.viewer}}{{#ifEquals spellLevel 0}}<span class="dw-pill">{{localize "DW.LevelUp.Included"}}</span>{{/ifEquals}}{{/unless}}
-              </span>
-              <div class="dw-description">{{{spell.system.description}}}</div>
-            </span>
-          </label>
-          {{/each}}
-        </div>
-        {{/each}}
-      {{/each}}
+      {{> "systems/dungeonworld/templates/dialog/parts/level-up-spells.html"}}
     </section>
     {{/if}}
   </div>

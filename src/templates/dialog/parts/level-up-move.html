@@ -1,9 +1,12 @@
 {{!-- One move in the level up dialog or class viewer. Moves in a move group
      are a choose-one radio. Starting moves outside a group (preselect) are
-     included: checked and locked. --}}
+     included: checked and locked. With @root.pick (the follow-up picker),
+     every move is one radio of that name. --}}
 <label class="dw-choice {{#if @root.viewer}}is-static{{else}}{{#if preselect}}{{#unless move.system.moveGroup}}is-granted{{/unless}}{{/if}}{{/if}}">
   {{#unless @root.viewer}}
-    {{#if move.system.moveGroup}}
+    {{#if @root.pick}}
+    <input type="radio" name="{{@root.pick}}" data-item-id="{{move.id}}" data-type="move">
+    {{else if move.system.moveGroup}}
     <input type="radio" name="{{move.system.moveGroup}}" data-item-id="{{move.id}}" data-type="move">
     {{else}}
     <input type="checkbox" data-item-id="{{move.id}}" data-type="move" {{#if preselect}}checked disabled{{/if}}>

@@ -35,9 +35,7 @@ export class DwRegisterHelpers {
     });
 
     Handlebars.registerHelper('ifor', function(arg1, arg2, options) {
-      if (arg1 || arg2) {
-        return options.fn(this);
-      }
+      return (arg1 || arg2) ? options.fn(this) : options.inverse(this);
     });
 
     Handlebars.registerHelper('progressCircle', function(data) {

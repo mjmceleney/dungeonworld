@@ -27,6 +27,12 @@ system:
   requiresLevel: 2
   requiresMove: ''
   moveGroup: ''
+  grants:
+    kind: ''
+    classes: 'The Cleric'
+    levelOffset: 0
+    moves: 'Commune, Cast a Spell'
+    casting: true
 ownership:
   default: 0
 effects: []

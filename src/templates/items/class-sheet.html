@@ -73,6 +73,10 @@
             {{selectOptions selects.damages selected=system.damage blank='—'}}
           </select>
           <span class="dw-fields-hint">{{localize "DW.ClassDamageHelp"}}</span>
+
+          <span class="dw-label">{{localize "DW.ClassSecret"}}</span>
+          <input type="checkbox" name="system.secret" {{checked system.secret}}/>
+          <span class="dw-fields-hint">{{localize "DW.ClassSecretHelp"}}</span>
         </div>
       </div>
     </div>
