@@ -1,0 +1,46 @@
+// The new-style palette, shared by the V2 sheets (.dw-v2) and journals
+// (.dw-journal). Colors are custom properties, so the dark theme only swaps
+// the palette.
+
+// Parchment light theme.
+@mixin dw-palette {
+  --dw-ground: #e6dcc3;
+  --dw-surface: #f6efdc;
+  --dw-sunken: #efe5cc;
+  --dw-ink: #2a2318;
+  --dw-muted: #5c513e;
+  --dw-line: #d3c4a2;
+  --dw-navy: #2d3748;
+  --dw-on-navy: #f6efdc;
+  --dw-chip: #ebe0c5;
+  --dw-chip-hover: #e1d3b2;
+  --dw-accent: #9a3f3f;
+  --dw-on-accent: #ffffff;
+  --dw-good: #1a5fa8;
+  --dw-mid: #a8700f;
+  --dw-bad: #a81818;
+  --dw-deb: #f3d5c8;
+  --dw-deb-ink: #7d2a1e;
+  --dw-focus: #5b7094;
+}
+
+@mixin dw-palette-dark {
+  --dw-ground: #141922;
+  --dw-surface: #1e2531;
+  --dw-sunken: #192029;
+  --dw-ink: #e8ecf2;
+  --dw-muted: #a6b0c0;
+  --dw-line: #333c4b;
+  --dw-navy: #c9d3e3;
+  --dw-on-navy: #141922;
+  --dw-chip: #262f3d;
+  --dw-chip-hover: #2f3a4b;
+  --dw-accent: #d06a6a;
+  --dw-on-accent: #141922;
+  --dw-good: #7fb2ee;
+  --dw-mid: #e0b45a;
+  --dw-bad: #f08a8a;
+  --dw-deb: #4a2a2e;
+  --dw-deb-ink: #f3b9b9;
+  --dw-focus: #7fb2ee;
+}

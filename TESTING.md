@@ -203,8 +203,8 @@ Characters now open with the new **Dungeon World Character Sheet**. The previous
 **Equipment, spells, character tabs and sidebar**
 - [ ] Equipment: roll, equip toggle, uses/quantity counters (left-click +, right-click −), weight, tags in the details.
 - [ ] Spells: grouped by level; add per level; prepared toggle; roll.
-- [ ] Character tab: look, race and biography editors save; race name saves.
-- [ ] Sidebar: add, edit and delete bonds; alignment name and description save.
+- [ ] Character tab: look and biography editors save.
+- [ ] Sidebar order is Trackers, Race, Alignment, Bonds. Race and alignment names and descriptions save; add, edit and delete bonds.
 - [ ] Trackers (top of the sidebar): Hold is always the first row (can't be renamed or deleted). The small + in the card header opens a dialog for the name and an optional maximum; Save adds it, Cancel or closing adds nothing, and a blank name becomes "New tracker". On the sheet each tracker shows its name, −/+ and value, and "/ max" as plain text when it has one. −/+ stay within 0 and the max; typing a value directly also works. The edit icon reopens the dialog: rename, change or clear the max (a value above a lowered max is reduced to it), or Delete. They persist after reopening.
 - [ ] Migration: as GM, load a world where a character used the old custom resource (non-zero value or max, or a renamed label). It appears as a tracker. Characters that never used it get no tracker.
 - [ ] The roll formula override is on the Character tab and still replaces 2d6 when set.
@@ -214,6 +214,50 @@ Characters now open with the new **Dungeon World Character Sheet**. The previous
 - [ ] As an observer (not owner): everything is read-only, but tabs, section toggles, move details and search still work.
 - [ ] Switch a character to the Legacy sheet and back: both work, and the level-up dialog works from both.
 - [ ] Console: no errors from `systems/dungeonworld/…`.
+
+## 9c. Redesigned NPC sheet (ApplicationV2) [V14] [V13]
+
+NPCs now open with the **Dungeon World NPC Sheet**; the previous one is available as **Legacy NPC Sheet** from Configure Sheet. Test a few compendium monsters and a new NPC.
+
+- [ ] Header: portrait (click to change) with the art as a faded banner; name shrinks to fit; tags (Tagify: add, remove, suggestions from tag items) and special qualities save.
+- [ ] Stats band: HP −/+ and max, armor, damage formula and piercing note save. The damage button rolls the formula, and the piercing note shows as a tag on the chat card.
+- [ ] Moves tab: Basic and Special sections (both open by default, collapsible); an Other section only when an NPC move has no type. Each move shows its roll formula; the roll button rolls it; book-icon moves post their card. No favorite stars on NPC moves. + adds an NPC move of that type; edit/delete on hover; search works.
+- [ ] Description tab: the editor saves.
+- [ ] Drag NPC moves from the sidebar or a compendium onto the sheet; reorder by dragging.
+- [ ] Light and dark themes; read-only view for players without ownership.
+- [ ] Switch an NPC to the Legacy sheet and back.
+
+## 9d. Item sheets in the new style [V14] [V13]
+
+Item sheets (move, NPC move, spell, equipment, bond, tag, class) now share the character sheet's style: a header with image, name and a type line (e.g. "Move · Advanced · The Fighter"), tabs, and label/field rows.
+
+- [ ] Each type opens with its fields; everything saves on change; light and dark themes are readable.
+- [ ] Move: description, 10+/7–9/6- and choices editors; roll type (Formula reveals the formula field), modifier, class, move type, requires level/move, move group.
+- [ ] Spell: class, level, prepared, roll formula. Equipment: item type, tags (Tagify), equipped, magic, quantity, uses, weight, price, damage override for weapons.
+- [ ] Bond: the bond text editor saves without a wrapping `<p>`. Tag: name and description.
+- [ ] Class: races and alignments (add/delete/edit), settings, equipment groups (add/delete, label, mode, drag equipment in, remove with ×).
+- [ ] The stylesheet is now `styles/dist/sheets.css` (was `character-sheet.css`); after updating, fully restart Foundry so it picks up the manifest change.
+
+## 9e. Journals in the system's fonts and colors [V14] [V13]
+
+Journal windows stay Foundry's; the system only adds a class to them, which gives the title and page text Metamorphous headings, Alegreya body text, the parchment (or dark) palette, chip-style inline rolls, and banded tables. Setting **Journal Style** (world): Dungeon World journals (default), All journals, or None.
+
+- [ ] Default: a journal from GM Screen, Charts or GM Moves/Principals (in the compendium, and once imported into the world) has the new look; a journal you created yourself doesn't.
+- [ ] Light and dark themes are both readable, including inline rolls (`[[/r d6]]`) and the GM Screen tables.
+- [ ] Editing a styled text page: the editor text uses the same fonts.
+- [ ] Switching the setting restyles open journals right away (All / None / back to default).
+- [ ] The journal sidebar, page controls and window frame look exactly as before.
+
+## 9f. Level up and class viewer in the new style [V14] [V13]
+
+Both are now ApplicationV2 windows in the sheets' style (one template, `dialog/level-up.html`). Every choice is a card that's outlined when picked; included starting moves and rotes show "Included". What gets saved is unchanged.
+
+- [ ] New character (0 XP): header says "New character" and shows the class description. Race, alignment, ability scores (each score usable once; with "no ability scores" the +1s and 0s can each be used twice), equipment groups (radio or checkbox per group, Details expands), starting moves (choose-one groups are radios; the rest are included), spells. Confirm applies everything, as before: bonds, HP, load, damage die.
+- [ ] Level up (XP ≥ needed): header says "Level N", no class description. Raise one ability (18+ is disabled), advanced moves for 2–5 (and 6–10 at level 6+), spells. Confirm raises the level and subtracts XP.
+- [ ] Ability scores left at "—" keep their current value (previously they could be saved as blank).
+- [ ] Cancel and the window's close button change nothing. Opening level up again while it's open replaces the window.
+- [ ] Class viewer (from the class name): the class's races, alignments, equipment, moves and spells without inputs or a footer. World moves from other classes no longer appear in it.
+- [ ] Light and dark themes are both readable. The legacy sheet's level up button opens the same new window.
 
 ## 10. V13 regression (short)
 

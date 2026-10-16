@@ -15,8 +15,8 @@ esmodules:
 styles:
   - src: styles/lib/tagify.css
   - src: styles/dist/dungeonworld.css
-  # Unlayered, so the sheet's own control styles aren't overridden by core's.
-  - src: styles/dist/character-sheet.css
+  # Unlayered, so the sheets' own control styles aren't overridden by core's.
+  - src: styles/dist/sheets.css
     layer: null
 # @todo make a custom logo
 # media:

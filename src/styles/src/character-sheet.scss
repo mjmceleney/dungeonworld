@@ -1,7 +1,0 @@
-// The character sheet (ApplicationV2) has its own stylesheet so that it can
-// load outside Foundry's "system" cascade layer (layer: null in system.yml).
-// Layered styles lose to core's button and input styles regardless of
-// specificity, which broke the sheet's own controls.
-@import 'global/utils/colors';
-@import 'global/utils/typography';
-@import 'global/components/character-v2';

@@ -2,6 +2,16 @@ import { DwUtility } from "./utility.js";
 
 export const DW = {};
 
+/** Font Awesome icon for each ability (all in the free set, V6 and V7). */
+export const ABILITY_ICONS = {
+  str: 'fa-hand-fist',
+  dex: 'fa-person-running',
+  con: 'fa-heart-pulse',
+  int: 'fa-brain',
+  wis: 'fa-eye',
+  cha: 'fa-masks-theater',
+};
+
 DW.abilities = {
   "str": "DW.AbilityStr",
   "dex": "DW.AbilityDex",

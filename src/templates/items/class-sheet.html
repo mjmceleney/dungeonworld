@@ -1,139 +1,111 @@
-<div class="{{cssClass}} class item-form flexcol">
-  <div class="sheet-wrapper flexcol">
-    <header class="sheet-header flexrow">
-      <div class="cell cell--image">
-        <img class="profile-img" src="{{item.img}}" data-edit="img" data-action="editImage" title="{{item.name}}"/>
-      </div>
-      <div class="header-fields">
-        <h1 class="charname"><input name="name" type="text" value="{{item.name}}" placeholder="{{localize "DW.Common.Name"}}"/></h1>
-      </div>
-    </header>
+<div class="dw-item-sheet">
+  {{> "systems/dungeonworld/templates/items/parts/item-header.html"}}
 
-    {{!-- Sheet Tab Navigation --}}
-    <nav class="sheet-navigation sheet-tabs tabs" data-group="primary">
-      <a class="item {{tabs.description.cssClass}}" data-action="tab" data-group="primary" data-tab="description">{{localize "DW.Common.Description" }}</a>
-      <a class="item {{tabs.details.cssClass}}" data-action="tab" data-group="primary" data-tab="details">{{localize "DW.Common.Details" }}</a>
-      <a class="item {{tabs.equipment.cssClass}}" data-action="tab" data-group="primary" data-tab="equipment">{{localize "DW.Equipment"}}</a>
-    </nav>
+  <nav class="dw-tabs tabs">
+    <button type="button" class="dw-tab {{tabs.description.cssClass}}" data-action="tab" data-group="primary" data-tab="description">{{localize "DW.Common.Description"}}</button>
+    <button type="button" class="dw-tab {{tabs.details.cssClass}}" data-action="tab" data-group="primary" data-tab="details">{{localize "DW.Common.Details"}}</button>
+    <button type="button" class="dw-tab {{tabs.equipment.cssClass}}" data-action="tab" data-group="primary" data-tab="equipment">{{localize "DW.Equipment"}}</button>
+  </nav>
 
-    {{!-- Sheet Body --}}
-    <section class="sheet-body">
+  <section class="tab dw-panel {{tabs.description.cssClass}}" data-group="primary" data-tab="description">
+    <div class="dw-field dw-field--grow">
+      <span class="dw-label">{{localize "DW.Description"}}</span>
+      <prose-mirror name="system.description" value="{{system.description}}" toggled>{{{system.descriptionEnriched}}}</prose-mirror>
+    </div>
+  </section>
 
-      {{!-- Description Tab --}}
-      <div class="tab {{tabs.description.cssClass}}" data-group="primary" data-tab="description">
-        <prose-mirror name="system.description" value="{{system.description}}" toggled>{{{system.descriptionEnriched}}}</prose-mirror>
-      </div>
-
-      {{!-- Details Tab --}}
-      <div class="tab {{tabs.details.cssClass}}" data-group="primary" data-tab="details">
-        <div class="class-fields grid grid-3col">
-          {{!-- Races --}}
-          <div class="cell resource">
-            <div class="cell__title">
-              <label>{{localizeOverride "DW.Races" "racePlural"}}</label>
-              <a class="class-control" data-action="addListEntry" data-type="races"><i class="fas fa-plus"></i></a>
+  <section class="tab dw-panel {{tabs.details.cssClass}}" data-group="primary" data-tab="details">
+    <div class="dw-class-columns">
+      {{!-- Races --}}
+      <div class="dw-card dw-list-card">
+        <header class="dw-side-head">
+          <span class="dw-section-title">{{localizeOverride "DW.Races" "racePlural"}}</span>
+          <button type="button" class="dw-add" data-action="addListEntry" data-type="races" aria-label="{{localize "DW.Add"}}"><i class="fas fa-plus" inert></i></button>
+        </header>
+        <ul class="dw-list">
+          {{#each system.races as |race id|}}
+          <li class="dw-list-entry" data-index="{{id}}">
+            <div class="dw-list-entry-head">
+              <input type="text" name="system.races.{{id}}.label" value="{{race.label}}" aria-label="{{localizeOverride "DW.Race" "raceSingle"}}"/>
+              <button type="button" class="dw-icon-btn" data-action="deleteListEntry" data-type="races" aria-label="Delete"><i class="fas fa-trash" inert></i></button>
             </div>
-            <ul class="items-list">
-            {{#each system.races as |race id|}}
-              <li class="item race" data-index="{{id}}">
-                <div class="flexrow">
-                  <input type="text" class="input input--title" name="system.races.{{id}}.label" value="{{race.label}}" data-dtype="string"/>
-                  <a class="class-control" data-action="deleteListEntry" data-type="races"><i class="fas fa-trash"></i></a>
-                </div>
-                <textarea class="race" name="system.races.{{id}}.description" rows="5" title="What's your race?" data-dtype="String">{{race.description}}</textarea>
-              </li>
-            {{/each}}
-            </ul>
-          </div>
-          {{!-- Alignments --}}
-          <div class="cell resource">
-            <div class="cell__title">
-              <label>{{localizeOverride "DW.Alignments" "alignmentPlural"}}</label>
-              <a class="class-control" data-action="addListEntry" data-type="alignments"><i class="fas fa-plus"></i></a>
+            <textarea name="system.races.{{id}}.description" rows="4">{{race.description}}</textarea>
+          </li>
+          {{/each}}
+        </ul>
+      </div>
+
+      {{!-- Alignments --}}
+      <div class="dw-card dw-list-card">
+        <header class="dw-side-head">
+          <span class="dw-section-title">{{localizeOverride "DW.Alignments" "alignmentPlural"}}</span>
+          <button type="button" class="dw-add" data-action="addListEntry" data-type="alignments" aria-label="{{localize "DW.Add"}}"><i class="fas fa-plus" inert></i></button>
+        </header>
+        <ul class="dw-list">
+          {{#each system.alignments as |alignment id|}}
+          <li class="dw-list-entry" data-index="{{id}}">
+            <div class="dw-list-entry-head">
+              <input type="text" name="system.alignments.{{id}}.label" value="{{alignment.label}}" aria-label="{{localizeOverride "DW.Alignment" "alignmentSingle"}}"/>
+              <button type="button" class="dw-icon-btn" data-action="deleteListEntry" data-type="alignments" aria-label="Delete"><i class="fas fa-trash" inert></i></button>
             </div>
-            <ul class="items-list">
-            {{#each system.alignments as |alignment id|}}
-              <li class="item alignment" data-index="{{id}}">
-                <div class="flexrow">
-                  <input type="text" class="input input--title" name="system.alignments.{{id}}.label" value="{{alignment.label}}" data-dtype="string"/>
-                  <a class="class-control" data-action="deleteListEntry" data-type="alignments"><i class="fas fa-trash"></i></a>
-                </div>
-                <textarea class="alignment" name="system.alignments.{{id}}.description" rows="5" title="What's your alignment?" data-dtype="String">{{alignment.description}}</textarea>
-              </li>
-            {{/each}}
-            </ul>
-          </div>
-          {{!-- Other fields. --}}
-          <div class="cell resource resource--settings">
-            <div class="resource-wrapper">
-              <div class="cell__title">
-                <label>{{localize "DW.ClassSettings"}}</label>
-              </div>
-              <div class="resource">
-                <label>{{localize "DW.ClassBaseHp"}}</label>
-                <div class="help-text">{{localize "DW.ClassBaseHpHelp"}}</div>
-                <input type="text" name="system.hp" value="{{system.hp}}" data-dtype="Number">
-              </div>
-              <div class="resource">
-                <label>{{localize "DW.ClassBaseLoad"}}</label>
-                <div class="help-text">{{localize "DW.ClassBaseLoadHelp"}}</div>
-                <input type="text" name="system.load" value="{{system.load}}" data-dtype="Number">
-              </div>
-              <div class="resource">
-                <label>{{localize "DW.ClassDamage"}}</label>
-                <div class="help-text">{{localize "DW.ClassDamageHelp"}}</div>
-                <select name="system.damage" data-dtype="String">
-                  {{selectOptions selects.damages selected=system.damage blank='—'}}
-                </select>
-              </div>
-            </div>
-          </div>
+            <textarea name="system.alignments.{{id}}.description" rows="4">{{alignment.description}}</textarea>
+          </li>
+          {{/each}}
+        </ul>
+      </div>
+
+      {{!-- Class settings --}}
+      <div class="dw-card dw-list-card">
+        <header class="dw-side-head">
+          <span class="dw-section-title">{{localize "DW.ClassSettings"}}</span>
+        </header>
+        <div class="dw-fields">
+          <span class="dw-label">{{localize "DW.ClassBaseHp"}}</span>
+          <input type="number" name="system.hp" value="{{system.hp}}" step="1"/>
+          <span class="dw-fields-hint">{{localize "DW.ClassBaseHpHelp"}}</span>
+
+          <span class="dw-label">{{localize "DW.ClassBaseLoad"}}</span>
+          <input type="number" name="system.load" value="{{system.load}}" step="1"/>
+          <span class="dw-fields-hint">{{localize "DW.ClassBaseLoadHelp"}}</span>
+
+          <span class="dw-label">{{localize "DW.ClassDamage"}}</span>
+          <select name="system.damage">
+            {{selectOptions selects.damages selected=system.damage blank='—'}}
+          </select>
+          <span class="dw-fields-hint">{{localize "DW.ClassDamageHelp"}}</span>
         </div>
       </div>
+    </div>
+  </section>
 
-      <div class="tab {{tabs.equipment.cssClass}}" data-group="primary" data-tab="equipment">
+  <section class="tab dw-panel {{tabs.equipment.cssClass}}" data-group="primary" data-tab="equipment">
+    <div class="dw-card dw-equipment-intro">
+      <p>{{localize "DW.ClassEquipmentGroupHelp"}}</p>
+      <button type="button" class="dw-text-btn" data-action="addListEntry" data-type="equipment"><i class="fas fa-plus" inert></i> {{localize "DW.ClassAddEquipmentGroup"}}</button>
+    </div>
 
-        <div class="class-fields">
-
-          <div class="cell resource resource--equipment-help flexrow">
-            <div>
-              <p>{{localize "DW.ClassEquipmentGroupHelp"}}</p>
-            </div>
-            <div class="class-controls">
-              <button type="button" class="class-control" data-action="addListEntry" data-type="equipment"><i class="fas fa-plus"></i> {{localize "DW.ClassAddEquipmentGroup"}}</button>
-            </div>
-          </div>
-
-          <div class="equipment-grid grid grid-2col">
-
-            {{#each system.equipment as |equipmentGroup groupId|}}
-              <div class="cell resource equipment-group" data-index="{{groupId}}">
-                <div class="cell__title">
-                  <input type="text" name="system.equipment.{{groupId}}.label" placeholder="{{localize "DW.ClassEquipmentGroupPlaceholder"}}" value="{{equipmentGroup.label}}">
-                  <select name="system.equipment.{{groupId}}.mode">
-                    {{selectOptions ../selects.equipmentGroupModes selected=equipmentGroup.mode localize=true}}
-                  </select>
-                  <div class="class-controls">
-                    <a class="class-control" data-action="deleteListEntry" data-type="equipment"><i class="fas fa-trash"></i></a>
-                  </div>
-                </div>
-                <div class="item-container drop-area" data-group="{{groupId}}">
-                  {{#if equipmentGroup.objects }}
-                    <ul class="tags">
-                    {{#each equipmentGroup.objects as |item key|}}
-                      <li class="tag" data-item-id="{{item.id}}">{{item.name}}<span class="remove-tag delete-equipment" role="button" data-action="removeEquipment"></span></li>
-                    {{/each}}
-                    </ul>
-                  {{else}}
-                  <span>{{localize "DW.ClassEquipmentDropText"}}</span>
-                  {{/if}}
-                </div>
-              </div>
-            {{/each}}
-
-          </div>
+    <div class="dw-equipment-groups">
+      {{#each system.equipment as |equipmentGroup groupId|}}
+      <div class="dw-card dw-list-card" data-index="{{groupId}}">
+        <div class="dw-group-head">
+          <input type="text" name="system.equipment.{{groupId}}.label" placeholder="{{localize "DW.ClassEquipmentGroupPlaceholder"}}" value="{{equipmentGroup.label}}"/>
+          <select name="system.equipment.{{groupId}}.mode">
+            {{selectOptions ../selects.equipmentGroupModes selected=equipmentGroup.mode localize=true}}
+          </select>
+          <button type="button" class="dw-icon-btn" data-action="deleteListEntry" data-type="equipment" aria-label="Delete"><i class="fas fa-trash" inert></i></button>
+        </div>
+        <div class="item-container drop-area" data-group="{{groupId}}">
+          {{#each equipmentGroup.objects as |item key|}}
+          <span class="tag dw-equipment-chip" data-item-id="{{item.id}}">
+            {{item.name}}
+            <button type="button" class="dw-icon-btn" data-action="removeEquipment" aria-label="Remove {{item.name}}"><i class="fas fa-xmark" inert></i></button>
+          </span>
+          {{else}}
+          <span>{{localize "DW.ClassEquipmentDropText"}}</span>
+          {{/each}}
         </div>
       </div>
-    </section>
-  </div>
+      {{/each}}
+    </div>
+  </section>
 </div>

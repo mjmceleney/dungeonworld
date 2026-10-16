@@ -1,4 +1,4 @@
-import { DwClassList } from "../config.js";
+import { DwClassList, ABILITY_ICONS } from "../config.js";
 import { DwUtility } from "../utility.js";
 import { DwRolls } from "../rolls.js";
 import { DwLevelUp } from "./level-up.js";
@@ -12,15 +12,6 @@ const TEMPLATES = "systems/dungeonworld/templates/sheet/character";
 /** Sections that start collapsed until the player opens them. */
 const DEFAULT_COLLAPSED = ['special', 'other'];
 
-/** Font Awesome icon for each ability (all in the free set, V6 and V7). */
-const ABILITY_ICONS = {
-  str: 'fa-hand-fist',
-  dex: 'fa-person-running',
-  con: 'fa-heart-pulse',
-  int: 'fa-brain',
-  wis: 'fa-eye',
-  cha: 'fa-masks-theater',
-};
 
 /** Spell levels, in display order. */
 const SPELL_LEVELS = [0, 1, 3, 5, 7, 9];
@@ -158,6 +149,17 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   /*  Context                                     */
   /* -------------------------------------------- */
 
+  /**
+   * The document sheet's own context, without any character data. Lets
+   * subclasses such as the NPC sheet build their own context from scratch.
+   *
+   * @param {Object} options
+   * @return {Promise<Object>}
+   */
+  _prepareDocumentContext(options) {
+    return super._prepareContext(options);
+  }
+
   /** @override */
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
@@ -233,6 +235,7 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
 
       // Tabs.
       moveSections: moveSections.sections,
+      moveItemType: 'move',
       moveQuery: this._moveQuery,
       equipment: items.equipment,
       spellLevels: items.spellLevels,
@@ -247,7 +250,7 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   /** @override */
   async _preparePartContext(partId, context, options) {
     context = await super._preparePartContext(partId, context, options);
-    if (DwCharacterSheet.TAB_IDS.includes(partId)) context.tab = context.tabs[partId];
+    if (this.constructor.TAB_IDS.includes(partId)) context.tab = context.tabs[partId];
     return context;
   }
 
@@ -262,10 +265,11 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       equipment: 'DW.Equipment',
       spells: 'DW.Spells',
       character: 'DW.Sheet.Character_Tab',
+      description: 'DW.Description',
     };
     const active = this.tabGroups.primary;
     const tabs = {};
-    for (let id of DwCharacterSheet.TAB_IDS) {
+    for (let id of this.constructor.TAB_IDS) {
       tabs[id] = {
         id: id,
         group: 'primary',
@@ -387,18 +391,22 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         type: item.type,
         expanded: this._expanded.has(item.id),
         favorite: !!item.flags?.dungeonworld?.favorite,
-        isMove: item.type == 'move',
+        isMove: item.type == 'move' || item.type == 'npcMove',
+        canFavorite: item.type == 'move',
         isEquipment: item.type == 'equipment',
         isSpell: item.type == 'spell',
         results: [],
       };
       if (system.description) enrich(row, 'description', system.description, item);
 
-      if (item.type == 'move') {
-        const rollType = system.rollType ?? '';
+      if (item.type == 'move' || item.type == 'npcMove') {
+        // NPC moves only have a roll formula; show it in place of a stat.
+        const rollType = item.type == 'npcMove' ? (system.rollFormula ? 'FORMULA' : '') : (system.rollType ?? '');
         row.moveType = system.moveType ?? '';
         row.className = system.class ?? '';
-        row.rollIcon = rollType ? 'dice' : (system.rollFormula ? 'formula' : 'none');
+        row.rollIcon = item.type == 'npcMove'
+          ? (system.rollFormula ? 'formula' : 'none')
+          : (rollType ? 'dice' : (system.rollFormula ? 'formula' : 'none'));
         row.stat = rollType == 'FORMULA' ? (system.rollFormula ?? '')
           : (rollType == 'BOND' ? game.i18n.localize('DW.Modifier')
           : (rollType ? game.i18n.localize(`DW.${rollType}`) : ''));
@@ -490,7 +498,7 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     }
 
     const section = (id, title, rows, extra = {}) => {
-      const isCollapsed = collapsed[id] ?? DEFAULT_COLLAPSED.includes(id);
+      const isCollapsed = collapsed[id] ?? this._isCollapsedByDefault(id);
       return {
         id: id,
         title: title,
@@ -533,6 +541,16 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     }));
 
     return { sections, multiclass };
+  }
+
+  /**
+   * Whether a move section starts collapsed before the player toggles it.
+   *
+   * @param {string} id Section id.
+   * @return {boolean}
+   */
+  _isCollapsedByDefault(id) {
+    return DEFAULT_COLLAPSED.includes(id);
   }
 
   /**
@@ -779,7 +797,8 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       formula: `${damage.value}${damage.misc ? '+' + damage.misc : ''}`,
       templateData: {
         title: game.i18n.localize('DW.Damage'),
-        flavor: '',
+        // NPCs note piercing here (e.g. "2 piercing"); it's shown as a tag.
+        flavor: this.actor.type == 'npc' ? (damage.piercing ?? '') : '',
         rollType: 'damage',
       },
     });
@@ -891,7 +910,7 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     event.preventDefault();
     const id = target.closest('[data-section]')?.dataset.section;
     if (!id) return;
-    const collapsed = !(this._getCollapsedState()[id] ?? DEFAULT_COLLAPSED.includes(id));
+    const collapsed = !(this._getCollapsedState()[id] ?? this._isCollapsedByDefault(id));
     if (this.isEditable) {
       delete this._localCollapsed[id];
       await this.actor.update({ [`flags.dungeonworld.sheetDisplay.collapsed.${id}`]: collapsed });

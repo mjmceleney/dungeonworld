@@ -1,13 +1,10 @@
-<div class="{{cssClass}} item-form flexcol">
-    <header class="sheet-header flexrow">
-        <img class="profile-img" src="{{item.img}}" data-edit="img" data-action="editImage" title="{{item.name}}"/>
-        <div class="header-fields">
-            <h1 class="charname"><input name="name" type="text" value="{{item.name}}" placeholder="{{localize "DW.Common.Name"}}"/></h1>
-        </div>
-    </header>
+<div class="dw-item-sheet">
+  {{> "systems/dungeonworld/templates/items/parts/item-header.html"}}
 
-    {{!-- Sheet Body --}}
-    <section class="sheet-body">
-        <prose-mirror name="system.description" value="{{system.description}}" toggled>{{{system.descriptionEnriched}}}</prose-mirror>
-    </section>
+  <section class="dw-panel dw-panel--solo">
+    <div class="dw-field dw-field--grow">
+      <span class="dw-label">{{localize "DW.Description"}}</span>
+      <prose-mirror name="system.description" value="{{system.description}}" toggled>{{{system.descriptionEnriched}}}</prose-mirror>
+    </div>
+  </section>
 </div>

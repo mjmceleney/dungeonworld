@@ -1,0 +1,32 @@
+{{!-- One move in the level up dialog or class viewer. Moves in a move group
+     are a choose-one radio. Starting moves outside a group (preselect) are
+     included: checked and locked. --}}
+<label class="dw-choice {{#if @root.viewer}}is-static{{else}}{{#if preselect}}{{#unless move.system.moveGroup}}is-granted{{/unless}}{{/if}}{{/if}}">
+  {{#unless @root.viewer}}
+    {{#if move.system.moveGroup}}
+    <input type="radio" name="{{move.system.moveGroup}}" data-item-id="{{move.id}}" data-type="move">
+    {{else}}
+    <input type="checkbox" data-item-id="{{move.id}}" data-type="move" {{#if preselect}}checked disabled{{/if}}>
+    {{/if}}
+  {{/unless}}
+  <span class="dw-choice-body">
+    <span class="dw-choice-head">
+      <span class="dw-choice-name">{{move.name}}</span>
+      {{#unless @root.viewer}}{{#if preselect}}{{#unless move.system.moveGroup}}<span class="dw-pill">{{localize "DW.LevelUp.Included"}}</span>{{/unless}}{{/if}}{{/unless}}
+      {{#if move.system.requiresMove}}<span class="dw-badge">{{localize "DW.LevelUp.Requires"}} {{move.system.requiresMove}}</span>{{/if}}
+    </span>
+    <div class="dw-description">{{{move.system.description}}}</div>
+    {{#if move.system.moveResults.success.value}}
+    <div class="dw-result dw-result--success"><strong>10+</strong><div>{{{move.system.moveResults.success.value}}}</div></div>
+    {{/if}}
+    {{#if move.system.moveResults.partial.value}}
+    <div class="dw-result dw-result--partial"><strong>7–9</strong><div>{{{move.system.moveResults.partial.value}}}</div></div>
+    {{/if}}
+    {{#if move.system.moveResults.failure.value}}
+    <div class="dw-result dw-result--failure"><strong>6-</strong><div>{{{move.system.moveResults.failure.value}}}</div></div>
+    {{/if}}
+    {{#if move.system.choices}}
+    <div class="dw-result dw-result--choices"><strong>{{localize "DW.Choices"}}</strong><div>{{{move.system.choices}}}</div></div>
+    {{/if}}
+  </span>
+</label>

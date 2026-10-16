@@ -1,0 +1,8 @@
+{{!-- Shared item sheet header: image, name, and what kind of item it is. --}}
+<header class="dw-card dw-item-header">
+  <img class="dw-item-img" src="{{item.img}}" data-edit="img" data-action="editImage" alt="{{item.name}}" title="{{item.name}}" width="56" height="56"/>
+  <div class="dw-identity">
+    <input class="dw-name" type="text" name="name" value="{{item.name}}" placeholder="{{localize "DW.Common.Name"}}" aria-label="{{localize "DW.Common.Name"}}"/>
+    <span class="dw-item-type">{{typeLabel}}</span>
+  </div>
+</header>

@@ -14,7 +14,7 @@
         {{#if hint}}<span class="dw-pill">{{hint}}</span>{{/if}}
       </button>
       {{#if canCreate}}{{#if ../editable}}
-      <button type="button" class="dw-add" data-action="createItem" data-type="move" data-move-type="{{createType}}" aria-label="{{localize "DW.MoveCreate"}}">
+      <button type="button" class="dw-add" data-action="createItem" data-type="{{../moveItemType}}" data-move-type="{{createType}}" aria-label="{{localize "DW.MoveCreate"}}">
         <i class="fas fa-plus" inert></i>
       </button>
       {{/if}}{{/if}}

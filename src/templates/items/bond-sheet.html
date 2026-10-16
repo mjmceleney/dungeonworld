@@ -1,10 +1,7 @@
-<div class="{{cssClass}} item-form flexcol">
-  <div class="sheet-wrapper flexcol">
-    {{!-- Sheet Body --}}
-    <section class="sheet-body">
-      <div class="cell cell--bond">
-      <prose-mirror name="name" value="{{item.name}}" toggled>{{{nameEnriched}}}</prose-mirror>
-      </div>
-    </section>
-  </div>
+<div class="dw-item-sheet">
+  {{!-- A bond is just its text, stored as the item name. --}}
+  <section class="dw-card dw-bond-sheet">
+    <span class="dw-label">{{localizeOverride "DW.Bond" "bondSingle"}}</span>
+    <prose-mirror name="name" value="{{item.name}}" toggled>{{{nameEnriched}}}</prose-mirror>
+  </section>
 </div>
