@@ -1,0 +1,27 @@
+{{!-- What this level's advancement offers, for the chosen mode and class:
+     that class's advanced moves, or (multiclassing) its starting moves and
+     spells. Re-rendered on its own when the mode or class changes. --}}
+{{#if level_hint}}<span class="dw-pill dw-advance-level">{{level_hint}}</span>{{/if}}
+{{#if multiclass}}
+  {{#ifor starting_move_groups spells}}
+  <p class="dw-levelup-hint">{{localize "DW.LevelUp.MulticlassHint"}}</p>
+  {{#if starting_move_groups}}
+  <h3 class="dw-levelup-subtitle">{{localize "DW.LevelUp.Starting"}}</h3>
+  {{> "systems/dungeonworld/templates/dialog/parts/level-up-starting.html"}}
+  {{/if}}
+  {{#if spells}}
+  {{> "systems/dungeonworld/templates/dialog/parts/level-up-spells.html"}}
+  {{/if}}
+  {{else}}
+  <p class="dw-levelup-hint">{{localize "DW.LevelUp.NoMoves"}}</p>
+  {{/ifor}}
+{{else}}
+  {{#ifor advanced_moves_2 advanced_moves_6}}
+  {{> "systems/dungeonworld/templates/dialog/parts/level-up-advanced.html"}}
+  {{else}}
+  <p class="dw-levelup-hint">{{localize "DW.LevelUp.NoMoves"}}</p>
+  {{/ifor}}
+  {{#if spells}}
+  {{> "systems/dungeonworld/templates/dialog/parts/level-up-spells.html"}}
+  {{/if}}
+{{/if}}

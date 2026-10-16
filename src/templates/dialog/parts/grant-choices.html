@@ -1,0 +1,16 @@
+{{!-- The moves or spells one class offers in the follow-up picker; pick one.
+     Re-rendered on its own when the class changes. --}}
+{{#if spells}}
+  {{> "systems/dungeonworld/templates/dialog/parts/level-up-spells.html"}}
+{{else if groups}}
+  {{#each groups as |group|}}
+  <h3 class="dw-levelup-subtitle">{{group.title}}</h3>
+  <div class="dw-choices dw-choices--grid">
+    {{#each group.moves as |move|}}
+    {{> "systems/dungeonworld/templates/dialog/parts/level-up-move.html" move=move}}
+    {{/each}}
+  </div>
+  {{/each}}
+{{else}}
+  <p class="dw-levelup-hint">{{localize "DW.LevelUp.NoMoves"}}</p>
+{{/if}}

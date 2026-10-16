@@ -356,6 +356,37 @@
     gap: 4px 6px;
   }
 
+  .dw-class-level-pill {
+    font-weight: 700;
+    color: var(--dw-navy);
+  }
+
+  // Character tab: level per class, once there's more than one.
+  .dw-class-levels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+  }
+
+  .dw-class-level {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+
+    label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+  }
+
+  .dw-start-over {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+  }
+
   input.dw-class-input {
     flex: 1 1 100px;
     min-width: 0;

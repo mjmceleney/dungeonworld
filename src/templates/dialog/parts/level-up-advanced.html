@@ -1,0 +1,21 @@
+{{!-- Advanced moves for levels 2–10 and 6–10. Expects advanced_moves_2 and
+     advanced_moves_6. --}}
+{{#if advanced_moves_2}}
+<h3 class="dw-levelup-subtitle">{{localize "DW.LevelUp.Levels2"}}</h3>
+{{#unless @root.viewer}}<p class="dw-levelup-hint">{{localize "DW.ChooseAdvanced2"}}</p>{{/unless}}
+<div class="dw-choices dw-choices--grid">
+  {{#each advanced_moves_2 as |move|}}
+  {{> "systems/dungeonworld/templates/dialog/parts/level-up-move.html" move=move}}
+  {{/each}}
+</div>
+{{/if}}
+
+{{#if advanced_moves_6}}
+<h3 class="dw-levelup-subtitle">{{localize "DW.LevelUp.Levels6"}}</h3>
+{{#unless @root.viewer}}<p class="dw-levelup-hint">{{localize "DW.ChooseAdvanced6"}}</p>{{/unless}}
+<div class="dw-choices dw-choices--grid">
+  {{#each advanced_moves_6 as |move|}}
+  {{> "systems/dungeonworld/templates/dialog/parts/level-up-move.html" move=move}}
+  {{/each}}
+</div>
+{{/if}}

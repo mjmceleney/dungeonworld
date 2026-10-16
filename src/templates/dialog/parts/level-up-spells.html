@@ -1,0 +1,34 @@
+{{!-- Spells, for each casting class: how the class prepares them, then the
+     spells by level. Rotes and cantrips (level 0) are included. Expects
+     spells; with pick, each spell is a radio of that name instead. --}}
+{{#each spells as |caster|}}
+  {{#if caster.heading}}<h3 class="dw-levelup-caster">{{caster.heading}}</h3>{{/if}}
+  {{#if caster.description}}<div class="dw-levelup-note">{{{caster.description}}}</div>{{/if}}
+  {{#each caster.spells as |spellsByLevel spellLevel|}}
+  <h3 class="dw-levelup-subtitle">{{localize (concat "DW.Spells" spellLevel)}}</h3>
+  <div class="dw-choices dw-choices--grid">
+    {{#each spellsByLevel as |spell|}}
+    {{#if @root.pick}}
+    <label class="dw-choice">
+      <input type="radio" name="{{@root.pick}}" data-item-id="{{spell.id}}" data-type="spell">
+      <span class="dw-choice-body">
+        <span class="dw-choice-name">{{spell.name}}</span>
+        <div class="dw-description">{{{spell.system.description}}}</div>
+      </span>
+    </label>
+    {{else}}
+    <label class="dw-choice {{#if @root.viewer}}is-static{{else}}{{#ifEquals spellLevel 0}}is-granted{{/ifEquals}}{{/if}}">
+      {{#unless @root.viewer}}<input type="checkbox" {{#ifEquals spellLevel 0}}checked disabled{{/ifEquals}} data-item-id="{{spell.id}}" data-type="spell">{{/unless}}
+      <span class="dw-choice-body">
+        <span class="dw-choice-head">
+          <span class="dw-choice-name">{{spell.name}}</span>
+          {{#unless @root.viewer}}{{#ifEquals spellLevel 0}}<span class="dw-pill">{{localize "DW.LevelUp.Included"}}</span>{{/ifEquals}}{{/unless}}
+        </span>
+        <div class="dw-description">{{{spell.system.description}}}</div>
+      </span>
+    </label>
+    {{/if}}
+    {{/each}}
+  </div>
+  {{/each}}
+{{/each}}

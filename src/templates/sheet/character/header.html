@@ -14,6 +14,9 @@
         {{/each}}
       </datalist>
       <button type="button" class="dw-icon-btn" data-action="viewClass" data-tooltip="DW.ClassViewer" aria-label="{{localize "DW.ClassViewer"}}"><i class="fas fa-book" inert></i></button>
+      {{#each classLevels.list}}
+      <span class="dw-pill dw-class-level-pill" data-tooltip="DW.Sheet.ClassLevels">{{short}} {{level}}</span>
+      {{/each}}
       {{#each multiclass}}
       <span class="dw-pill" data-tooltip="DW.Sheet.MulticlassTag">+ {{this}}</span>
       {{/each}}

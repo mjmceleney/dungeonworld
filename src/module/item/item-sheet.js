@@ -239,6 +239,11 @@ export class DwItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
         BOND: 'DW.Modifier',
         FORMULA: 'DW.FORMULA',
       };
+
+      selects.grantKinds = {
+        move: 'DW.Grants.Move',
+        spell: 'DW.Grants.Spell',
+      };
     }
     if (type == 'class') {
       selects.damages = {

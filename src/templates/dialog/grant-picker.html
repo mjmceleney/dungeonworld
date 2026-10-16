@@ -1,0 +1,39 @@
+{{!-- After a level up: pick the move (or spell) that a move such as
+     Multiclass Dabbler grants, from the classes it allows. --}}
+<div class="dw-levelup">
+  <div class="dw-levelup-body">
+    <header class="dw-card dw-levelup-head">
+      <div class="dw-levelup-title">
+        <h1 class="dw-levelup-class">{{move_name}}</h1>
+        <span class="dw-pill">{{level_label}}</span>
+      </div>
+      {{#if move_description}}<div class="dw-levelup-blurb">{{{move_description}}}</div>{{/if}}
+    </header>
+
+    <section class="dw-card dw-levelup-section dw-advance">
+      <div class="dw-advance-bar">
+        <h2 class="dw-section-title">{{title}}</h2>
+        {{#if classes.[1]}}
+        <label class="dw-advance-class">
+          <span class="dw-label">{{localize "DW.LevelUp.From"}}</span>
+          <select name="dw-grant-class" data-refresh>
+            {{#each classes}}
+            <option value="{{this}}" {{#if (eq this ../className)}}selected{{/if}}>{{this}}</option>
+            {{/each}}
+          </select>
+        </label>
+        {{else if className}}
+        <span class="dw-pill">{{className}}</span>
+        {{/if}}
+      </div>
+      <div class="dw-advance-choices">
+        {{> "systems/dungeonworld/templates/dialog/parts/grant-choices.html" section}}
+      </div>
+    </section>
+  </div>
+
+  <footer class="dw-levelup-footer">
+    <button type="button" class="dw-text-btn" data-action="cancel"><i class="fas fa-forward" inert></i> {{localize "DW.LevelUp.Skip"}}</button>
+    <button type="submit" class="dw-text-btn dw-primary-btn"><i class="fas fa-check" inert></i> {{localize "DW.Confirm"}}</button>
+  </footer>
+</div>

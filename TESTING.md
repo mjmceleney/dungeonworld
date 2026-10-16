@@ -253,11 +253,35 @@ Journal windows stay Foundry's; the system only adds a class to them, which give
 Both are now ApplicationV2 windows in the sheets' style (one template, `dialog/level-up.html`). Every choice is a card that's outlined when picked; included starting moves and rotes show "Included". What gets saved is unchanged.
 
 - [ ] New character (0 XP): header says "New character" and shows the class description. Race, alignment, ability scores (each score usable once; with "no ability scores" the +1s and 0s can each be used twice), equipment groups (radio or checkbox per group, Details expands), starting moves (choose-one groups are radios; the rest are included), spells. Confirm applies everything, as before: bonds, HP, load, damage die.
-- [ ] Level up (XP ≥ needed): header says "Level N", no class description. Raise one ability (18+ is disabled), advanced moves for 2–5 (and 6–10 at level 6+), spells. Confirm raises the level and subtracts XP.
+- [ ] Level up (XP ≥ needed): header says "Level N", no class description. Raise one ability (18+ is disabled), advanced moves under "Levels 2–10" (and "Levels 6–10" at level 6+), spells. Confirm raises the level and subtracts XP.
 - [ ] Ability scores left at "—" keep their current value (previously they could be saved as blank).
+- [ ] Max HP on a level up: if it's exactly class HP + CON beforehand, it's recalculated (raising CON raises max and current HP). If it's anything else (e.g. lowered by hand for a homebrew move), it's left alone, with a notice only if CON was raised. A new character always gets class HP + CON.
 - [ ] Cancel and the window's close button change nothing. Opening level up again while it's open replaces the window.
 - [ ] Class viewer (from the class name): the class's races, alignments, equipment, moves and spells without inputs or a footer. World moves from other classes no longer appear in it.
 - [ ] Light and dark themes are both readable. The legacy sheet's level up button opens the same new window.
+
+## 9g. Multiclassing and moves from other classes [V14] [V13]
+
+- [ ] Setting **Allow Multiclassing** (world, off by default). Off: no Advanced move / Multiclass switch at level up; a single-class character just sees their class's moves (no class picker); characters who already multiclassed can still pick between their classes. Multiclass Dabbler, Divine Favor and similar moves work either way. An unrecognized class with it off only raises an ability. Turn it on for the checks below.
+
+A level up (not a new character) has a **This level** card: **Advanced move** (from your class, or one you've multiclassed into) or **Multiclass** (any other class), plus a **From** class picker. Changing either swaps only the moves below it; the ability increase and spells keep their choices. Multiclassed classes are stored in `flags.dungeonworld.multiclasses`.
+
+- [ ] Advanced move, your own class: same moves as before. Spells for every casting class you have are listed (named per class when there's more than one).
+- [ ] Multiclass into the Wizard (e.g. from the Bard): the Wizard's starting moves (included), rotes, and 1st level spells to choose. Confirm adds them, raises the level and records the class; no HP, load, damage or bond changes.
+- [ ] Next level up: the Wizard is in the Advanced move list and offers its 2–10 moves; the Multiclass list no longer has it.
+- [ ] Moves that grant another class's move open a picker after the level up window closes (Skip adds nothing):
+  - Multiclass Dabbler/Initiate/Master: any class but your own, moves up to your level − 1, never other multiclass moves.
+  - Barbarian's Appetite for Destruction / Kill 'Em All: only the Fighter, Bard and Thief.
+  - Druid's Hunter's Brother / Stalker's Sister: only the Ranger. Ranger's Special Trick: any other class.
+  - Wizard's Expanded Spellbook: a spell from another casting class (the Cleric), up to your level.
+- [ ] Move sheet, Details: **Grants** (nothing / a move / a spell), **From classes**, **Level offset**. A homebrew move with Grants set opens the picker too.
+- [ ] Paladin's Divine Favor (and Ranger's God Amidst the Wastes): taking it adds the Cleric's Commune and Cast a Spell, then opens "Choose Cleric spells" as a level 1 cleric (rotes included, 1st level spells to pick). At each later level up, the spells section has "Cleric spells (Divine Favor, as level N)", one level higher each time. Move sheet fields: **Also gain** and **Cast its spells**, using the first class in From classes.
+- [ ] Class levels: each level up raises the class chosen in "This level" (a new class starts at 1); the overall level still rises and drives XP. The card shows e.g. "Wizard level 1 → 2", and that class's moves **and spells** are offered up to its class level. Only the advancing class offers new spells (Divine Favor-style spells still grow every level). Existing characters: each multiclass counts as 1, the main class has the rest.
+- [ ] Sheet with two or more classes: header shows "Bard 3", "Wizard 1" pills; the Character tab has editable **Class levels**, with a warning if they don't add up to the character's level. Multiclass Dabbler on a Bard 3 / Wizard 1 picks moves up to level 2 (Bard level − 1).
+- [ ] Character tab, × next to a multiclass: asks first, removes it from the classes and class levels, and (ticked by default) its moves and spells. The level is unchanged, so the mismatch warning shows until it's lowered.
+- [ ] Character tab (GM only), **Start over…**: back to level 1 with 0 XP, multiclasses and class levels cleared. Removes class moves and spells by default (basic and special moves stay); equipment, bonds and race/alignment only when ticked. The level 1 builder is then available.
+- [ ] Class sheet, Class Settings: **Secret class**. A secret class isn't in the Multiclass list or in "any other class" pickers (Dabbler, Special Trick), but is offered when a move's From classes names it. Players don't see it in the sheet's class suggestions (the GM does). A character of that class levels up in it as normal.
+- [ ] A character whose class isn't recognized can level up once they have the XP: ability increase and Multiclass only (Advanced move is greyed out). The sheet's level up button allows it; a new character with an unknown class still can't use the builder.
 
 ## 10. V13 regression (short)
 

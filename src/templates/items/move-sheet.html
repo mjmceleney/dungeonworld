@@ -57,6 +57,34 @@
       <span class="dw-label">{{localize "DW.MoveGroup"}}</span>
       <input type="text" name="system.moveGroup" value="{{system.moveGroup}}" placeholder="ex: barbarian-armor"/>
       <span class="dw-fields-hint">{{localize "DW.MoveGroupHelp"}}</span>
+
+      {{!-- Moves like Multiclass Dabbler: after the level up, pick a move (or
+           spell) from another class. --}}
+      <span class="dw-label">{{localize "DW.Grants.Label"}}</span>
+      <select name="system.grants.kind">
+        {{selectOptions selects.grantKinds selected=system.grants.kind blank=(localize "DW.Grants.None") localize=true}}
+      </select>
+      <span class="dw-fields-hint">{{localize "DW.Grants.Hint"}}</span>
+
+      <span class="dw-label">{{localize "DW.Grants.Classes"}}</span>
+      <input type="text" name="system.grants.classes" value="{{system.grants.classes}}" placeholder="ex: The Fighter, The Thief"/>
+      <span class="dw-fields-hint">{{localize "DW.Grants.ClassesHint"}}</span>
+
+      {{#if system.grants.kind}}
+      <span class="dw-label">{{localize "DW.Grants.LevelOffset"}}</span>
+      <input type="number" name="system.grants.levelOffset" value="{{system.grants.levelOffset}}" step="1"/>
+      <span class="dw-fields-hint">{{localize "DW.Grants.LevelOffsetHint"}}</span>
+      {{/if}}
+
+      {{!-- Moves like Divine Favor: named moves and spellcasting of the first
+           class above. --}}
+      <span class="dw-label">{{localize "DW.Grants.Moves"}}</span>
+      <input type="text" name="system.grants.moves" value="{{system.grants.moves}}" placeholder="ex: Commune, Cast a Spell"/>
+      <span class="dw-fields-hint">{{localize "DW.Grants.MovesHint"}}</span>
+
+      <span class="dw-label">{{localize "DW.Grants.Casting"}}</span>
+      <input type="checkbox" name="system.grants.casting" {{checked system.grants.casting}}/>
+      <span class="dw-fields-hint">{{localize "DW.Grants.CastingHint"}}</span>
     </div>
   </section>
 </div>

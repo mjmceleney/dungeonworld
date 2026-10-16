@@ -1,0 +1,12 @@
+{{!-- Starting moves, by move group: a group is choose-one; moves outside a
+     group are included. Expects starting_move_groups. --}}
+{{#each starting_move_groups as |moves group|}}
+  {{#unless @root.viewer}}
+  <p class="dw-levelup-hint">{{#if moves.0.system.moveGroup}}{{localize "DW.ChooseStartingOne"}}{{else}}{{localize "DW.ChooseStartingAll"}}{{/if}}</p>
+  {{/unless}}
+  <div class="dw-choices dw-choices--grid">
+    {{#each moves as |move|}}
+    {{> "systems/dungeonworld/templates/dialog/parts/level-up-move.html" move=move preselect=true}}
+    {{/each}}
+  </div>
+{{/each}}

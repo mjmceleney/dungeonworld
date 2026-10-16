@@ -22,6 +22,10 @@ system:
   requiresLevel: 6
   requiresMove: ''
   moveGroup: ''
+  grants:
+    kind: move
+    classes: 'The Ranger'
+    levelOffset: 0
 ownership:
   default: 0
 effects: []

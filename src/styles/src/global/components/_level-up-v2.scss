@@ -391,6 +391,77 @@
     }
   }
 
+  // This level's advancement: advanced move or multiclass, and the class.
+  .dw-advance-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+
+    .dw-section-title {
+      margin-right: auto;
+    }
+
+    .dw-segmented {
+      flex: 0 0 auto;
+
+      label {
+        padding: 4px 14px;
+        white-space: nowrap;
+      }
+
+      // The sheet marks the chosen option on render; here it changes live.
+      label:has(input:checked) {
+        background: var(--dw-navy);
+        color: var(--dw-on-navy);
+        font-weight: 700;
+      }
+
+      label:has(input:disabled) {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  .dw-advance-class {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    select {
+      min-width: 180px;
+    }
+  }
+
+  .dw-advance-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    // The class level being reached.
+    .dw-advance-level {
+      align-self: flex-start;
+      font-weight: 700;
+      color: var(--dw-navy);
+    }
+
+    &:empty {
+      display: none;
+    }
+  }
+
+  // A class's name over its spells, when more than one class casts.
+  .dw-levelup-caster {
+    margin: 6px 0 0;
+    padding: 0;
+    border: 0;
+    font-family: $font-stack-secondary;
+    font-size: 16px;
+    font-weight: normal;
+    color: var(--dw-navy);
+  }
+
   // Cancel and confirm, always in view.
   .dw-levelup-footer {
     flex: none;

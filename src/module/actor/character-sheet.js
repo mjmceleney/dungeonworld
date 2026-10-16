@@ -96,6 +96,8 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       addTracker: DwCharacterSheet.#onAddTracker,
       editTracker: DwCharacterSheet.#onEditTracker,
       adjustTracker: DwCharacterSheet.#onAdjustTracker,
+      removeMulticlass: DwCharacterSheet.#onRemoveMulticlass,
+      startOver: DwCharacterSheet.#onStartOver,
     },
   };
 
@@ -175,7 +177,7 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const enrich = (text) => TextEditor.implementation.enrichHTML(text ?? '', enrichmentOptions);
 
     // Start loading the class list and enriching every field at once.
-    const classlistPromise = DwClassList.getClasses();
+    const classlistPromise = DwClassList.getClasses(false);
     const detailsPromise = Promise.all([
       enrich(system.details.look),
       enrich(system.details.alignment?.description),
@@ -183,7 +185,10 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       enrich(system.details.biography),
     ]);
     const items = await this._prepareItems();
-    const [classlist, [look, alignment, race, biography]] = await Promise.all([classlistPromise, detailsPromise]);
+    const [classItems, [look, alignment, race, biography]] = await Promise.all([classlistPromise, detailsPromise]);
+    const classlist = classItems.map(c => c.name);
+    // Players aren't shown secret classes as suggestions.
+    const classSuggestions = game.user.isGM ? classlist : classItems.filter(c => !c.system.secret).map(c => c.name);
 
     const moveSections = this._prepareMoveSections(items.moves);
     const level = Number(system.attributes.level.value ?? 1);
@@ -193,6 +198,10 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const hpMax = Number(system.attributes.hp.max ?? 0);
     const weight = Number(system.attributes.weight.value ?? 0);
     const weightMax = Number(system.attributes.weight.max ?? 0);
+    const classLevels = this._prepareClassLevels(level);
+    // Classes with levels show their level instead of a "+ class" tag.
+    const multiclass = moveSections.multiclass
+      .filter(name => !classLevels?.list.some(c => classKey(c.name) === classKey(name)));
 
     return Object.assign(context, {
       actor: actor,
@@ -207,8 +216,10 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       // Header. The portrait doubles as a faded banner behind the header,
       // except for the default silhouette.
       bannerImg: actor.img && actor.img !== CONST.DEFAULT_TOKEN ? actor.img : null,
-      classlist: classlist,
-      multiclass: moveSections.multiclass,
+      classlist: classSuggestions,
+      multiclass: multiclass,
+      classLevels: classLevels,
+      isGM: game.user.isGM,
       level: level,
       xp: xp,
       xpMax: xpMax,
@@ -298,15 +309,32 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       return { ready: false, hint: game.i18n.localize('DW.Sheet.MaxLevel') };
     }
     // A new character can always use the builder to pick starting moves.
-    const eligible = xp >= xpMax || (level === 1 && startingMoves < 1);
+    const hasXp = xp >= xpMax;
+    const eligible = hasXp || (level === 1 && startingMoves < 1);
     if (!eligible) {
       return { ready: false, hint: game.i18n.format('DW.Sheet.NeedsXp', { xp: xpMax - xp }) };
     }
-    // Only mention the class once it's what's actually blocking the level up.
-    if (!known) {
+    // The builder needs a known class. A level up doesn't: the character can
+    // still raise an ability and multiclass. Only mention the class once it's
+    // what's actually blocking.
+    if (!known && !hasXp) {
       return { ready: false, hint: game.i18n.localize('DW.Sheet.ClassUnknown') };
     }
     return { ready: true, hint: game.i18n.localize('DW.Sheet.LevelUpReady') };
+  }
+
+  /**
+   * The character's level in each class, once they have more than one class.
+   * Null for a single class, whose level is just the character's level.
+   */
+  _prepareClassLevels(level) {
+    const list = DwUtility.classLevels(this.actor);
+    if (list.length < 2) return null;
+    const sum = list.reduce((total, c) => total + c.level, 0);
+    return {
+      list: list.map(c => ({ ...c, short: classLabel(c.name) })),
+      mismatch: sum !== level ? game.i18n.format('DW.Sheet.ClassLevelsMismatch', { sum, level }) : null,
+    };
   }
 
   _prepareAbilities() {
@@ -985,6 +1013,121 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       label: String(result.label ?? '').trim() || game.i18n.localize('DW.Sheet.NewTracker'),
       max: Math.max(0, Number(result.max) || 0),
     };
+  }
+
+  /**
+   * Ask a yes/no question with checkboxes, in the sheet's dialog style.
+   * @param {string} title
+   * @param {string} text  Plain text, escaped here.
+   * @param {{name: string, label: string, checked: boolean}[]} options
+   * @param {string} confirm  The confirm button's label key.
+   * @return {Promise<Object|null>} The checked options by name, or null.
+   */
+  async _confirmWithOptions(title, text, options, confirm) {
+    const escape = (value) => Handlebars.escapeExpression(String(value ?? ''));
+    const content = `<p>${escape(text)}</p>` + options.map(o => `
+      <div class="form-group">
+        <label class="checkbox">
+          <input type="checkbox" name="${o.name}" ${o.checked ? 'checked' : ''}>
+          ${escape(o.label)}
+        </label>
+      </div>`).join('');
+    const result = await DialogV2.wait({
+      window: { title },
+      position: { width: 420 },
+      content,
+      buttons: [
+        { action: 'confirm', label: confirm, icon: 'fa-solid fa-check', default: true,
+          callback: (event, button) => ({ ...new FormDataExtended(button.form).object }) },
+        { action: 'cancel', label: 'DW.Cancel', icon: 'fa-solid fa-xmark', callback: () => null },
+      ],
+      rejectClose: false,
+    });
+    return result && typeof result == 'object' ? result : null;
+  }
+
+  /** The character's moves and spells from a class. */
+  _classItems(className) {
+    const fromClass = (item) => classKey(item.system.class) === classKey(className);
+    return {
+      moves: this.actor.items.filter(i => i.type == 'move' && i.system.class && fromClass(i)),
+      spells: this.actor.items.filter(i => i.type == 'spell' && i.system.class && fromClass(i)),
+    };
+  }
+
+  /**
+   * Remove a class the character multiclassed into, and optionally its moves
+   * and spells. The character's level is left as it is.
+   * @this {DwCharacterSheet}
+   */
+  static async #onRemoveMulticlass(event, target) {
+    event.preventDefault();
+    const name = target.dataset.class;
+    const multiclasses = this.actor.getFlag('dungeonworld', 'multiclasses') ?? [];
+    if (!multiclasses.includes(name)) return;
+
+    const { moves, spells } = this._classItems(name);
+    const options = moves.length || spells.length
+      ? [{ name: 'items', checked: true, label: game.i18n.format('DW.Sheet.RemoveClassItems', { moves: moves.length, spells: spells.length }) }]
+      : [];
+    const result = await this._confirmWithOptions(
+      game.i18n.format('DW.Sheet.RemoveMulticlassTitle', { class: classLabel(name) }),
+      game.i18n.format('DW.Sheet.RemoveMulticlassText', { class: name, actor: this.actor.name }),
+      options, 'DW.Sheet.Remove');
+    if (!result) return;
+
+    await this.actor.update({
+      'flags.dungeonworld.multiclasses': multiclasses.filter(n => n !== name),
+      ...DwUtility.deletionUpdate(`flags.dungeonworld.classLevels.${name}`),
+    });
+    if (result.items) {
+      await this.actor.deleteEmbeddedDocuments('Item', [...moves, ...spells].map(i => i.id));
+    }
+  }
+
+  /**
+   * Start the character over at level 1, so they can be built again through
+   * the level up dialog. Class moves and spells are removed by default;
+   * equipment, bonds, race and alignment only if asked.
+   * @this {DwCharacterSheet}
+   */
+  static async #onStartOver(event, target) {
+    event.preventDefault();
+    if (!game.user.isGM) return;
+    const items = this.actor.items;
+    const count = (filter) => items.filter(filter).length;
+    const options = [
+      { name: 'moves', checked: true, label: game.i18n.format('DW.Sheet.StartOverMoves', { count: count(i => i.type == 'move' && i.system.class) }) },
+      { name: 'spells', checked: true, label: game.i18n.format('DW.Sheet.StartOverSpells', { count: count(i => i.type == 'spell') }) },
+      { name: 'equipment', checked: false, label: game.i18n.format('DW.Sheet.StartOverEquipment', { count: count(i => i.type == 'equipment') }) },
+      { name: 'bonds', checked: false, label: game.i18n.format('DW.Sheet.StartOverBonds', { count: count(i => i.type == 'bond') }) },
+      { name: 'details', checked: false, label: game.i18n.localize('DW.Sheet.StartOverDetails') },
+    ];
+    const result = await this._confirmWithOptions(
+      game.i18n.localize('DW.Sheet.StartOverTitle'),
+      game.i18n.format('DW.Sheet.StartOverText', { actor: this.actor.name }),
+      options, 'DW.Sheet.StartOver');
+    if (!result) return;
+
+    const remove = items.filter(i =>
+      (result.moves && i.type == 'move' && i.system.class)
+      || (result.spells && i.type == 'spell')
+      || (result.equipment && i.type == 'equipment')
+      || (result.bonds && i.type == 'bond'));
+    if (remove.length) await this.actor.deleteEmbeddedDocuments('Item', remove.map(i => i.id));
+
+    const update = {
+      'system.attributes.level.value': 1,
+      'system.attributes.xp.value': 0,
+      'flags.dungeonworld.levelup': false,
+      ...DwUtility.deletionUpdate('flags.dungeonworld.multiclasses'),
+      ...DwUtility.deletionUpdate('flags.dungeonworld.classLevels'),
+    };
+    if (result.details) {
+      update['system.details.race'] = { value: '', description: '' };
+      update['system.details.alignment'] = { value: '', description: '' };
+    }
+    await this.actor.update(update);
   }
 
   /**

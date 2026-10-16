@@ -10,6 +10,38 @@
     <span class="dw-hint">{{localize "DW.Sheet.RollFormulaHint"}}</span>
   </label>
 
+  {{#ifor classLevels isGM}}
+  <div class="dw-field">
+    <span class="dw-label">{{#if classLevels}}{{localize "DW.Sheet.ClassLevels"}}{{else}}{{localize "DW.Sheet.Advancement"}}{{/if}}</span>
+    {{#if classLevels}}
+    <div class="dw-class-levels">
+      {{#each classLevels.list}}
+      <span class="dw-class-level">
+        <label>
+          <span>{{name}}</span>
+          <input type="number" name="flags.dungeonworld.classLevels.{{name}}" value="{{level}}" min="1" max="10" step="1"/>
+        </label>
+        {{#unless primary}}{{#if ../editable}}
+        <button type="button" class="dw-icon-btn" data-action="removeMulticlass" data-class="{{name}}" data-tooltip="DW.Sheet.RemoveMulticlass" aria-label="{{localize "DW.Sheet.RemoveMulticlass"}}: {{name}}"><i class="fas fa-times" inert></i></button>
+        {{/if}}{{/unless}}
+      </span>
+      {{/each}}
+    </div>
+    {{#if classLevels.mismatch}}
+    <span class="dw-warning">{{classLevels.mismatch}}</span>
+    {{else}}
+    <span class="dw-hint">{{localize "DW.Sheet.ClassLevelsHint"}}</span>
+    {{/if}}
+    {{/if}}
+    {{#if isGM}}
+    <div class="dw-start-over">
+      <button type="button" class="dw-text-btn" data-action="startOver"><i class="fas fa-rotate-left" inert></i> {{localize "DW.Sheet.StartOverButton"}}</button>
+      <span class="dw-hint">{{localize "DW.Sheet.StartOverHint"}}</span>
+    </div>
+    {{/if}}
+  </div>
+  {{/ifor}}
+
   <div class="dw-field dw-field--grow">
     <span class="dw-label">{{localize "DW.Biography"}}</span>
     <prose-mirror name="system.details.biography" value="{{system.details.biography}}" toggled>{{{enriched.biography}}}</prose-mirror>
