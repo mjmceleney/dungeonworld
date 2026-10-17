@@ -316,10 +316,14 @@
       margin-bottom: 4px;
     }
 
+    // Like the sheet's tags. The legacy stylesheet's .tag sets navy text and
+    // margins, so both are set here too.
     .tag {
+      margin: 0;
       padding: 1px 8px;
       border-radius: 10px;
       background: var(--dw-chip);
+      color: var(--dw-ink);
       font-size: 12px;
     }
   }

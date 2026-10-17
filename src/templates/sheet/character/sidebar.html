@@ -19,22 +19,7 @@
       <span class="dw-tracker-edit-spacer"></span>
     </div>
 
-    {{#each trackers}}
-    <div class="dw-tracker" data-tracker-id="{{id}}">
-      <span class="dw-tracker-name" title="{{label}}">{{label}}</span>
-      <span class="dw-tracker-count {{#unless max}}no-max{{/unless}}">
-        <button type="button" class="dw-mini-step" data-action="adjustTracker" data-delta="-1" aria-label="{{localize "DW.Sheet.Decrease"}} {{label}}"><i class="fas fa-minus" inert></i></button>
-        <input class="dw-tracker-value" type="number" name="flags.dungeonworld.trackers.{{id}}.value" value="{{value}}" step="1" aria-label="{{label}}"/>
-        {{#if max}}<span class="dw-tracker-max">/ {{max}}</span>{{/if}}
-        <button type="button" class="dw-mini-step" data-action="adjustTracker" data-delta="1" aria-label="{{localize "DW.Sheet.Increase"}} {{label}}"><i class="fas fa-plus" inert></i></button>
-      </span>
-      {{#if ../editable}}
-      <button type="button" class="dw-icon-btn dw-tracker-edit" data-action="editTracker" aria-label="{{localize "DW.Sheet.EditTracker"}}: {{label}}" data-tooltip="DW.Sheet.EditTracker"><i class="fas fa-edit" inert></i></button>
-      {{else}}
-      <span class="dw-tracker-edit-spacer"></span>
-      {{/if}}
-    </div>
-    {{/each}}
+    {{> "systems/dungeonworld/templates/sheet/character/trackers.html"}}
   </section>
 
   <section class="dw-card dw-side-card">

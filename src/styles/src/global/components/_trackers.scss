@@ -1,0 +1,421 @@
+// The character sheet's custom trackers (trackers.js): counters, sliders
+// and clocks in the sidebar. The palette and shared controls come from
+// .dw-v2 (_sheets-v2.scss).
+
+// How full a tracker slot is (0 to 1). Registered so it can animate; it
+// inherits so a slider stop's dot (its ::after) follows the stop.
+@property --dw-fill {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+// How stretched a slider's rubber band is (0 to 1). Registered so that, when
+// it snaps, it thickens as it shrinks instead of jumping to full thickness.
+@property --dw-stretch {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
+.dw-v2 {
+  // Trackers: one line each. The name is quiet; the count is the focus.
+  .dw-tracker {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 32px;
+    padding: 2px 0;
+    border-top: 1px solid var(--dw-line);
+
+    &:first-of-type {
+      border-top: 0;
+    }
+  }
+
+  .dw-tracker-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    color: var(--dw-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .dw-tracker-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  // Without a max, the value takes the max's space (34 + 30 + 2px margin), so
+  // it sits centered between the buttons and the buttons still line up.
+  .dw-tracker-count.no-max input.dw-tracker-value {
+    width: 66px;
+  }
+
+  input.dw-tracker-value {
+    width: 34px;
+    height: 28px;
+    padding: 0;
+    font-size: 19px;
+    font-weight: 700;
+    background: transparent;
+    border-color: transparent;
+
+    &:hover {
+      border-color: var(--dw-line);
+    }
+  }
+
+  // Fixed width so the -/+ buttons line up down the list.
+  .dw-tracker-max {
+    min-width: 30px;
+    margin-right: 2px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--dw-muted);
+    white-space: nowrap;
+  }
+
+  // Slim -/+ buttons: icon only until hovered.
+  .dw-mini-step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--dw-muted);
+    font-size: 11px;
+
+    &:hover {
+      background: var(--dw-chip-hover);
+      color: var(--dw-ink);
+    }
+  }
+
+  // Clock: a pie that fills clockwise, then the name and count.
+  .dw-tracker--clock {
+    min-height: 44px;
+  }
+
+  .dw-clock {
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+  }
+
+  .dw-clock-face {
+    fill: var(--dw-sunken);
+    stroke: var(--dw-line);
+    stroke-width: 2;
+  }
+
+  .dw-clock-wedge {
+    fill: transparent;
+    stroke: var(--dw-line);
+    stroke-width: 2;
+    stroke-linejoin: round;
+    cursor: pointer;
+    transition: fill 0.15s ease;
+
+    &.on {
+      fill: var(--dw-navy);
+    }
+
+    &:hover {
+      fill: var(--dw-chip-hover);
+    }
+
+    &.on:hover {
+      fill: var(--dw-focus);
+    }
+  }
+
+  // Marks: notches across the rim, red once the clock reaches them. They
+  // don't take clicks, so the wedge under them still does.
+  .dw-clock-mark {
+    stroke: var(--dw-muted);
+    stroke-width: 6;
+    stroke-linecap: round;
+    pointer-events: none;
+
+    &.reached {
+      stroke: var(--dw-accent);
+    }
+  }
+
+  // Room for "12/12"; narrower than a counter's so the name fits beside the pie.
+  .dw-clock-count {
+    min-width: 46px;
+    text-align: center;
+    font-size: 19px;
+    font-weight: 700;
+
+    .dw-of {
+      font-size: 15px;
+    }
+  }
+
+  // Slider: an optional name over a row between two named ends.
+  .dw-tracker--slider {
+    padding: 4px 0;
+  }
+
+  .dw-tracker-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .dw-scale {
+    // The filled stop and the rubber band share this color.
+    --dw-scale-color: var(--dw-navy);
+
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 26px;
+  }
+
+  // Ends: the name of each extreme, and a step toward it.
+  .dw-scale-end {
+    flex: 0 1 auto;
+    max-width: 64px;
+    padding: 2px 4px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--dw-muted);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    &:hover {
+      background: var(--dw-chip-hover);
+      color: var(--dw-ink);
+    }
+
+    &.on {
+      color: var(--dw-navy);
+    }
+  }
+
+  // How full a slider stop or bar cell is: 1 when on, 0 when off, and in
+  // between while dragging.
+  .dw-scale-cell {
+    --dw-fill: 0;
+
+    &.on {
+      --dw-fill: 1;
+    }
+  }
+
+  // Tracks can be dragged as well as clicked (touch too).
+  .dw-scale-track {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    touch-action: none;
+    user-select: none;
+
+    &.dragging,
+    &.dragging .dw-scale-cell {
+      cursor: grabbing;
+    }
+  }
+
+  .dw-scale--slider .dw-scale-cell.on {
+    cursor: grab;
+  }
+
+  // Slider display: stops on a line, the current one marked.
+  .dw-scale--slider .dw-scale-track {
+    position: relative;
+    justify-content: space-between;
+    padding: 0 2px;
+
+    &::before {
+      content: "";
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      top: 50%;
+      height: 2px;
+      margin-top: -1px;
+      background: var(--dw-line);
+    }
+
+    // Each stop is a ring with a dot inside; the dot's size is the stop's
+    // fill. The marked stop is larger with a full dot. While dragging, the
+    // dot drains out of one stop and grows in the next as the pointer passes,
+    // always the same color. Scaled, so the stops never shift.
+    .dw-scale-cell {
+      position: relative;
+      z-index: 1;
+      width: 12px;
+      height: 12px;
+      padding: 0;
+      border: 2px solid var(--dw-line);
+      border-radius: 50%;
+      background: var(--dw-surface);
+      box-shadow: 0 0 0 calc(2px * var(--dw-fill)) var(--dw-chip);
+      transform: scale(calc(1 + 0.5 * var(--dw-fill)));
+      transition: --dw-fill 0.1s ease;
+
+      // The dot covers the ring too, so a full stop is one solid circle.
+      &::after {
+        content: "";
+        position: absolute;
+        inset: -2px;
+        border-radius: 50%;
+        background: var(--dw-scale-color);
+        transform: scale(var(--dw-fill));
+      }
+
+      &:hover {
+        border-color: var(--dw-muted);
+      }
+    }
+
+    // The rubber band: from the starting stop to the pointer while dragging,
+    // thinning as it stretches; on release it snaps into the new stop.
+    .dw-scale-band {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 0;
+      height: calc(8px - 7px * var(--dw-stretch));
+      border-radius: 4px;
+      background: var(--dw-scale-color);
+      transform: translateY(-50%);
+      opacity: 0;
+      pointer-events: none;
+      // The snap: quick, speeding up into the stop, thickening as it goes.
+      transition: left 0.07s ease-in, width 0.07s ease-in, --dw-stretch 0.07s ease-in, opacity 0.06s ease 0.05s;
+    }
+  }
+
+  // Bar display: cells that fill from the left, like the XP bar.
+  .dw-scale--bar .dw-scale-track {
+    gap: 3px;
+
+    // Each cell fills from the left by its --dw-fill; while dragging, the
+    // cell under the pointer fills partway.
+    .dw-scale-cell {
+      flex: 1;
+      min-width: 0;
+      height: 12px;
+      padding: 0;
+      border: 0;
+      border-radius: 3px;
+      background: linear-gradient(to right,
+        var(--dw-navy) calc(var(--dw-fill) * 100%),
+        var(--dw-chip) calc(var(--dw-fill) * 100%));
+      transition: --dw-fill 0.1s ease;
+
+      &:hover {
+        box-shadow: inset 0 0 0 1px var(--dw-muted);
+      }
+    }
+  }
+
+  // Snapping: the new stop fills as the band arrives, a beat after it starts;
+  // the others drain at once.
+  .dw-scale--slider .dw-scale-track.snapping .dw-scale-cell.on {
+    transition-duration: 0.06s;
+    transition-delay: 0.035s;
+  }
+
+  // While dragging: follow the pointer exactly (ease only when settling), and
+  // show the band. After the slider and bar rules, so these win.
+  .dw-scale .dw-scale-track.dragging {
+    .dw-scale-cell,
+    .dw-scale-band {
+      transition: none;
+    }
+
+    .dw-scale-band {
+      opacity: 1;
+    }
+
+    // No hover changes mid-drag; only the pointer's position matters.
+    .dw-scale-cell:hover {
+      border-color: var(--dw-line);
+    }
+  }
+
+  // Clicking a tracker control focuses it, and core outlines focused buttons
+  // in its own color. Keep only the sheet's ring, for keyboard focus.
+  .dw-scale-cell,
+  .dw-scale-half,
+  .dw-scale-end {
+    &:focus {
+      outline: none;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--dw-focus);
+      outline-offset: 2px;
+    }
+  }
+
+  // Toggle display: two halves, one chosen.
+  .dw-scale--toggle {
+    border: 1px solid var(--dw-line);
+    border-radius: 7px;
+    overflow: hidden;
+    gap: 0;
+  }
+
+  .dw-scale-half {
+    flex: 1;
+    min-width: 0;
+    padding: 4px 6px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--dw-muted);
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    & + & {
+      border-left: 1px solid var(--dw-line);
+    }
+
+    &:hover {
+      background: var(--dw-chip-hover);
+    }
+
+    &.on {
+      background: var(--dw-navy);
+      color: var(--dw-on-navy);
+      font-weight: 700;
+    }
+  }
+
+  .dw-tracker-edit,
+  .dw-tracker-edit-spacer {
+    flex: 0 0 22px;
+    width: 22px;
+    height: 22px;
+  }
+
+  .dw-tracker-edit {
+    font-size: 12px;
+  }
+}

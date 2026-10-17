@@ -3,9 +3,11 @@
 // Layered styles lose to core's button and input styles regardless of
 // specificity, which broke the sheets' own controls.
 @import 'global/utils/colors';
+
 @import 'global/utils/typography';
 @import 'global/utils/palette';
 @import 'global/components/sheets-v2';
+@import 'global/components/trackers';
 @import 'global/components/item-v2';
 @import 'global/components/level-up-v2';
 @import 'global/components/journal';
