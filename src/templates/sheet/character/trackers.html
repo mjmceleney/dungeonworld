@@ -1,0 +1,70 @@
+{{!-- The custom trackers (trackers.js): counters, sliders and clocks, one
+     row each, with a shared edit button. --}}
+{{#*inline "trackerEdit"}}
+{{#if @root.editable}}
+<button type="button" class="dw-icon-btn dw-tracker-edit" data-action="editTracker" aria-label="{{localize "DW.Sheet.EditTracker"}}: {{label}}" data-tooltip="DW.Sheet.EditTracker"><i class="fas fa-edit" inert></i></button>
+{{else}}
+<span class="dw-tracker-edit-spacer"></span>
+{{/if}}
+{{/inline}}
+{{#each trackers}}
+{{#if isCounter}}
+<div class="dw-tracker" data-tracker-id="{{id}}">
+  <span class="dw-tracker-name" title="{{label}}">{{label}}</span>
+  <span class="dw-tracker-count {{#unless max}}no-max{{/unless}}">
+    <button type="button" class="dw-mini-step" data-action="adjustTracker" data-delta="-1" aria-label="{{localize "DW.Sheet.Decrease"}} {{label}}"><i class="fas fa-minus" inert></i></button>
+    <input class="dw-tracker-value" type="number" name="flags.dungeonworld.trackers.{{id}}.value" value="{{value}}" step="1" aria-label="{{label}}"/>
+    {{#if max}}<span class="dw-tracker-max">/ {{max}}</span>{{/if}}
+    <button type="button" class="dw-mini-step" data-action="adjustTracker" data-delta="1" aria-label="{{localize "DW.Sheet.Increase"}} {{label}}"><i class="fas fa-plus" inert></i></button>
+  </span>
+  {{> trackerEdit}}
+</div>
+
+{{else if isClock}}
+{{!-- A pie that fills clockwise. Click a segment to fill up to it. --}}
+<div class="dw-tracker dw-tracker--clock" data-tracker-id="{{id}}">
+  <svg class="dw-clock" viewBox="-4 -4 108 108" role="img" aria-label="{{label}}: {{value}} / {{segments}}{{#if markList}} ({{localize "DW.Sheet.TrackerMarks"}}: {{markList}}){{/if}}">
+    {{#if markList}}<title>{{localize "DW.Sheet.TrackerMarks"}}: {{markList}}</title>{{/if}}
+    <circle class="dw-clock-face" cx="50" cy="50" r="46"/>
+    {{#each wedges}}
+    <path class="dw-clock-wedge {{#if on}}on{{/if}}" d="{{d}}" data-action="setTracker" data-value="{{value}}" data-toggle><title>{{value}}</title></path>
+    {{/each}}
+    {{#each marks}}
+    <path class="dw-clock-mark {{#if reached}}reached{{/if}}" d="{{d}}"/>
+    {{/each}}
+  </svg>
+  <span class="dw-tracker-name" title="{{label}}">{{label}}</span>
+  <span class="dw-tracker-count">
+    <button type="button" class="dw-mini-step" data-action="adjustTracker" data-delta="-1" aria-label="{{localize "DW.Sheet.Decrease"}} {{label}}"><i class="fas fa-minus" inert></i></button>
+    <span class="dw-clock-count">{{value}}<span class="dw-of">/{{segments}}</span></span>
+    <button type="button" class="dw-mini-step" data-action="adjustTracker" data-delta="1" aria-label="{{localize "DW.Sheet.Increase"}} {{label}}"><i class="fas fa-plus" inert></i></button>
+  </span>
+  {{> trackerEdit}}
+</div>
+
+{{else}}
+{{!-- A slider between two named ends: a toggle with two options, else a
+     row of stops (or a bar). Clicking an end steps toward it. --}}
+<div class="dw-tracker dw-tracker--slider" data-tracker-id="{{id}}">
+  <div class="dw-tracker-body">
+    {{#if label}}<span class="dw-tracker-name" title="{{label}}">{{label}}</span>{{/if}}
+    <div class="dw-scale dw-scale--{{display}}">
+      {{#if isToggle}}
+      <button type="button" class="dw-scale-half {{#if leftOn}}on{{/if}}" data-action="setTracker" data-value="0" aria-pressed="{{#if leftOn}}true{{else}}false{{/if}}">{{#if left}}{{left}}{{else}}—{{/if}}</button>
+      <button type="button" class="dw-scale-half {{#if rightOn}}on{{/if}}" data-action="setTracker" data-value="1" aria-pressed="{{#if rightOn}}true{{else}}false{{/if}}">{{#if right}}{{right}}{{else}}—{{/if}}</button>
+      {{else}}
+      <button type="button" class="dw-scale-end {{#if leftOn}}on{{/if}}" data-action="adjustTracker" data-delta="-1" title="{{left}}" aria-label="{{localize "DW.Sheet.TrackerToward"}} {{left}}">{{#if left}}{{left}}{{else}}<i class="fas fa-chevron-left" inert></i>{{/if}}</button>
+      <span class="dw-scale-track">
+        {{#unless isBar}}<span class="dw-scale-band" aria-hidden="true"></span>{{/unless}}
+        {{#each cells}}
+        <button type="button" class="dw-scale-cell {{#if on}}on{{/if}}" data-action="setTracker" data-value="{{value}}" {{#if ../isBar}}data-toggle{{/if}} aria-label="{{value}}" aria-pressed="{{#if on}}true{{else}}false{{/if}}"></button>
+        {{/each}}
+      </span>
+      <button type="button" class="dw-scale-end {{#if rightOn}}on{{/if}}" data-action="adjustTracker" data-delta="1" title="{{right}}" aria-label="{{localize "DW.Sheet.TrackerToward"}} {{right}}">{{#if right}}{{right}}{{else}}<i class="fas fa-chevron-right" inert></i>{{/if}}</button>
+      {{/if}}
+    </div>
+  </div>
+  {{> trackerEdit}}
+</div>
+{{/if}}
+{{/each}}

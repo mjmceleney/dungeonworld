@@ -20,6 +20,76 @@ export class MigrateDw {
       version = 2;
       await game.settings.set('dungeonworld', 'systemMigrationVersion', version);
     }
+
+    // Update 3: Player characters' tokens are linked to the character. New
+    // characters already are; this fixes ones made before that.
+    if (version < 3) {
+      await this.linkCharacterPrototypes();
+      version = 3;
+      await game.settings.set('dungeonworld', 'systemMigrationVersion', version);
+      await this.linkCharacterTokens({ ask: true });
+    }
+  }
+
+  /**
+   * Link every player character's prototype token, so tokens placed from now
+   * on are the character rather than a copy. NPCs are left as they are.
+   */
+  static async linkCharacterPrototypes() {
+    const updates = game.actors
+      .filter(a => a.type == 'character' && !a.prototypeToken.actorLink)
+      .map(a => ({ _id: a.id, 'prototypeToken.actorLink': true }));
+    if (updates.length) await Actor.implementation.updateDocuments(updates);
+  }
+
+  /**
+   * Link player characters' tokens already placed on scenes. A linked token
+   * shows the character itself, so changes made only on the token (such as
+   * HP lost on that copy) stop showing; core keeps them, and they'd come back
+   * if the token were unlinked again. Also callable later, e.g. from a macro:
+   * game.dungeonworld.MigrateDw.linkCharacterTokens().
+   *
+   * @param {object} [options]
+   * @param {boolean} [options.ask=false]  Ask the GM first.
+   * @return {Promise<number>} How many tokens were linked.
+   */
+  static async linkCharacterTokens({ ask = false } = {}) {
+    if (!game.user.isGM) return 0;
+    const byScene = new Map();
+    let changed = 0;
+    for (const scene of game.scenes) {
+      const tokens = scene.tokens.filter(t => !t.actorLink && t.baseActor?.type == 'character');
+      if (!tokens.length) continue;
+      byScene.set(scene, tokens);
+      // Changes made only on the token: its delta's stats, items or effects.
+      changed += tokens.filter(t => {
+        const delta = t._source.delta ?? {};
+        return !foundry.utils.isEmpty(delta.system ?? {}) || delta.items?.length || delta.effects?.length
+          || delta.name || delta.img;
+      }).length;
+    }
+    const count = [...byScene.values()].reduce((sum, tokens) => sum + tokens.length, 0);
+    if (!count) return 0;
+
+    if (ask) {
+      const DialogV2 = foundry.applications.api.DialogV2;
+      const yes = await DialogV2.confirm({
+        window: { title: game.i18n.localize('DW.Migration.LinkTokensTitle') },
+        content: `<p>${game.i18n.format('DW.Migration.LinkTokensText', { count })}</p>`
+          + (changed ? `<p>${game.i18n.format('DW.Migration.LinkTokensChanged', { changed })}</p>` : '')
+          + `<p>${game.i18n.localize('DW.Migration.LinkTokensLater')}</p>`,
+        yes: { label: 'DW.Migration.LinkTokensYes' },
+        no: { label: 'DW.Migration.LinkTokensNo' },
+        rejectClose: false,
+      });
+      if (!yes) return 0;
+    }
+
+    for (const [scene, tokens] of byScene) {
+      await scene.updateEmbeddedDocuments('Token', tokens.map(t => ({ _id: t.id, actorLink: true })));
+    }
+    ui.notifications.info(game.i18n.format('DW.Migration.LinkTokensDone', { count }));
+    return count;
   }
 
   /**
