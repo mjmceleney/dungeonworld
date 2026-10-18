@@ -207,6 +207,10 @@ export class DwItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
         giftsfinery: 'DW.GiftsFinery',
         hoard: 'DW.Hoard',
       };
+      selects.useTargets = {
+        self: 'DW.Use.TargetSelf',
+        other: 'DW.Use.TargetOther',
+      };
     }
     if (type == 'spell' || type == 'move') {
       selects.classes = {};
@@ -238,6 +242,19 @@ export class DwItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
         ASK: 'DW.ASK',
         BOND: 'DW.Modifier',
         FORMULA: 'DW.FORMULA',
+        PLAIN: 'DW.PLAIN',
+      };
+
+      selects.ignoreClumsy = {
+        armor: 'DW.IgnoreClumsy.Armor',
+        all: 'DW.IgnoreClumsy.All',
+      };
+
+      selects.resourceWhen = {
+        always: 'DW.Resource.Always',
+        hit: 'DW.Resource.Hit',
+        partial: 'DW.Resource.Partial',
+        success: 'DW.Resource.Success',
       };
 
       selects.grantKinds = {
@@ -254,8 +271,9 @@ export class DwItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
         d12: 'd12',
       };
       selects.equipmentGroupModes = {
-        radio: 'DW.ChooseOne',
-        checkbox: 'DW.ChooseAny',
+        all: 'DW.Gear.ModeAll',
+        radio: 'DW.Gear.ModeOne',
+        checkbox: 'DW.Gear.ModeSome',
       };
     }
     return selects;

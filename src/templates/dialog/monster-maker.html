@@ -1,0 +1,69 @@
+{{!-- Monster maker: the rules' monster questions, with a running summary of
+     the stats they give. --}}
+<div class="dw-levelup">
+  <div class="dw-levelup-body">
+    <header class="dw-card dw-levelup-head dw-mm-summary">
+      <p class="dw-levelup-hint">{{localize "DW.MonsterMaker.Intro"}}</p>
+      <dl class="dw-mm-stats">
+        <div><dt class="dw-label">{{localize "DW.HP"}}</dt><dd data-preview="hp">{{preview.hp}}</dd></div>
+        <div><dt class="dw-label">{{localize "DW.Armor"}}</dt><dd data-preview="armor">{{preview.armor}}</dd></div>
+        <div><dt class="dw-label">{{localize "DW.Damage"}}</dt><dd data-preview="damage">{{preview.damage}}</dd></div>
+        <div class="dw-mm-wide"><dt class="dw-label">{{localize "DW.MonsterMaker.Attack"}}</dt><dd data-preview="damageFlavor">{{#if preview.damageFlavor}}{{preview.damageFlavor}}{{else}}—{{/if}}</dd></div>
+        <div class="dw-mm-wide"><dt class="dw-label">{{localize "DW.Tags"}}</dt><dd data-preview="tags">{{#if preview.tags}}{{preview.tags}}{{else}}—{{/if}}</dd></div>
+        <div class="dw-mm-wide"><dt class="dw-label">{{localize "DW.SpecialQualities"}}</dt><dd data-preview="qualities">{{#if preview.qualities}}{{preview.qualities}}{{else}}—{{/if}}</dd></div>
+        <div><dt class="dw-label">{{localize "DW.Moves"}}</dt><dd data-preview="moves">{{preview.moves}}</dd></div>
+      </dl>
+    </header>
+
+    <section class="dw-card dw-levelup-section">
+      <h2 class="dw-section-title">{{localize "DW.MonsterMaker.Q.knownTo"}}</h2>
+      <p class="dw-levelup-hint">{{localize "DW.MonsterMaker.Q.knownToHint"}}</p>
+      <input type="text" name="knownMove" value="{{answers.knownMove}}" placeholder="{{localize "DW.MonsterMaker.Q.knownToPlaceholder"}}">
+    </section>
+
+    <section class="dw-card dw-levelup-section">
+      <h2 class="dw-section-title">{{localize "DW.MonsterMaker.Q.instinct"}}</h2>
+      <p class="dw-levelup-hint">{{localize "DW.MonsterMaker.Q.instinctHint"}}</p>
+      <input type="text" name="instinct" value="{{answers.instinct}}" placeholder="{{localize "DW.MonsterMaker.Q.instinctPlaceholder"}}">
+    </section>
+
+    {{#each questions as |question|}}
+    <section class="dw-card dw-levelup-section">
+      <h2 class="dw-section-title">{{question.title}}</h2>
+      {{#if question.hint}}<p class="dw-levelup-hint">{{question.hint}}</p>{{/if}}
+      {{#if (eq question.id "attack")}}
+      <input type="text" name="attackName" value="{{@root.answers.attackName}}" placeholder="{{localize "DW.MonsterMaker.AttackPlaceholder"}}" aria-label="{{localize "DW.MonsterMaker.Attack"}}">
+      {{/if}}
+      <div class="dw-choices dw-choices--grid">
+        {{#each question.options as |option|}}
+        <label class="dw-choice">
+          <input type="{{#if question.multiple}}checkbox{{else}}radio{{/if}}" name="{{option.name}}" value="{{option.value}}" {{checked option.checked}}>
+          <span class="dw-choice-body">
+            <span class="dw-choice-name">{{option.label}}</span>
+            <span class="dw-choice-text">{{option.effect}}</span>
+            {{#if option.textName}}
+            <span class="dw-mm-extra">
+              <input type="text" name="{{option.textName}}" value="{{option.textValue}}" placeholder="{{option.textLabel}}" aria-label="{{option.textLabel}}">
+            </span>
+            {{/if}}
+            {{#if option.select}}
+            <span class="dw-mm-extra">
+              <select name="{{option.select.name}}" aria-label="{{option.label}}">
+                {{selectOptions option.select.choices selected=option.select.value localize=true}}
+              </select>
+            </span>
+            {{/if}}
+          </span>
+        </label>
+        {{/each}}
+      </div>
+    </section>
+    {{/each}}
+  </div>
+
+  <footer class="dw-levelup-footer">
+    <span class="dw-levelup-hint dw-mm-warning">{{localize "DW.MonsterMaker.Replaces"}}</span>
+    <button type="button" class="dw-text-btn" data-action="cancel"><i class="fas fa-times" inert></i> {{localize "DW.Cancel"}}</button>
+    <button type="submit" class="dw-text-btn dw-primary-btn"><i class="fas fa-check" inert></i> {{localize "DW.MonsterMaker.Apply"}}</button>
+  </footer>
+</div>

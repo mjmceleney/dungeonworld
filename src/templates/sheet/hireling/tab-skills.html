@@ -1,0 +1,36 @@
+<section class="tab dw-panel {{tab.cssClass}}" data-group="primary" data-tab="skills">
+  <p class="dw-hint dw-hireling-points {{#if points.warn}}is-warn{{/if}}">
+    {{#if points.range}}
+    {{localize "DW.Hireling.PointsRange" spent=points.spent range=points.range}}
+    {{else}}
+    {{localize "DW.Hireling.Points" spent=points.spent}}
+    {{/if}}
+    {{#if highestRank}}{{localize "DW.Hireling.WorksFor" level=highestRank}}{{/if}}
+  </p>
+
+  <ol class="dw-rows dw-skills">
+    {{#each skills}}
+    <li class="dw-skill {{#if has}}has-skill{{/if}}">
+      <div class="dw-skill-head">
+        <span class="dw-section-title">{{label}}</span>
+        <span class="dw-stepper">
+          <button type="button" class="dw-step" data-action="adjustSkill" data-skill="{{key}}" data-delta="-1" aria-label="{{localize "DW.Sheet.Decrease"}} {{label}}" {{#unless ../editable}}disabled{{/unless}}><i class="fas fa-minus" inert></i></button>
+          <span class="dw-skill-rank" aria-label="{{label}}">{{rank}}</span>
+          <button type="button" class="dw-step" data-action="adjustSkill" data-skill="{{key}}" data-delta="1" aria-label="{{localize "DW.Sheet.Increase"}} {{label}}" {{#unless ../editable}}disabled{{/unless}}><i class="fas fa-plus" inert></i></button>
+        </span>
+      </div>
+      <p class="dw-hint">{{blurb}}</p>
+      {{#if has}}
+      {{#each moves}}
+      <div class="dw-skill-move">
+        <button type="button" class="dw-text-btn" data-action="useSkill" data-skill="{{../key}}" data-move="{{index}}" data-tooltip="DW.Hireling.PostSkill">
+          <i class="fas fa-comment" inert></i> {{name}}
+        </button>
+        <span>{{text}}</span>
+      </div>
+      {{/each}}
+      {{/if}}
+    </li>
+    {{/each}}
+  </ol>
+</section>

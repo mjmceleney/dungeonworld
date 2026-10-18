@@ -1,0 +1,101 @@
+{{!-- A party move's shared chat card (party-moves.js). Rendered on each
+     client from the message's flags, so buttons show only for the
+     characters this user can act for. --}}
+<div class="dw-party {{#if closed}}is-closed{{/if}}">
+  <header class="dw-party-head">
+    <i class="{{icon}}" inert></i>
+    <h3>{{title}}</h3>
+    {{#if closed}}<span class="dw-party-done">{{localize "DW.Party.Done"}}</span>{{/if}}
+  </header>
+  {{#unless closed}}<p class="dw-party-intro">{{intro}}</p>{{/unless}}
+
+  {{#if (eq type "journey")}}
+  <ol class="dw-party-roles">
+    {{#each roles}}
+    <li class="dw-party-role {{#if result}}is-{{result}}{{/if}}" data-role="{{role}}">
+      <div class="dw-party-role-head">
+        <strong>{{label}}</strong>
+        {{#if roll}}<span class="dw-party-result">{{roll.total}} · {{roll.label}}</span>{{/if}}
+      </div>
+      {{#if actor}}
+      <div class="dw-party-actor" data-actor-id="{{actor.id}}">
+        <img src="{{actor.img}}" alt="" width="24" height="24"/>
+        <span>{{actor.name}}</span>
+        {{#if canRoll}}<button type="button" data-party-action="rollRole"><i class="fas fa-dice-d6" inert></i> {{localize "DW.Party.RollWis"}}</button>{{/if}}
+        {{#if canClear}}<button type="button" class="dw-party-icon" data-party-action="clearRole" data-tooltip="DW.Party.ClearRole" aria-label="{{localize "DW.Party.ClearRole"}}"><i class="fas fa-times" inert></i></button>{{/if}}
+      </div>
+      {{else}}
+      <div class="dw-party-drop">
+        <span>{{localize "DW.Party.DropRole"}}</span>
+        {{#if canTake}}<button type="button" data-party-action="take">{{localize "DW.Party.TakeRole"}}</button>{{/if}}
+      </div>
+      {{/if}}
+      {{#if outcome}}<p class="dw-party-outcome">{{outcome}}</p>{{else}}<p class="dw-party-hint">{{hint}}</p>{{/if}}
+    </li>
+    {{/each}}
+  </ol>
+
+  <div class="dw-party-distance">
+    <label>
+      <span>{{localize "DW.Party.journey.Distance"}}</span>
+      <input type="number" min="0" step="1" value="{{distance}}" data-party-action="distance" {{#unless canManage}}disabled{{/unless}}/>
+    </label>
+    {{#if rationsReady}}<span>{{localize "DW.Party.journey.RationsEach" count=rations}}</span>{{/if}}
+  </div>
+  {{/if}}
+
+  {{#if members.length}}
+  <ol class="dw-party-members">
+    {{#each members}}
+    <li class="dw-party-member" data-actor-id="{{id}}">
+      <div class="dw-party-actor">
+        {{#if watchNumber}}<span class="dw-party-order" data-tooltip="DW.Party.camp.WatchOrder">{{watchNumber}}</span>{{/if}}
+        <img src="{{img}}" alt="" width="24" height="24"/>
+        <span class="dw-party-name">{{name}}{{#if role}} <em>({{role}})</em>{{/if}}</span>
+        {{#if canMove}}
+        <button type="button" class="dw-party-icon" data-party-action="up" {{#if first}}disabled{{/if}} aria-label="{{localize "DW.Party.camp.Earlier"}}"><i class="fas fa-arrow-up" inert></i></button>
+        <button type="button" class="dw-party-icon" data-party-action="down" {{#if last}}disabled{{/if}} aria-label="{{localize "DW.Party.camp.Later"}}"><i class="fas fa-arrow-down" inert></i></button>
+        {{/if}}
+        {{#if canRemove}}<button type="button" class="dw-party-icon" data-party-action="remove" data-tooltip="DW.Party.Remove" aria-label="{{localize "DW.Party.Remove"}}"><i class="fas fa-user-minus" inert></i></button>{{/if}}
+      </div>
+
+      <div class="dw-party-steps">
+        {{!-- Rations: a journey's count once it's known, one at camp. --}}
+        {{#if (eq ../type "journey")}}
+          {{#if ../rationsReady}}
+            {{#if (ne ate null)}}<span class="dw-party-check"><i class="fas fa-check" inert></i> {{localize "DW.Party.Ate" count=ate}}</span>
+            {{else if canAct}}<button type="button" data-party-action="eat" data-count="{{../rations}}"><i class="fas fa-drumstick-bite" inert></i> {{localize "DW.Party.EatCount" count=../rations}}</button>{{/if}}
+          {{/if}}
+        {{else}}
+          {{#if (ne ate null)}}<span class="dw-party-check"><i class="fas fa-check" inert></i> {{localize "DW.Party.Ate" count=ate}}</span>
+          {{else if canAct}}<button type="button" data-party-action="eat"><i class="fas fa-drumstick-bite" inert></i> {{localize "DW.Party.EatOne"}}</button>{{/if}}
+
+          {{#if watch}}<span class="dw-party-check is-{{watch.result}}"><i class="fas fa-eye" inert></i> {{localize "DW.Party.camp.Watched"}} {{watch.total}} · {{watch.label}}</span>
+          {{else if canAct}}<button type="button" data-party-action="watch"><i class="fas fa-eye" inert></i> {{localize "DW.Party.camp.TakeWatch"}}</button>{{/if}}
+
+          {{#if (ne healed null)}}<span class="dw-party-check"><i class="fas fa-heart" inert></i> {{localize "DW.Party.camp.Healed" count=healed}}</span>
+          {{else if canAct}}<button type="button" data-party-action="heal" data-amount="{{heal}}" data-tooltip="DW.Party.camp.WakeHint"><i class="fas fa-sun" inert></i> {{localize "DW.Party.camp.Wake" count=heal}}</button>{{/if}}
+        {{/if}}
+        <span class="dw-party-meta">{{localize "DW.Party.RationsLeft" count=rationsLeft}}{{#if hp}} · {{localize "DW.HP"}} {{hp}}{{/if}}</span>
+        {{#if canLevel}}<span class="dw-party-badge">{{localize "DW.Party.camp.CanLevel"}}</span>{{/if}}
+        {{#if prepares}}<span class="dw-party-badge">{{localize "DW.Party.camp.Prepare"}}</span>{{/if}}
+      </div>
+    </li>
+    {{/each}}
+  </ol>
+  {{else}}
+  <p class="dw-party-hint">{{localize "DW.Party.NoMembers"}}</p>
+  {{/if}}
+
+  {{#if priest}}<p class="dw-party-hint">{{localize "DW.Party.camp.Priest" skill=priest}}</p>{{/if}}
+
+  <footer class="dw-party-foot">
+    {{#unless closed}}
+    <span class="dw-party-hint">{{localize "DW.Party.DropHint"}}</span>
+    {{#if canJoin}}<button type="button" data-party-action="join"><i class="fas fa-user-plus" inert></i> {{localize "DW.Party.Join"}}</button>{{/if}}
+    {{#if canManage}}<button type="button" data-party-action="close"><i class="fas fa-flag-checkered" inert></i> {{localize "DW.Party.Finish"}}</button>{{/if}}
+    {{else}}
+    {{#if canManage}}<button type="button" data-party-action="reopen">{{localize "DW.Party.Reopen"}}</button>{{/if}}
+    {{/unless}}
+  </footer>
+</div>

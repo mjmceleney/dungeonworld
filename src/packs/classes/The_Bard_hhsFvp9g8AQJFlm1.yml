@@ -43,13 +43,20 @@ data:
       description: Spur others to significant and unplanned decisive action.
   equipment:
     '0':
-      label: Start with these
-      mode: checkbox
+      label: You start with
+      mode: all
+      count: 0
       items:
         - 6JcOoZ8CNqYxLgyQ
+      options:
+        - items:
+            - 6JcOoZ8CNqYxLgyQ
+          quantities: {}
+          coins: 0
     '1':
-      label: Choose one, all are weight 0 for you
+      label: Instrument (all are 0 weight for you)
       mode: radio
+      count: 0
       items:
         - t0FCRrKNif8IVLdZ
         - Pg5OKCxvZLZIlUqZ
@@ -57,32 +64,99 @@ data:
         - IsyhcXjdMpUzK3r5
         - aXVYHRjX2eoRTtCQ
         - lG9aDTZcWfYBHCjj
+      options:
+        - items:
+            - t0FCRrKNif8IVLdZ
+          quantities: {}
+          coins: 0
+        - items:
+            - Pg5OKCxvZLZIlUqZ
+          quantities: {}
+          coins: 0
+        - items:
+            - bIDVbZVEJSWPcBi1
+          quantities: {}
+          coins: 0
+        - items:
+            - IsyhcXjdMpUzK3r5
+          quantities: {}
+          coins: 0
+        - items:
+            - aXVYHRjX2eoRTtCQ
+          quantities: {}
+          coins: 0
+        - items:
+            - lG9aDTZcWfYBHCjj
+          quantities: {}
+          coins: 0
     '2':
-      label: Choose your clothing
+      label: Clothing
       mode: radio
+      count: 0
       items:
-        - null
-        - null
         - oGiXIqNQbukIjf06
         - wQPaK1s3OX41qxTz
+      options:
+        - items:
+            - oGiXIqNQbukIjf06
+          quantities: {}
+          coins: 0
+        - items:
+            - wQPaK1s3OX41qxTz
+          quantities: {}
+          coins: 0
     '3':
-      label: Choose your armament
-      mode: checkbox
+      label: Armament
+      mode: radio
+      count: 0
       items:
         - 5dSrhoG0LBXY6RyD
         - jSFKrGehEa3y26cO
         - WrnuJ6j8JerAozDO
         - Bj8EezgO0DZ9OhVQ
+      options:
+        - items:
+            - 5dSrhoG0LBXY6RyD
+          quantities: {}
+          coins: 0
+        - items:
+            - jSFKrGehEa3y26cO
+            - WrnuJ6j8JerAozDO
+            - Bj8EezgO0DZ9OhVQ
+          quantities: {}
+          coins: 0
     '4':
-      label: Choose one
+      label: Supplies
       mode: radio
+      count: 0
       items:
         - YwHV7WYzTPSAOorl
         - Z7tBUvJQZEk6YHXv
         - Faznfc01XOrNYIOn
+      options:
+        - items:
+            - YwHV7WYzTPSAOorl
+          quantities: {}
+          coins: 0
+        - items:
+            - Z7tBUvJQZEk6YHXv
+          quantities: {}
+          coins: 0
+        - items:
+            - Faznfc01XOrNYIOn
+          quantities: {}
+          coins: 0
+        - items: []
+          quantities: {}
+          coins: 3
   hp: 6
   load: 9
   damage: d6
+  looks: |-
+    Knowing Eyes, Fiery Eyes, or Joyous Eyes
+    Fancy Hair, Wild Hair, or Stylish Cap
+    Finery, Traveling Clothes, or Poor Clothes
+    Fit Body, Well-fed Body, or Thin Body
 flags: {}
 img: icons/tools/instruments/lute-gold-brown.webp
 effects: []

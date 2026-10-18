@@ -16,6 +16,9 @@ data:
   magic: false
   itemType: dungeongear
   attributes: {}
+  useHeal: 4
+  useTarget: other
+  useCure: false
 flags: {}
 img: icons/commodities/cloth/cloth-bolt-gold.webp
 effects: []

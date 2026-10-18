@@ -3,6 +3,13 @@ import { DwUtility } from "../utility.js";
 import { DwRolls } from "../rolls.js";
 import { DwLevelUp } from "./level-up.js";
 import { DwTrackers } from "./trackers.js";
+import { DwBonds } from "./bonds.js";
+import { DwResources } from "../resources.js";
+import { DwSpells } from "../spells.js";
+import { DwStartOver } from "./start-over.js";
+import { DwBeyondTen } from "./beyond-ten.js";
+import { DwRecruit } from "../recruit.js";
+import { DwCharacterCreator } from "./character-creator.js";
 
 const { HandlebarsApplicationMixin, DialogV2 } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
@@ -103,6 +110,32 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       adjustTracker: function(event, target) { return this.trackers.adjust(event, target); },
       setTracker: function(event, target) { return this.trackers.set(event, target); },
       removeMulticlass: DwCharacterSheet.#onRemoveMulticlass,
+      createCharacter: function(event) { event.preventDefault(); new DwCharacterCreator(this.actor).render(true); },
+      fillBonds: function(event) { event.preventDefault(); return DwBonds.fill(this.actor); },
+      editDetail: DwCharacterSheet.#onEditDetail,
+      beyondTen: function(event) { event.preventDefault(); return DwBeyondTen.show(this.actor); },
+      castSpell: function(event, target) {
+        event.preventDefault();
+        return this._getItem(target)?.roll({ cast: true });
+      },
+      prepareSpells: function(event) {
+        event.preventDefault();
+        // Each casting class has its own button, naming its move.
+        return DwSpells.prepare(this.actor, this.actor.items.get(event.target.closest('[data-move-id]')?.dataset.moveId ?? '') ?? null);
+      },
+      clearRecruitPenalty: function(event) {
+        event.preventDefault();
+        return this.actor.unsetFlag('dungeonworld', 'recruitPenalty');
+      },
+      clearCastPenalty: function(event) {
+        event.preventDefault();
+        return this.actor.unsetFlag('dungeonworld', 'castPenalty');
+      },
+      useItem: function(event, target) {
+        event.preventDefault();
+        const item = this._getItem(target);
+        if (item) return DwResources.use(this.actor, item);
+      },
       startOver: DwCharacterSheet.#onStartOver,
     },
   };
@@ -235,6 +268,8 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       xpMax: xpMax,
       xpPct: xpMax > 0 ? Math.min(100, Math.round(100 * xp / xpMax)) : 0,
       levelUp: this._prepareLevelUp({ level, xp, xpMax, classlist, startingMoves: items.startingCount }),
+      // A brand new character is made with the character creator.
+      creation: isEditable && actor.token == null && level <= 1 && xp == 0 && items.startingCount < 1,
 
       // Vitals.
       hp: hp,
@@ -245,14 +280,15 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       damages: { d4: 'd4', d6: 'd6', d8: 'd8', d10: 'd10', d12: 'd12' },
       weight: weight,
       weightMax: weightMax,
-      encumbered: weight > weightMax,
-      weightSpare: Math.max(0, weightMax - weight),
+      load: this._prepareLoad(weight, weightMax),
+      armor: this._prepareArmor(),
 
       // Stats.
       abilities: this._prepareAbilities(),
       forwardText: DwCharacterSheet.#signed(system.attributes.forward?.value),
       ongoingText: DwCharacterSheet.#signed(system.attributes.ongoing?.value),
       rollModes: this._prepareRollModes(),
+      effects: this._prepareEffects(),
 
       // Tabs.
       moveSections: moveSections.sections,
@@ -260,11 +296,13 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       moveQuery: this._moveQuery,
       equipment: items.equipment,
       spellLevels: items.spellLevels,
+      spellcasting: this._prepareSpellcasting(items.spellLevels),
       enriched: { look, alignment, race, biography },
 
       // Sidebar.
       trackers: this.trackers.prepare(),
       bonds: items.bonds,
+      bondBlanks: actor.items.some(i => i.type == 'bond' && DwBonds.hasBlank(i)),
     });
   }
 
@@ -315,8 +353,16 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     if (this.actor.token != null) {
       return { ready: false, hint: game.i18n.localize('DW.Sheet.UnlinkedToken') };
     }
-    if (level >= 10) {
-      return { ready: false, hint: game.i18n.localize('DW.Sheet.MaxLevel') };
+    // Retired characters and mentors don't level up any more.
+    const flags = this.actor.flags?.dungeonworld ?? {};
+    if (flags.retired) return { ready: false, hint: game.i18n.localize('DW.Beyond.RetiredHint') };
+    if (flags.mentor) return { ready: false, hint: game.i18n.localize('DW.Beyond.MentorHint') };
+    // Beyond level 10: retire, take on an apprentice, change class, or (with
+    // multiclassing) level up in another class.
+    if (DwBeyondTen.capped(this.actor)) {
+      return xp >= xpMax
+        ? { ready: true, beyond: true, hint: game.i18n.localize('DW.Beyond.Title') }
+        : { ready: false, hint: game.i18n.format('DW.Sheet.NeedsXp', { xp: xpMax - xp }) };
     }
     // A new character can always use the builder to pick starting moves.
     const hasXp = xp >= xpMax;
@@ -345,6 +391,124 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       list: list.map(c => ({ ...c, short: classLabel(c.name) })),
       mismatch: sum !== level ? game.i18n.format('DW.Sheet.ClassLevelsMismatch', { sum, level }) : null,
     };
+  }
+
+  /**
+   * How the character's load stands: fine, heavy (−1 to moves) or over
+   * (drop something or miss). Without gear rules, only over load is flagged.
+   *
+   * @return {{tier: string, warn: boolean, text: string, tooltip: string}}
+   */
+  _prepareLoad(weight, weightMax) {
+    const automate = game.settings.get('dungeonworld', 'automateGear');
+    const tier = automate ? (this.actor.system.attributes.weight.tier ?? 'ok') : (weight > weightMax ? 'over' : 'ok');
+    if (tier == 'ok') {
+      return { tier, warn: false, text: game.i18n.format('DW.Sheet.ToSpare', { weight: Math.max(0, weightMax - weight) }), tooltip: '' };
+    }
+    if (!automate) {
+      return { tier, warn: true, text: game.i18n.localize('DW.Sheet.Encumbered'), tooltip: '' };
+    }
+    return {
+      tier,
+      warn: true,
+      text: game.i18n.localize(tier == 'heavy' ? 'DW.Gear.Heavy' : 'DW.Gear.Over'),
+      tooltip: game.i18n.localize(tier == 'heavy' ? 'DW.Gear.HeavyHint' : 'DW.Gear.OverHint'),
+    };
+  }
+
+  /**
+   * Armor for the header. With gear rules on and armor equipped, the total
+   * comes from the gear (shown, not typed) and only the bonus is editable.
+   *
+   * @return {{fromGear: boolean, value: number, misc: number, tooltip: string, clumsy: number}}
+   */
+  _prepareArmor() {
+    const ac = this.actor.system.attributes.ac;
+    const automate = game.settings.get('dungeonworld', 'automateGear');
+    const fromGear = automate && !!ac.fromGear;
+    return {
+      fromGear,
+      value: Number(ac.value) || 0,
+      misc: Number(ac.misc) || 0,
+      tooltip: fromGear ? game.i18n.format('DW.Gear.ArmorFrom', { sources: ac.sources }) : '',
+      clumsy: automate ? Number(ac.clumsy) || 0 : 0,
+    };
+  }
+
+  /**
+   * The Spells tab's summary: for each casting class (one per Prepare Spells
+   * or Commune move), its prepared spell levels against its level +1 limit;
+   * and any penalty to cast until the next preparation.
+   *
+   * @return {Object|null} Null for a character without spells.
+   */
+  _prepareSpellcasting(spellLevels) {
+    if (!spellLevels.some(l => l.spells.length)) return null;
+    return {
+      casters: DwSpells.budgets(this.actor).map(b => ({
+        moveId: b.move?.id ?? '',
+        label: b.label,
+        used: b.used,
+        max: b.max,
+        over: b.over,
+      })),
+      penalty: DwSpells.castPenalty(this.actor),
+    };
+  }
+
+  /**
+   * Modifiers in place on the character's rolls besides forward and
+   * ongoing: a penalty to cast spells, to Recruit, and from their gear.
+   * Shown as chips by the stats, each saying what it applies to.
+   *
+   * @return {{label: string, value: string, scope: string, tooltip: string, clear: string}[]}
+   */
+  _prepareEffects() {
+    const actor = this.actor;
+    const effects = [];
+    const loc = (key, data) => data ? game.i18n.format(key, data) : game.i18n.localize(key);
+    const castPenalty = DwSpells.castPenalty(actor);
+    if (castPenalty) effects.push({
+      label: actor.items.find(i => DwSpells.isCastMove(i))?.name ?? loc('DW.Effects.Cast'),
+      value: `−${castPenalty}`,
+      scope: loc('DW.Effects.UntilPrepare'),
+      tooltip: loc('DW.Effects.CastHint', { penalty: castPenalty }),
+      clear: 'clearCastPenalty',
+    });
+    const recruitPenalty = DwRecruit.penalty(actor);
+    if (recruitPenalty) effects.push({
+      label: actor.items.find(i => DwRecruit.isRecruit(i))?.name ?? loc('DW.Effects.Recruit'),
+      value: `−${recruitPenalty}`,
+      scope: loc('DW.Effects.NextRoll'),
+      tooltip: loc('DW.Effects.RecruitHint', { penalty: recruitPenalty }),
+      clear: 'clearRecruitPenalty',
+    });
+    if (game.settings.get('dungeonworld', 'automateGear')) {
+      const clumsy = Number(actor.system.attributes.ac?.clumsy) || 0;
+      if (clumsy) effects.push({
+        label: loc('DW.Gear.Clumsy'), value: `−${clumsy}`, scope: loc('DW.Effects.AllMoves'),
+        tooltip: loc('DW.Gear.ClumsyHint'), clear: '',
+      });
+      const tier = actor.system.attributes.weight?.tier;
+      if (tier == 'heavy' || tier == 'over') effects.push({
+        label: loc('DW.Effects.Load'), value: '−1', scope: loc(tier == 'over' ? 'DW.Effects.DropOrFail' : 'DW.Effects.AllMoves'),
+        tooltip: loc(tier == 'over' ? 'DW.Gear.OverHint' : 'DW.Gear.HeavyHint'), clear: '',
+      });
+    }
+    return effects;
+  }
+
+  /** The modifier in place for one move, for a badge on its row. */
+  _moveEffect(item) {
+    if (DwSpells.isCastMove(item)) {
+      const penalty = DwSpells.castPenalty(this.actor);
+      if (penalty) return { text: game.i18n.format('DW.Effects.OngoingBadge', { penalty }), tooltip: game.i18n.format('DW.Effects.CastHint', { penalty }) };
+    }
+    if (DwRecruit.isRecruit(item)) {
+      const penalty = DwRecruit.penalty(this.actor);
+      if (penalty) return { text: game.i18n.format('DW.Effects.ForwardBadge', { penalty }), tooltip: game.i18n.format('DW.Effects.RecruitHint', { penalty }) };
+    }
+    return null;
   }
 
   _prepareAbilities() {
@@ -396,6 +560,8 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const bonds = [];
     const spellsByLevel = {};
     let startingCount = 0;
+    // Spells can be cast from their row when the character has Cast a Spell.
+    const canCast = actor.items.some(i => DwSpells.isCastMove(i));
 
     const items = actor.items.contents.sort((a, b) => (a.sort || 0) - (b.sort || 0));
     for (let item of items) {
@@ -431,6 +597,8 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
           row.badge = game.i18n.format('DW.Sheet.LevelBadge', { level: system.requiresLevel });
         }
         if (row.moveType == 'starting') startingCount++;
+        // A modifier in place for this move (casting or Recruit penalties).
+        row.effect = this._moveEffect(item);
         for (let [key, label, css] of [['success', '10+', 'success'], ['partial', '7–9', 'partial'], ['failure', '6-', 'failure']]) {
           const value = system.moveResults?.[key]?.value;
           if (value) {
@@ -447,6 +615,8 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         row.equipped = !!system.equipped;
         row.uses = system.uses;
         row.quantity = system.quantity;
+        // Gear that gets used up, or that does something when used.
+        row.canUse = (Number(system.uses) > 0 || Number(system.useHeal) > 0) && DwResources.remaining(item) > 0;
         row.weight = system.weight;
         try {
           const tags = system.tags ? JSON.parse(system.tags) : [];
@@ -459,6 +629,7 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       else if (item.type == 'spell') {
         row.rollIcon = system.rollFormula ? 'formula' : 'none';
         row.prepared = !!system.prepared;
+        row.canCast = canCast;
         const level = Number(system.spellLevel ?? 0);
         (spellsByLevel[level] ??= []).push(row);
       }
@@ -956,6 +1127,50 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   }
 
   /**
+   * Edit the character's race or alignment: its name and description, in a
+   * dialog, since they rarely change. The sidebar shows them in full.
+   * @this {DwCharacterSheet}
+   */
+  static async #onEditDetail(event, target) {
+    event.preventDefault();
+    const kind = target.dataset.detail;
+    if (!['race', 'alignment'].includes(kind)) return;
+    const detail = this.actor.system.details[kind] ?? {};
+    const escape = (value) => Handlebars.escapeExpression(String(value ?? ''));
+    const label = kind == 'race'
+      ? (game.settings.get('dungeonworld', 'raceSingle') || game.i18n.localize('DW.Race'))
+      : (game.settings.get('dungeonworld', 'alignmentSingle') || game.i18n.localize('DW.Alignment'));
+
+    const content = document.createElement('div');
+    content.innerHTML = `<div class="form-group">
+        <label>${escape(game.i18n.localize('DW.LevelUp.OwnName'))}</label>
+        <input type="text" name="value" value="${escape(detail.value)}" autofocus>
+      </div>
+      <div class="dw-detail-editor">
+        <label>${escape(game.i18n.localize(kind == 'race' ? 'DW.Sheet.RaceDescription' : 'DW.Sheet.AlignmentDescription'))}</label>
+        <prose-mirror name="description" value="${escape(detail.description)}"></prose-mirror>
+      </div>`;
+
+    const result = await DialogV2.wait({
+      classes: ['dw-detail-dialog'],
+      window: { title: game.i18n.format('DW.Sheet.EditDetailTitle', { detail: label }), icon: 'fa-solid fa-pen' },
+      position: { width: 520 },
+      content,
+      buttons: [
+        { action: 'save', label: 'DW.Sheet.Save', icon: 'fa-solid fa-check', default: true,
+          callback: (event, button) => new FormDataExtended(button.form).object },
+        { action: 'cancel', label: 'DW.Cancel', icon: 'fa-solid fa-xmark', callback: () => null },
+      ],
+      rejectClose: false,
+    });
+    if (!result || typeof result != 'object') return;
+    await this.actor.update({
+      [`system.details.${kind}.value`]: String(result.value ?? '').trim(),
+      [`system.details.${kind}.description`]: String(result.description ?? ''),
+    });
+  }
+
+  /**
    * Ask a yes/no question with checkboxes, in the sheet's dialog style.
    * @param {string} title
    * @param {string} text  Plain text, escaped here.
@@ -1034,40 +1249,7 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   static async #onStartOver(event, target) {
     event.preventDefault();
     if (!game.user.isGM) return;
-    const items = this.actor.items;
-    const count = (filter) => items.filter(filter).length;
-    const options = [
-      { name: 'moves', checked: true, label: game.i18n.format('DW.Sheet.StartOverMoves', { count: count(i => i.type == 'move' && i.system.class) }) },
-      { name: 'spells', checked: true, label: game.i18n.format('DW.Sheet.StartOverSpells', { count: count(i => i.type == 'spell') }) },
-      { name: 'equipment', checked: false, label: game.i18n.format('DW.Sheet.StartOverEquipment', { count: count(i => i.type == 'equipment') }) },
-      { name: 'bonds', checked: false, label: game.i18n.format('DW.Sheet.StartOverBonds', { count: count(i => i.type == 'bond') }) },
-      { name: 'details', checked: false, label: game.i18n.localize('DW.Sheet.StartOverDetails') },
-    ];
-    const result = await this._confirmWithOptions(
-      game.i18n.localize('DW.Sheet.StartOverTitle'),
-      game.i18n.format('DW.Sheet.StartOverText', { actor: this.actor.name }),
-      options, 'DW.Sheet.StartOver');
-    if (!result) return;
-
-    const remove = items.filter(i =>
-      (result.moves && i.type == 'move' && i.system.class)
-      || (result.spells && i.type == 'spell')
-      || (result.equipment && i.type == 'equipment')
-      || (result.bonds && i.type == 'bond'));
-    if (remove.length) await this.actor.deleteEmbeddedDocuments('Item', remove.map(i => i.id));
-
-    const update = {
-      'system.attributes.level.value': 1,
-      'system.attributes.xp.value': 0,
-      'flags.dungeonworld.levelup': false,
-      ...DwUtility.deletionUpdate('flags.dungeonworld.multiclasses'),
-      ...DwUtility.deletionUpdate('flags.dungeonworld.classLevels'),
-    };
-    if (result.details) {
-      update['system.details.race'] = { value: '', description: '' };
-      update['system.details.alignment'] = { value: '', description: '' };
-    }
-    await this.actor.update(update);
+    await DwStartOver.run(this.actor);
   }
 
   /* -------------------------------------------- */

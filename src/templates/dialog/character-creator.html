@@ -1,0 +1,63 @@
+{{!-- Character creation, first steps: name, class and look. The level 1
+     builder follows. --}}
+<div class="dw-levelup">
+  <div class="dw-levelup-body">
+    <header class="dw-card dw-levelup-head">
+      <p class="dw-levelup-hint">{{localize "DW.Creator.Intro"}}</p>
+      <label class="dw-creator-name">
+        <span class="dw-label">{{localize "DW.Creator.Name"}}</span>
+        <input type="text" name="name" value="{{choices.name}}" placeholder="{{localize "DW.Creator.NamePlaceholder"}}"/>
+      </label>
+    </header>
+
+    <section class="dw-card dw-levelup-section">
+      <h2 class="dw-section-title">{{localize "DW.Creator.ChooseClass"}}</h2>
+      {{#if noClasses}}<p class="dw-levelup-hint">{{localize "DW.Creator.NoClasses"}}</p>{{/if}}
+      <div class="dw-choices dw-creator-classes">
+        {{#each classes}}
+        <label class="dw-choice dw-creator-class">
+          {{#if img}}<span class="dw-creator-class-art" style="background-image: url(&quot;{{img}}&quot;)" aria-hidden="true"></span>{{/if}}
+          <input type="radio" name="className" value="{{name}}" {{checked checked}}>
+          <span class="dw-choice-body">
+            <span class="dw-choice-head">
+              <span class="dw-choice-name">{{label}}</span>
+            </span>
+            <span class="dw-choice-text">{{blurb}}</span>
+            <span class="dw-creator-stats">
+              {{#if hp}}<span class="dw-pill">{{localize "DW.Creator.Hp" hp=hp}}</span>{{/if}}
+              {{#if damage}}<span class="dw-pill">{{localize "DW.Creator.Damage" damage=damage}}</span>{{/if}}
+              {{#if load}}<span class="dw-pill">{{localize "DW.Creator.Load" load=load}}</span>{{/if}}
+            </span>
+          </span>
+        </label>
+        {{/each}}
+      </div>
+    </section>
+
+    {{#if chosen}}
+    <section class="dw-card dw-levelup-section">
+      <h2 class="dw-section-title">{{localize "DW.Creator.ChooseLook" class=chosen}}</h2>
+      {{#if looks.length}}
+      <p class="dw-levelup-hint">{{localize "DW.Creator.LookHint"}}</p>
+      {{#each looks as |group|}}
+      <div class="dw-creator-look">
+        {{#each group.options as |option|}}
+        <label class="dw-choice dw-creator-look-option">
+          <input type="radio" name="look.{{group.index}}" value="{{option.value}}" {{checked option.checked}}>
+          <span class="dw-choice-name">{{option.value}}</span>
+        </label>
+        {{/each}}
+      </div>
+      {{/each}}
+      {{/if}}
+      <input type="text" name="lookText" value="{{choices.lookText}}" placeholder="{{#if looks.length}}{{localize "DW.Creator.LookMore"}}{{else}}{{localize "DW.Creator.LookFree"}}{{/if}}"/>
+    </section>
+    {{/if}}
+  </div>
+
+  <footer class="dw-levelup-footer">
+    <span class="dw-levelup-hint dw-creator-next">{{localize "DW.Creator.NextHint"}}</span>
+    <button type="button" class="dw-text-btn" data-action="cancel"><i class="fas fa-times" inert></i> {{localize "DW.Cancel"}}</button>
+    <button type="submit" class="dw-text-btn dw-primary-btn"><i class="fas fa-arrow-right" inert></i> {{localize "DW.Creator.Next"}}</button>
+  </footer>
+</div>

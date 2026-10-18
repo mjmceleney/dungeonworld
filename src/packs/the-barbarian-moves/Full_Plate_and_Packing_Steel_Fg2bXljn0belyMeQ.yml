@@ -22,6 +22,7 @@ system:
   requiresLevel: 0
   requiresMove: ''
   moveGroup: barbarian-armor
+  ignoreClumsy: armor
 ownership:
   default: 0
 effects: []

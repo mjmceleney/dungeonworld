@@ -52,37 +52,87 @@ data:
       description: Eliminate an unnatural menace.
   equipment:
     '0':
-      label: Starting gear
-      mode: checkbox
+      label: You start with
+      mode: all
+      count: 0
       items:
         - 1YuCznJbmL9wFSjk
-      objects: []
+      options:
+        - items:
+            - 1YuCznJbmL9wFSjk
+          quantities: {}
+          coins: 0
     '1':
-      label: Choose your defenses
+      label: Defenses
       mode: radio
+      count: 0
       items:
         - yEnHhE8w9Qe4f2je
         - FkfxRU6NiOzEzkIy
-      objects: []
+      options:
+        - items:
+            - yEnHhE8w9Qe4f2je
+          quantities: {}
+          coins: 0
+        - items:
+            - FkfxRU6NiOzEzkIy
+          quantities: {}
+          coins: 0
     '2':
-      label: Choose your armament
+      label: Armament
       mode: radio
+      count: 0
       items:
         - 3lS1W8B7DbzAeYn8
         - xu45M9oglN3VEWHC
         - 4wGxPYN283j74dcF
+      options:
+        - items:
+            - 3lS1W8B7DbzAeYn8
+          quantities: {}
+          coins: 0
+        - items:
+            - xu45M9oglN3VEWHC
+          quantities: {}
+          coins: 0
+        - items:
+            - 4wGxPYN283j74dcF
+          quantities: {}
+          coins: 0
     '3':
-      label: Choose gear
+      label: Supplies
       mode: radio
+      count: 0
       items:
         - YwHV7WYzTPSAOorl
         - ZbQQw1Is1jIFCzaA
         - Faznfc01XOrNYIOn
         - 4rXRNHipSXLO6pnP
-      objects: []
+      options:
+        - items:
+            - YwHV7WYzTPSAOorl
+          quantities: {}
+          coins: 0
+        - items:
+            - ZbQQw1Is1jIFCzaA
+          quantities: {}
+          coins: 0
+        - items:
+            - Faznfc01XOrNYIOn
+          quantities: {}
+          coins: 0
+        - items:
+            - 4rXRNHipSXLO6pnP
+          quantities:
+            4rXRNHipSXLO6pnP: 3
+          coins: 0
   hp: 6
   load: 6
   damage: d6
+  looks: |-
+    Wise Eyes, Wild Eyes, or Haunting Eyes
+    Furry Hood, Messy Hair, or Braided Hair
+    Ceremonial Garb, Practical Leathers, or Weathered Hides
 flags: {}
 img: systems/dungeonworld/assets/icons/skills/green_13.webp
 effects: []

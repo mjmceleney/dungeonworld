@@ -15,6 +15,10 @@ data:
   requiresMove: ''
   moveType: basic
   moveGroup: ''
+  resource:
+    name: ammo
+    amount: 1
+    when: partial
   moveResults:
     failure:
       value: ''

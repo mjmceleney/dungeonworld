@@ -41,37 +41,86 @@ data:
       description: Harm another to prove the superiority of your church or god.
   equipment:
     '0':
-      label: Starting gear
-      mode: checkbox
+      label: You start with
+      mode: all
+      count: 0
       items:
-        - Iy4Iw8nsJXNIz8bG
         - 6JcOoZ8CNqYxLgyQ
-      objects: []
+        - Iy4Iw8nsJXNIz8bG
+      options:
+        - items:
+            - 6JcOoZ8CNqYxLgyQ
+          quantities: {}
+          coins: 0
+        - items:
+            - Iy4Iw8nsJXNIz8bG
+          quantities: {}
+          coins: 0
     '1':
-      label: Choose your defenses
+      label: Defenses
       mode: radio
+      count: 0
       items:
         - ic5dH6aNzBgEuTjA
         - FkfxRU6NiOzEzkIy
-      objects: []
+      options:
+        - items:
+            - ic5dH6aNzBgEuTjA
+          quantities: {}
+          coins: 0
+        - items:
+            - FkfxRU6NiOzEzkIy
+          quantities: {}
+          coins: 0
     '2':
-      label: Choose your armament
-      mode: checkbox
+      label: Armament
+      mode: radio
+      count: 0
       items:
         - fvtXSG3oibD5SuIP
         - LmjG7mONJ7GIBHIc
         - xu45M9oglN3VEWHC
         - Z7tBUvJQZEk6YHXv
+      options:
+        - items:
+            - fvtXSG3oibD5SuIP
+          quantities: {}
+          coins: 0
+        - items:
+            - LmjG7mONJ7GIBHIc
+          quantities: {}
+          coins: 0
+        - items:
+            - xu45M9oglN3VEWHC
+            - Z7tBUvJQZEk6YHXv
+          quantities: {}
+          coins: 0
     '3':
-      label: Choose gear
-      mode: checkbox
+      label: Supplies
+      mode: radio
+      count: 0
       items:
-        - 6JcOoZ8CNqYxLgyQ
         - YwHV7WYzTPSAOorl
+        - 6JcOoZ8CNqYxLgyQ
         - CMhNmAwhLVZk9lfq
+      options:
+        - items:
+            - YwHV7WYzTPSAOorl
+            - 6JcOoZ8CNqYxLgyQ
+          quantities: {}
+          coins: 0
+        - items:
+            - CMhNmAwhLVZk9lfq
+          quantities: {}
+          coins: 0
   hp: 8
   load: 10
   damage: d6
+  looks: |-
+    Kind Eyes, Sharp Eyes, or Sad Eyes
+    Tonsure, Strange Hair, or Bald
+    Flowing Robes, Habit, or Common Garb
+    Thin Body, Knobby Body, or Flabby Body
 flags: {}
 img: systems/dungeonworld/assets/icons/skills/light_06.webp
 effects: []

@@ -25,6 +25,16 @@
             </span>
           </label>
           {{/each}}
+          {{#unless @root.viewer}}
+          <div class="dw-choice dw-choice--own">
+            <input type="radio" name="race-selection" data-race="own" data-own id="dw-own-race-{{@root.actorId}}">
+            <span class="dw-choice-body">
+              <label class="dw-choice-name" for="dw-own-race-{{@root.actorId}}">{{localize "DW.LevelUp.OwnRace"}}</label>
+              <input type="text" name="own-race-name" data-own-choice="race-selection" placeholder="{{localize "DW.LevelUp.OwnName"}}">
+              <textarea name="own-race-description" rows="2" data-own-choice="race-selection" placeholder="{{localize "DW.LevelUp.OwnRaceHint"}}"></textarea>
+            </span>
+          </div>
+          {{/unless}}
         </div>
       </section>
       {{/if}}
@@ -42,6 +52,16 @@
             </span>
           </label>
           {{/each}}
+          {{#unless @root.viewer}}
+          <div class="dw-choice dw-choice--own">
+            <input type="radio" name="alignment-selection" data-alignment="own" data-own id="dw-own-alignment-{{@root.actorId}}">
+            <span class="dw-choice-body">
+              <label class="dw-choice-name" for="dw-own-alignment-{{@root.actorId}}">{{localize "DW.LevelUp.OwnAlignment"}}</label>
+              <input type="text" name="own-alignment-name" data-own-choice="alignment-selection" placeholder="{{localize "DW.LevelUp.OwnName"}}">
+              <textarea name="own-alignment-description" rows="2" data-own-choice="alignment-selection" placeholder="{{localize "DW.LevelUp.OwnAlignmentHint"}}"></textarea>
+            </span>
+          </div>
+          {{/unless}}
         </div>
       </section>
       {{/if}}
@@ -84,35 +104,55 @@
 
     {{#if equipment}}
     <div class="dw-levelup-grid">
-      {{#each equipment as |group groupId|}}
-      <section class="dw-card dw-levelup-section">
-        <h2 class="dw-section-title">{{group.label}}</h2>
+      {{!-- Each group says how much to take: everything (included), one, a
+           number, or any. An option can be several items, plus coins. --}}
+      {{#each equipment as |group|}}
+      <section class="dw-card dw-levelup-section dw-gear-group" data-gear-key="{{group.key}}" data-gear-count="{{#unless group.radio}}{{group.count}}{{/unless}}">
+        <div class="dw-gear-head">
+          <h2 class="dw-section-title">{{group.label}}</h2>
+          <span class="dw-pill dw-gear-rule {{#if group.included}}is-included{{/if}}">{{group.rule}}</span>
+        </div>
         <div class="dw-choices">
-          {{#each group.objects as |item key|}}
-          <div class="dw-choice dw-choice--item {{#if @root.viewer}}is-static{{/if}}">
+          {{#each group.options as |option|}}
+          <div class="dw-choice dw-choice--item {{#if @root.viewer}}is-static{{/if}} {{#if group.included}}is-granted{{/if}}">
             <label class="dw-choice-main">
               {{#unless @root.viewer}}
-                {{#ifEquals group.mode "radio"}}
-                <input type="radio" name="equipment.{{groupId}}" data-item-id="{{item._id}}" data-type="equipment">
+                {{#if group.included}}
+                <input type="checkbox" checked disabled data-gear-group="{{group.key}}" data-gear-option="{{option.key}}">
+                {{else if group.radio}}
+                <input type="radio" name="gear.{{group.key}}" data-gear-group="{{group.key}}" data-gear-option="{{option.key}}">
                 {{else}}
-                <input type="checkbox" name="equipment.{{groupId}}.{{key}}" data-item-id="{{item._id}}" data-type="equipment">
-                {{/ifEquals}}
+                <input type="checkbox" name="gear.{{group.key}}.{{option.key}}" data-gear-group="{{group.key}}" data-gear-option="{{option.key}}">
+                {{/if}}
               {{/unless}}
-              <img class="dw-row-img" src="{{item.img}}" alt="" width="24" height="24"/>
-              <span class="dw-choice-name">{{item.name}}</span>
-              <span class="dw-choice-meta">
-                {{#if item.system.uses}}<span class="dw-stat">{{localize "DW.Uses"}} {{item.system.uses}}</span>{{/if}}
-                {{#if item.system.quantity}}<span class="dw-stat">{{localize "DW.Qty"}} {{item.system.quantity}}</span>{{/if}}
-                {{#if item.system.weight}}<span class="dw-stat">{{localize "DW.Wt"}} {{item.system.weight}}</span>{{/if}}
+              <span class="dw-gear-option">
+                {{#each option.items as |item|}}
+                <span class="dw-gear-item">
+                  <img class="dw-row-img" src="{{item.img}}" alt="" width="24" height="24"/>
+                  <span class="dw-choice-name">{{#if (gt item.quantity 1)}}{{item.quantity}} × {{/if}}{{item.name}}</span>
+                  <span class="dw-choice-meta">
+                    {{#if item.system.uses}}<span class="dw-stat">{{localize "DW.Uses"}} {{item.system.uses}}</span>{{/if}}
+                    {{#if item.system.weight}}<span class="dw-stat">{{localize "DW.Wt"}} {{item.system.weight}}</span>{{/if}}
+                  </span>
+                </span>
+                {{/each}}
+                {{#if option.coins}}
+                <span class="dw-gear-item">
+                  <i class="fas fa-coins dw-gear-coins" inert></i>
+                  <span class="dw-choice-name">{{localize "DW.Gear.Coins" coins=option.coins}}</span>
+                </span>
+                {{/if}}
               </span>
             </label>
+            {{#each option.items as |item|}}
             {{#ifor item.system.description item.system.tags}}
             <details class="dw-choice-more">
-              <summary>{{localize "DW.LevelUp.Details"}}</summary>
+              <summary>{{item.name}}</summary>
               {{#if item.system.tags}}{{{dwTags item.system.tags}}}{{/if}}
               <div class="dw-description">{{{item.system.description}}}</div>
             </details>
             {{/ifor}}
+            {{/each}}
           </div>
           {{/each}}
         </div>

@@ -267,3 +267,50 @@
     }
   }
 }
+
+// Class sheet: starting gear options, one row each.
+.dw-v2 {
+  .dw-gear-count {
+    width: 56px;
+  }
+
+  .dw-gear-edit-options {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 6px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .dw-gear-edit-option {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    min-height: 34px;
+
+    &.is-new {
+      opacity: 0.7;
+      font-style: italic;
+    }
+
+    .dw-equipment-chip input[type="number"] {
+      width: 40px;
+      height: 22px;
+      padding: 0 2px;
+    }
+  }
+
+  .dw-gear-edit-coins {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+
+    input {
+      width: 52px;
+      height: 24px;
+    }
+  }
+}

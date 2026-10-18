@@ -1,11 +1,11 @@
 <section class="tab dw-panel {{tab.cssClass}}" data-group="primary" data-tab="equipment">
   <div class="dw-summary">
-    <div class="dw-summary-item {{#if encumbered}}dw-summary-item--warn{{/if}}">
+    <div class="dw-summary-item dw-load--{{load.tier}} {{#if load.warn}}dw-summary-item--warn{{/if}}">
       <span class="dw-label">{{localize "DW.Weight"}}</span>
       <span class="dw-readonly">{{weight}}</span>
       <span class="dw-of">/</span>
       <input type="number" name="system.attributes.weight.max" value="{{weightMax}}" step="1" aria-label="Max {{localize "DW.Weight"}}"/>
-      <span class="dw-hint">{{#if encumbered}}{{localize "DW.Sheet.Encumbered"}}{{else}}{{localize "DW.Sheet.ToSpare" weight=weightSpare}}{{/if}}</span>
+      <span class="dw-hint" {{#if load.tooltip}}data-tooltip="{{load.tooltip}}"{{/if}}>{{load.text}}</span>
     </div>
     <div class="dw-summary-item">
       <span class="dw-label">{{localize "DW.Coin"}}</span>

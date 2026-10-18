@@ -1,4 +1,6 @@
 import { DwCharacterSheet } from "./character-sheet.js";
+import { DwMonsterMaker } from "./monster-maker.js";
+import { DwTreasure } from "../treasure.js";
 
 const { TextEditor } = foundry.applications.ux;
 
@@ -29,7 +31,38 @@ export class DwNpcSheet extends DwCharacterSheet {
       width: 660,
       height: 720,
     },
+    actions: {
+      monsterMaker: DwNpcSheet.#onMonsterMaker,
+      rollTreasure: DwNpcSheet.#onRollTreasure,
+      addListedMoves: DwNpcSheet.#onAddListedMoves,
+    },
   };
+
+  /**
+   * The instinct and moves that a monster's description lists, as the
+   * compendium monsters do: "<p>Instinct: To devour</p>" followed by a list.
+   *
+   * @param {string} html
+   * @return {{instinct: string, moves: string[]}}
+   */
+  static parseDescription(html) {
+    const result = { instinct: '', moves: [] };
+    if (!html || !/instinct/i.test(html)) return result;
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    for (const p of doc.querySelectorAll('p')) {
+      const match = p.textContent.trim().match(/^Instinct\s*:\s*(.+)$/i);
+      if (!match) continue;
+      result.instinct = match[1].trim();
+      // The moves are the list right after it.
+      let next = p.nextElementSibling;
+      while (next && next.tagName != 'UL' && !next.textContent.trim()) next = next.nextElementSibling;
+      if (next?.tagName == 'UL') {
+        result.moves = [...next.children].map(li => li.textContent.replace(/\s+/g, ' ').trim()).filter(Boolean);
+      }
+      break;
+    }
+    return result;
+  }
 
   /** @override */
   static PARTS = {
@@ -68,7 +101,13 @@ export class DwNpcSheet extends DwCharacterSheet {
     const hp = Number(system.attributes.hp.value ?? 0);
     const hpMax = Number(system.attributes.hp.max ?? 0);
 
+    // Compendium monsters keep their instinct and moves in the description.
+    const listed = DwNpcSheet.parseDescription(system.details?.biography);
+    const hasMoves = actor.items.some(i => i.type == 'npcMove');
+
     return Object.assign(context, {
+      instinct: system.details?.instinct || listed.instinct,
+      listedMoves: hasMoves ? null : (listed.moves.length ? listed.moves : null),
       actor: actor,
       system: system,
       editable: isEditable,
@@ -129,6 +168,37 @@ export class DwNpcSheet extends DwCharacterSheet {
   }
 
   /* -------------------------------------------- */
+
+  /** @this {DwNpcSheet} */
+  static #onMonsterMaker(event, target) {
+    event.preventDefault();
+    const instinct = this.actor.system.details?.instinct
+      || DwNpcSheet.parseDescription(this.actor.system.details?.biography).instinct;
+    new DwMonsterMaker(this.actor, { instinct }).render(true);
+  }
+
+  /** @this {DwNpcSheet} */
+  static async #onRollTreasure(event, target) {
+    event.preventDefault();
+    await DwTreasure.prompt(this.actor);
+  }
+
+  /**
+   * Turn the moves listed in the description into move items, which can be
+   * posted to chat. Also keeps the listed instinct.
+   * @this {DwNpcSheet}
+   */
+  static async #onAddListedMoves(event, target) {
+    event.preventDefault();
+    const listed = DwNpcSheet.parseDescription(this.actor.system.details?.biography);
+    if (!listed.moves.length) return;
+    if (!this.actor.system.details?.instinct && listed.instinct) {
+      await this.actor.update({ 'system.details.instinct': listed.instinct });
+    }
+    await this.actor.createEmbeddedDocuments('Item', listed.moves.map(name => ({
+      name, type: 'npcMove', system: { moveType: 'basic' },
+    })));
+  }
 
   /** @inheritdoc */
   async _onRender(context, options) {

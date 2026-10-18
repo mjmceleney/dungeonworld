@@ -111,7 +111,28 @@ function compileYaml() {
     .pipe(yaml({ space: 2 }))
     .pipe(gulp.dest('./dist'))
 }
-const yamlTask = gulp.series(compileYaml);
+/**
+ * Foundry expands the dotted translation keys into nested objects, so a key
+ * that's also used as a prefix ("DW.Spells" and "DW.Spells.Cast") breaks the
+ * whole language file in game. Fail the build instead.
+ */
+function checkLangKeys(done) {
+  const problems = [];
+  for (const file of fs.readdirSync('./src/yaml/lang')) {
+    const keys = Object.keys(jsYaml.load(fs.readFileSync(`./src/yaml/lang/${file}`, 'utf8')) ?? {});
+    const all = new Set(keys);
+    for (const key of keys) {
+      const parts = key.split('.');
+      for (let i = 1; i < parts.length; i++) {
+        const prefix = parts.slice(0, i).join('.');
+        if (all.has(prefix)) problems.push(`${file}: "${prefix}" is a string, but "${key}" nests under it`);
+      }
+    }
+  }
+  if (problems.length) return done(new Error(`Translation keys clash:\n${problems.slice(0, 20).join('\n')}`));
+  done();
+}
+const yamlTask = gulp.series(checkLangKeys, compileYaml);
 
 /* ----------------------------------------- */
 /* Delete files
@@ -260,6 +281,7 @@ function watchUpdates() {
 /* ----------------------------------------- */
 
 const defaultTask = gulp.series(
+  checkLangKeys,
   deleteFiles,
   compileYaml,
   compileImages,
@@ -269,6 +291,7 @@ const defaultTask = gulp.series(
   watchUpdates
 );
 const buildTask = gulp.series(
+  checkLangKeys,
   cleanPacks,
   deleteFiles,
   gulp.parallel(

@@ -42,6 +42,20 @@
       <span class="dw-label">{{localize "DW.Price"}}</span>
       <input type="number" name="system.price" value="{{system.price}}" step="1"/>
 
+      <span class="dw-label">{{localize "DW.Use.Heal"}}</span>
+      <input type="number" name="system.useHeal" value="{{system.useHeal}}" min="0" step="1"/>
+      <span class="dw-fields-hint">{{localize "DW.Use.HealHint"}}</span>
+
+      {{#if system.useHeal}}
+      <span class="dw-label">{{localize "DW.Use.Target"}}</span>
+      <select name="system.useTarget">
+        {{selectOptions selects.useTargets selected=system.useTarget localize=true}}
+      </select>
+
+      <span class="dw-label">{{localize "DW.Use.Cure"}}</span>
+      <input type="checkbox" name="system.useCure" {{checked system.useCure}}/>
+      {{/if}}
+
       {{#if (eq system.itemType "weapon")}}
       <span class="dw-label">{{localize "DW.DamageOverride"}}</span>
       <input type="text" name="system.rollFormula" value="{{system.rollFormula}}" placeholder="e.g. 1d4+3"/>

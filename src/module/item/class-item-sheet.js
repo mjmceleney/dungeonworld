@@ -1,5 +1,6 @@
 import { DwItemSheet } from './item-sheet.js';
 import { DwUtility } from "../utility.js";
+import { DwClassGear } from "./class-gear.js";
 
 /**
  * Item sheet for class items: races, alignments, settings, and the starting
@@ -27,6 +28,7 @@ export class DwClassItemSheet extends DwItemSheet {
       addListEntry: DwClassItemSheet.#onAddListEntry,
       deleteListEntry: DwClassItemSheet.#onDeleteListEntry,
       removeEquipment: DwClassItemSheet.#onRemoveEquipment,
+      removeGearOption: DwClassItemSheet.#onRemoveGearOption,
     },
   };
 
@@ -35,10 +37,25 @@ export class DwClassItemSheet extends DwItemSheet {
   /** @override */
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
-    let equipmentObjects = await this.item._getEquipmentObjects();
-    for (let [group, group_items] of Object.entries(equipmentObjects)) {
-      context.system.equipment[group]['objects'] = group_items;
+    const names = new Map();
+    for (const item of await DwUtility.getEquipment() || []) {
+      if (!names.has(item.id)) names.set(item.id, item.name);
     }
+    context.gearGroups = Object.entries(this.item.system.equipment ?? {}).filter(([, group]) => group).map(([key, group]) => ({
+      key,
+      label: group.label ?? '',
+      mode: ['all', 'radio', 'checkbox'].includes(group.mode) ? group.mode : 'radio',
+      count: Number(group.count) || 0,
+      options: DwClassGear.options(group).map((option, index) => ({
+        key: String(index),
+        coins: option.coins,
+        items: option.items.map(id => ({
+          id,
+          name: names.get(id) ?? `? ${id}`,
+          quantity: Math.max(1, Number(option.quantities?.[id]) || 1),
+        })),
+      })),
+    }));
     return context;
   }
 
@@ -52,6 +69,23 @@ export class DwClassItemSheet extends DwItemSheet {
       dropArea.addEventListener('dragover', this._onDragOverEquipment.bind(this));
       dropArea.addEventListener('dragleave', this._onDragLeaveEquipment.bind(this));
       dropArea.addEventListener('drop', this._onDropEquipment.bind(this));
+    }
+
+    // An item's quantity and an option's coins.
+    for (let input of this.element.querySelectorAll('[data-gear-quantity], [data-gear-coins]')) {
+      input.addEventListener('change', event => {
+        event.stopPropagation();
+        const row = input.closest('[data-option]');
+        const itemId = input.closest('[data-item-id]')?.dataset.itemId;
+        this._changeOption(row.dataset.group, Number(row.dataset.option), option => {
+          if (input.hasAttribute('data-gear-coins')) option.coins = Math.max(0, Math.round(Number(input.value) || 0));
+          else if (itemId) {
+            const quantity = Math.max(1, Math.round(Number(input.value) || 1));
+            if (quantity > 1) option.quantities[itemId] = quantity;
+            else delete option.quantities[itemId];
+          }
+        });
+      });
     }
   }
 
@@ -84,7 +118,15 @@ export class DwClassItemSheet extends DwItemSheet {
 
     const item = await Item.fromDropData(itemData);
     if (!item) return;
-    await this._createEquipment(item.id, dropTarget.dataset.group);
+    const { group, option } = dropTarget.dataset;
+    if (option === undefined) return;
+    // The last row starts a new option; any other row adds to its option, or
+    // gives one more of an item it already has.
+    if (option == 'new') return this._saveOptions(group, [...this._options(group), { items: [item.id], quantities: {}, coins: 0 }]);
+    return this._changeOption(group, Number(option), entry => {
+      if (entry.items.includes(item.id)) entry.quantities[item.id] = (Number(entry.quantities[item.id]) || 1) + 1;
+      else entry.items.push(item.id);
+    });
   }
 
   /* -------------------------------------------- */
@@ -98,7 +140,7 @@ export class DwClassItemSheet extends DwItemSheet {
   static LIST_DEFAULTS = {
     races: () => ({ label: '', description: '' }),
     alignments: () => ({ label: '', description: '' }),
-    equipment: () => ({ label: '', mode: 'radio', items: [], objects: [] }),
+    equipment: () => ({ label: '', mode: 'radio', count: 0, items: [], options: [] }),
   };
 
   /**
@@ -138,7 +180,7 @@ export class DwClassItemSheet extends DwItemSheet {
       // Equipment groups can hold prepared item documents in `objects`;
       // those are display-only and must not be saved.
       const { objects, ...data } = foundry.utils.deepClone(value);
-      return field == 'equipment' ? { ...data, objects: [] } : data;
+      return data;
     });
 
     const update = {};
@@ -154,36 +196,57 @@ export class DwClassItemSheet extends DwItemSheet {
   }
 
   /**
-   * Remove a single item from an equipment group.
+   * Remove an item from a gear option. An option left with nothing in it
+   * goes too.
    * @this {DwClassItemSheet}
-   * @param {PointerEvent} event
-   * @param {HTMLElement} target
    */
   static async #onRemoveEquipment(event, target) {
     event.preventDefault();
-    const itemId = target.closest('.tag')?.dataset.itemId;
-    const groupId = target.closest('.item-container')?.dataset.group;
-    if (!itemId || groupId === undefined) return;
-    await this._deleteEquipment(itemId, groupId);
+    const itemId = target.closest('[data-item-id]')?.dataset.itemId;
+    const row = target.closest('[data-option]');
+    if (!itemId || !row) return;
+    const options = this._options(row.dataset.group);
+    const option = options[Number(row.dataset.option)];
+    if (!option) return;
+    option.items = option.items.filter(id => id != itemId);
+    delete option.quantities[itemId];
+    await this._saveOptions(row.dataset.group, options.filter(o => o.items.length || o.coins));
+  }
+
+  /** @this {DwClassItemSheet} */
+  static async #onRemoveGearOption(event, target) {
+    event.preventDefault();
+    const row = target.closest('[data-option]');
+    if (!row) return;
+    const options = this._options(row.dataset.group);
+    options.splice(Number(row.dataset.option), 1);
+    await this._saveOptions(row.dataset.group, options);
   }
 
   /* -------------------------------------------- */
 
-  async _deleteEquipment(equipmentId, groupId) {
-    const items = this.item.system.equipment?.[groupId]?.items ?? [];
-    await this.item.update({
-      [`system.equipment.${groupId}.items`]: items.filter(i => i != equipmentId),
-    });
+  /** A gear group's options, as a copy to change and save. */
+  _options(groupId) {
+    return foundry.utils.deepClone(DwClassGear.options(this.item.system.equipment?.[groupId]));
   }
 
-  async _createEquipment(equipmentId, groupId) {
-    let items = this.item.system.equipment?.[groupId]?.items;
-    items = DwUtility.isEmpty(items) ? [] : [...items];
+  /** Change one gear option and save the group. */
+  async _changeOption(groupId, index, change) {
+    const options = this._options(groupId);
+    if (!options[index]) return;
+    change(options[index]);
+    await this._saveOptions(groupId, options);
+  }
 
-    // Append our item.
-    if (!items.includes(equipmentId)) {
-      items.push(equipmentId);
-      await this.item.update({ [`system.equipment.${groupId}.items`]: items });
-    }
+  /**
+   * Save a gear group's options, and the list of every item they use (which
+   * older code reads).
+   */
+  async _saveOptions(groupId, options) {
+    if (this.item.system.equipment?.[groupId] === undefined) return;
+    await this.item.update({
+      [`system.equipment.${groupId}.options`]: options,
+      [`system.equipment.${groupId}.items`]: DwClassGear.itemIds(options),
+    });
   }
 }

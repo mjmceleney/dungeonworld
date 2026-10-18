@@ -43,34 +43,81 @@ data:
       description: Use magic to cause terror and fear.
   equipment:
     '0':
-      label: Starting gear
-      mode: checkbox
+      label: You start with
+      mode: all
+      count: 0
       items:
         - q0OQPBduCalAA99o
         - 6JcOoZ8CNqYxLgyQ
+      options:
+        - items:
+            - q0OQPBduCalAA99o
+          quantities: {}
+          coins: 0
+        - items:
+            - 6JcOoZ8CNqYxLgyQ
+          quantities: {}
+          coins: 0
     '1':
-      label: Choose your defenses
-      mode: checkbox
+      label: Defenses
+      mode: radio
+      count: 0
       items:
-        - CMhNmAwhLVZk9lfq
         - oGiXIqNQbukIjf06
         - iaxOPwJIrsnzGJWr
+        - CMhNmAwhLVZk9lfq
+      options:
+        - items:
+            - oGiXIqNQbukIjf06
+          quantities: {}
+          coins: 0
+        - items:
+            - iaxOPwJIrsnzGJWr
+            - CMhNmAwhLVZk9lfq
+          quantities:
+            CMhNmAwhLVZk9lfq: 3
+          coins: 0
     '2':
-      label: Choose your weapon
+      label: Weapon
       mode: radio
+      count: 0
       items:
         - nMag6sXXRqc6SC4Q
         - xu45M9oglN3VEWHC
+      options:
+        - items:
+            - nMag6sXXRqc6SC4Q
+          quantities: {}
+          coins: 0
+        - items:
+            - xu45M9oglN3VEWHC
+          quantities: {}
+          coins: 0
     '3':
-      label: Choose gear
+      label: Supplies
       mode: radio
+      count: 0
       items:
         - CMhNmAwhLVZk9lfq
         - 4rXRNHipSXLO6pnP
-      objects: []
+      options:
+        - items:
+            - CMhNmAwhLVZk9lfq
+          quantities: {}
+          coins: 0
+        - items:
+            - 4rXRNHipSXLO6pnP
+          quantities:
+            4rXRNHipSXLO6pnP: 3
+          coins: 0
   hp: 4
   load: 7
   damage: d4
+  looks: |-
+    Haunted Eyes, Sharp Eyes, or Crazy Eyes
+    Styled Hair, Wild Hair, or Pointed Hat
+    Worn Robes, Stylish Robes, or Strange Robes
+    Pudgy Body, Creepy Body, or Thin Body
 flags: {}
 img: systems/dungeonworld/assets/icons/skills/red_14.webp
 effects: []

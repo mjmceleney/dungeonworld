@@ -1,0 +1,129 @@
+// Hireling sheet. It shares the NPC sheet's layout (.dw-npc) and adds
+// employer and cost fields, loyalty, and a list of skills with ranks.
+
+.dw-v2.dw-hireling {
+  .dw-hireling-fields {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px 10px;
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    input,
+    select {
+      width: 100%;
+      height: 28px;
+    }
+  }
+
+  .dw-hireling-loyalty {
+    flex: 1.2;
+    gap: 6px;
+  }
+
+  .dw-hireling-modifiers {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+
+    label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    input[type="number"] {
+      width: 42px;
+      height: 24px;
+      padding: 0 4px;
+    }
+  }
+
+  .dw-hireling-combat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    input {
+      width: 52px;
+      height: 24px;
+      padding: 0 4px;
+    }
+  }
+
+  .dw-hireling-points {
+    margin: 0 0 8px;
+
+    &.is-warn {
+      color: var(--dw-bad);
+      font-weight: 700;
+    }
+  }
+
+  .dw-skills {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .dw-skill {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    border: 1px solid var(--dw-line);
+    border-radius: 8px;
+    background: var(--dw-sunken);
+    opacity: 0.7;
+
+    &.has-skill {
+      background: var(--dw-surface);
+      border-color: var(--dw-muted);
+      opacity: 1;
+    }
+
+    .dw-hint {
+      margin: 0;
+    }
+  }
+
+  .dw-skill-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .dw-skill-rank {
+    min-width: 24px;
+    font-size: 18px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .dw-skill-move {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 14px;
+
+    .dw-text-btn {
+      flex: none;
+    }
+  }
+}

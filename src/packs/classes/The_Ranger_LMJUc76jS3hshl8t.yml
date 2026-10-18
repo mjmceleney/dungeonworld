@@ -42,30 +42,72 @@ data:
       description: Help an animal or spirit of the wild.
   equipment:
     '0':
-      label: Starting gear
-      mode: checkbox
+      label: You start with
+      mode: all
+      count: 0
       items:
         - 6JcOoZ8CNqYxLgyQ
         - oGiXIqNQbukIjf06
         - WrnuJ6j8JerAozDO
+      options:
+        - items:
+            - 6JcOoZ8CNqYxLgyQ
+          quantities: {}
+          coins: 0
+        - items:
+            - oGiXIqNQbukIjf06
+          quantities: {}
+          coins: 0
+        - items:
+            - WrnuJ6j8JerAozDO
+          quantities: {}
+          coins: 0
     '1':
-      label: Choose your armament
-      mode: checkbox
+      label: Armament
+      mode: radio
+      count: 0
       items:
         - ygblVgrWgzUHEUax
         - Bj8EezgO0DZ9OhVQ
         - 4wGxPYN283j74dcF
+      options:
+        - items:
+            - ygblVgrWgzUHEUax
+            - Bj8EezgO0DZ9OhVQ
+          quantities: {}
+          coins: 0
+        - items:
+            - ygblVgrWgzUHEUax
+            - 4wGxPYN283j74dcF
+          quantities: {}
+          coins: 0
     '2':
-      label: Choose gear
-      mode: checkbox
+      label: Supplies
+      mode: radio
+      count: 0
       items:
         - YwHV7WYzTPSAOorl
         - 6JcOoZ8CNqYxLgyQ
         - WrnuJ6j8JerAozDO
-      objects: []
+      options:
+        - items:
+            - YwHV7WYzTPSAOorl
+            - 6JcOoZ8CNqYxLgyQ
+          quantities: {}
+          coins: 0
+        - items:
+            - YwHV7WYzTPSAOorl
+            - WrnuJ6j8JerAozDO
+          quantities: {}
+          coins: 0
   hp: 8
   load: 11
   damage: d8
+  looks: |-
+    Wild Eyes, Sharp Eyes, or Animal Eyes
+    Hooded Head, Wild Hair, or Bald
+    Cape, Camouflage, or Traveling Clothes
+    Lithe Body, Wild Body, or Sharp Body
 flags: {}
 img: systems/dungeonworld/assets/icons/skills/yellow_34.webp
 effects: []

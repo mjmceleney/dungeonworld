@@ -4,6 +4,18 @@
     <input type="search" placeholder="{{localize "DW.Sheet.SearchMoves"}}" aria-label="{{localize "DW.Sheet.SearchMoves"}}"/>
   </label>
 
+  {{#if listedMoves}}
+  <div class="dw-listed-moves">
+    <span class="dw-label">{{localize "DW.Sheet.ListedMoves"}}</span>
+    <ul>
+      {{#each listedMoves}}<li>{{this}}</li>{{/each}}
+    </ul>
+    {{#if editable}}
+    <button type="button" class="dw-text-btn" data-action="addListedMoves"><i class="fas fa-plus" inert></i> {{localize "DW.Sheet.AddListedMoves"}}</button>
+    {{/if}}
+  </div>
+  {{/if}}
+
   {{#each moveSections}}
   <section class="dw-section {{#if collapsed}}collapsed{{/if}}" data-section="{{id}}">
     <header class="dw-section-head">

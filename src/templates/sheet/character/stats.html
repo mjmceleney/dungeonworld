@@ -48,5 +48,16 @@
       </label>
       {{/each}}
     </fieldset>
+    {{!-- Other modifiers in place: casting or Recruit penalties, gear. --}}
+    {{#if effects.length}}
+    <div class="dw-effects">
+      {{#each effects}}
+      <span class="dw-effect" data-tooltip="{{tooltip}}">
+        <strong>{{value}}</strong> {{label}} <em>({{scope}})</em>
+        {{#if clear}}{{#if ../editable}}<button type="button" class="dw-effect-clear" data-action="{{clear}}" aria-label="{{localize "DW.Effects.Clear"}}"><i class="fas fa-times" inert></i></button>{{/if}}{{/if}}
+      </span>
+      {{/each}}
+    </div>
+    {{/if}}
   </div>
 </section>

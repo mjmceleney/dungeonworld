@@ -292,6 +292,123 @@ New player characters already get linked tokens (NPCs stay unlinked copies). Mig
 - [ ] If character tokens on scenes are unlinked, a "Link character tokens" dialog says how many, and how many have changes made only on the token. "Link them" links them (the token now shows the character's HP etc.); "Not now" changes nothing, and `game.dungeonworld.MigrateDw.linkCharacterTokens()` in a macro does it later.
 - [ ] A newly placed character token is linked (damage on it changes the character); a newly placed NPC token is its own copy.
 
+## 9i. Rules features (ROADMAP.md first batch) [V14] [V13]
+
+Build first. Open the console and look for errors from `systems/dungeonworld/…` throughout.
+
+**Stat choice (Defy Danger)**
+- [ ] Roll Defy Danger: a "Choose a stat" dialog lists all six stats as buttons, each with its modifier and what the move says it's for ("by powering through", …). A stat with a debility shows its debility name. Clicking one rolls with that stat; closing the dialog rolls nothing.
+- [ ] Another move with roll type "Stat" and no "+Str"-style list still works (buttons without descriptions).
+
+**Last Breath**
+- [ ] A character dropping to 0 HP (or below) from above 0: their player (logged in as the player) gets "Last Breath": the move text, **Roll Last Breath** and **Not now**. The GM doesn't also get it. With no owner online, the GM gets it.
+- [ ] The roll is plain 2d6: forward, ongoing, advantage, a debility and a heavy load are *not* added, and forward isn't spent. The card shows the three outcomes.
+- [ ] Going from 0 to −2 doesn't ask again. Setting **Prompt for Last Breath** off stops the prompt.
+- [ ] Existing world: after migration 4, a character's own Last Breath move shows "Just roll" and rolls plainly from the sheet. The move sheet's roll list has **Just roll**.
+
+**Armor from gear, clumsy, load** (setting **Apply Gear Rules**, on by default)
+- [ ] Equip Chainmail (1 armor) and a Shield (+1 armor): the header shows Armor 2, not editable, with a tooltip "From equipped gear: Chainmail 1, Shield +1"; the small + field adds armor from moves. Equip Plate as well: armor is 3 + 1 (the best armor counts, they don't stack).
+- [ ] Unequip all armor: the old typed armor value is back and editable.
+- [ ] Equip Plate (clumsy): a "Clumsy −1" pill appears; move and ability rolls include `-1[Clumsy]`. Damage rolls don't.
+- [ ] Equipment tab: weight within load shows "N to spare"; load+1 or load+2 shows "Heavy: −1 to moves" (amber) and rolls include `-1[Load]`; beyond load+2 shows "Overloaded" (red), and each move asks: **Drop weight, roll at −1** or **Automatically fail** (posts a 6- card with no roll and no XP button); closing the prompt rolls nothing.
+- [ ] A Fighter or Paladin with **Armored** (or a Barbarian with **Full Plate and Packing Steel**) wearing Plate: no Clumsy pill or chip, and no -1[Clumsy] on rolls. A clumsy item that isn't armor still counts. After migration 8 existing copies of those moves have it; the move sheet's **Ignores clumsy** (No / On armor you wear / On all your gear) does it for any move.
+- [ ] Setting off: armor is typed as before, no penalties, and "Encumbered" shows only over load.
+- [ ] NPCs aren't affected (their armor stays typed).
+
+**Treasure** (NPC sheet, gem button, GM)
+- [ ] Opens with the damage die (e.g. a d10+3 monster offers `d10`) and the modifiers; Hoarder, Magical, Divine and Planar are ticked when the monster has those tags.
+- [ ] Rolling posts the Treasure table's result with the roll; Hoarder rolls the die twice keeping the higher; Lord over others and Ancient each add 1d4; totals over 18 give the 18 result. Ticked notes (far from home, magical, divine, planar) appear in the message.
+
+**Monster maker** (NPC sheet, dragon button)
+- [ ] Answering updates the summary live. Group + cart-sized + plate gives HP 10, armor 3, damage d8+1 (like the Ankheg).
+- [ ] Options that ask for a move or special quality show a text field only once ticked; favor of the gods, metal and ranged show their choice.
+- [ ] Apply: HP, armor, damage, attack/piercing, tags, special qualities and instinct are written; moves are added as NPC moves (not duplicated on a second apply). Reopening shows the previous answers.
+- [ ] Compendium monster (e.g. Ankheg): the header's Instinct shows "To undermine" from the description; the Moves tab offers "Moves listed in the description" with **Add as moves**.
+
+**Hirelings**
+- [ ] Create an Actor of type Hireling: the hireling sheet opens (Skills and Description tabs). Token defaults to linked and friendly.
+- [ ] Works for (characters list), Cost (with the rules' examples suggested), Found in (with point ranges); the points line turns red outside the range and says the minimum adventurer level.
+- [ ] Skills: −/+ ranks 0–10; a skill with a rank shows its moves with the rank worked in (Priest First Aid heals 2×skill); the speech button posts it to chat.
+- [ ] Order Hirelings rolls 2d6 + loyalty + forward − 1 if "Cost unpaid"; the forward is cleared afterwards. 10+ and 7–9 show the rules' text.
+- [ ] Roll Recruit: the card has **Create a hireling** for the GM only (hidden for players); it makes a hireling working for that character and opens it.
+- [ ] Combat tracker: hirelings get their own "Hirelings" group.
+
+**Party moves** (test with a GM and a player in two browsers)
+- [ ] Rolling **Undertake A Perilous Journey** or **Make Camp** from a sheet posts a party card instead of a roll; rolling it from another character joins the same open card instead of making a new one.
+- [ ] **Join** adds one of your characters or hirelings; **Take this job** gives one a journey job (moving them off any other job).
+- [ ] Journey: each job's owner sees **Roll+WIS** (a normal move card is posted, with forward, gear penalties etc.); the card records the total and the outcome text. An empty job counts as a 6-. With a distance set and all jobs done, each traveler can **Eat N rations** (one fewer when the quartermaster rolled 10+); rations come off items tagged/named "ration", uses first; a shortfall warns.
+- [ ] Camp: each camper can eat a ration, **Take Watch** (rolls Take Watch), and **Wake: heal N** (half max HP, capped at max). The GM/author can reorder the watch. A hireling priest in camp adds their skill to healing. "Can level up" and "Prepare spells" badges show where they apply.
+- [ ] The player's changes go through when they aren't the card's author (the GM's client applies them); with no GM online they're told a GM is needed.
+- [ ] **Finish** closes the card (no more buttons); the next roll of that move starts a new card. **Reopen** brings it back.
+
+**Character creation**
+- [ ] A brand new character (level 1, no XP, no starting moves) has **Create character** in place of the level up button. It opens: Name, class cards (blurb, HP/damage/load), then the class's looks (one choice per group, plus free text). Secret classes (e.g. the Thrall) aren't offered to anyone, GM included.
+- [ ] **Next** saves the name, class and look and opens the level 1 builder; after confirming it, **Fill in bond names** opens: each blank can be a character (inserted as a link) or a typed name.
+- [ ] The bonds section has a link button while any bond still has a blank. Class sheet: **Looks** field (the SRD classes have theirs filled in).
+- [ ] Starting gear in the builder: each group has a pill saying what to take: **Included** (already ticked, can't be unticked), **Choose one**, **Choose 2**, or **Choose any**. Bundles show as one choice (Fighter: "Chainmail and Adventuring Gear"; Paladin: "Long Sword and Shield"), quantities as "2 × Healing Potion", and coins as their own choice (Fighter's 22 coins; the Thief starts with 10).
+- [ ] Fighter's Supplies (Choose 2): after two picks the rest grey out until one is unpicked. Confirming with a group unfinished keeps the window open and says which group. The character gets every chosen item (rations listed twice give two items), the quantities, and the coins.
+- [ ] Race and alignment each have **Write your own** (name and optional description). Typing in it selects it; confirming with it selected but no name says so. The sheet shows what was written.
+- [ ] After the builder, **Choose your bonds** opens with one row. Each row picks one of the class's bonds (its blanks become a character list or a typed name) or **A blank bond (write your own)**. **Add a bond** adds rows without limit; the trash button removes one. **Add these bonds** creates them (rows left on "Choose a bond…" are skipped); **No bonds for now** adds none. The class's bonds are no longer all added automatically.
+- [ ] Multiclassing into a class with a bigger damage die (e.g. Wizard d4 into Fighter d10) raises the damage die to it; a smaller one leaves it. A later level up keeps the larger die. A single move from another class (Multiclass Dabbler) doesn't change it.
+- [ ] Class selection in **Create character**: one class per row with room around it; the class image is faded on the right of each card and brightens when that class is picked.
+- [ ] Class sheet, Equipment tab: a group's mode is Included / Choose one / Choose some (with **How many**, 0 for any). Each row is one option: drop an item on a row to add it to that bundle (dropping the same item again raises its count), set an item's count and the row's coins, remove an item or the whole option, and drop on the last row for a new option. An older custom class (items only) shows each item as its own option and still works in the builder.
+- [ ] Existing world (migration 5): world class items' "Starting gear" groups are now Included. To get the SRD's bundles and counts, re-import the classes from the compendium.
+
+**Race and alignment on the sheet**
+- [ ] The sidebar shows the race and alignment names and their full descriptions (nothing cut off), not editable there. The pencil opens **Edit Race** / **Edit Alignment** with the name and a rich-text description; Save updates the sheet, Cancel changes nothing. With none chosen it says so. Players without edit rights see no pencil. Custom race/alignment names from the settings are used in the title.
+
+**Party cards: Join**
+- [ ] There's no dragging. **Join** lists the player characters and hirelings you own that aren't on the card yet (just joins if there's only one); **Take this job** does the same for a journey job. A GM sees all characters and hirelings.
+
+## 9j. Second batch: roll links, Recover, resources, spells [V14] [V13]
+
+Reload the world as GM first, so migration 7 gives existing characters' Volley, Blot Out the Sun, healing potions, bandages and poultices their new settings.
+
+**Inline roll links**
+- [ ] Expand a move on the sheet (e.g. Hack & Slash): "roll+Str" in its text is a dice link. Clicking it rolls the move itself, with its results. In a move whose stat differs, or in a journal page, it rolls just that stat (+ forward, ongoing, gear penalties), titled "Roll +STR".
+- [ ] In a journal page, `@Move[Hack & Slash]` and `@Move[Defy Danger]{defy it}` become links that roll that move for the selected token's character (or your own character). With neither, a warning asks you to select one.
+
+**Recover**
+- [ ] Rolling Recover opens a dialog: recover all HP (ticked when hurt), and one tick per current debility, with the "one per three days (two under a healer)" reminder. Several (or all) can be cleared at once. Apply updates the sheet and posts what changed; Cancel changes nothing.
+
+**Gear that gets used up**
+- [ ] Equipment with uses (or a heal) has a **Use** button. Using spends one use and posts "Uses X" with how many are left. A stack (2 × Healing Potion) goes down one at a time; when the last use is spent the item is removed from the character (Use button, a move's resource button, or rations on a party card).
+- [ ] Healing Potion: heals the user 10 (capped at max HP); with a debility, asks "Heal 10" or "Remove <debility>".
+- [ ] Bandages (4) and Poultices and Herbs (7) heal someone else: your single targeted token, else a list to choose from. A player healing another player's character works through the GM.
+- [ ] Item sheet, Details: **Heals when used**, **Used on**, **Or remove a debility instead**. Move sheet, Details: **Spends a resource** (name, how much, when offered).
+- [ ] Volley on a 7-9: the card has **Spend 1 ammo (N left)**; clicking it takes one from arrows (tagged "ammo") and marks the card. Not offered on a 10+ or a miss. Blot Out the Sun's card always offers it.
+- [ ] Party cards' rations come off the same way (uses, then the next item in a stack).
+
+**Spells**
+- [ ] Spells tab: **Prepared levels N / level+1** (red when over), and a Prepare Spells (Commune for clerics) button. Spells with a Cast a Spell move show a **Cast** button.
+- [ ] **Cast** rolls Cast a Spell titled with the spell and showing its text. On a 7-9 the card offers **Take -1 ongoing to cast** and **Forget <spell>** (clerics: "<spell> is revoked"). Choosing one replaces both buttons; Forget unprepares the spell.
+- [ ] After taking the penalty, the tab shows "-1 to cast until you prepare" and Cast a Spell rolls include `-1[ongoing]` (it stacks). The × clears it.
+- [ ] Rolling Prepare Spells or Commune (or its button on the Spells tab) opens the picker for **that class**: only its spells (and spells with no class), with a limit of that class's level +1. A Cleric 5 / Thief 3 sees "As a level 5 Cleric", a limit of 6, and level 7+ spells locked under "Above your level (5)". Divine Favor casts as cleric level = levels since it was taken.
+- [ ] Spells are grouped by level with subtotals ("2 × 1 = 2"); below, a meter, "N of M levels used, X left" and the sum ("Bless (1) + Cure Light Wounds (1) = 2"). Going over is allowed: it turns red ("… 2 more than your level allows"), and preparing warns but still saves. Prepare clears the casting penalty and posts the list with the total.
+- [ ] Spells tab: one "used / max Prepared levels" box per casting class (e.g. "Commune (Cleric 5)"), each with its own prepare button; red when over.
+
+**GM moves on a miss**
+- [ ] Any move card with a 6- (and an automatic miss from overloading) has a **GM moves** button for the GM only; players don't see it. It opens the GM moves and dungeon moves, with the "as hard as you like / never name your move" reminder. Clicking it again brings the window forward instead of opening a second one. Nothing is posted to chat.
+
+**Recruit**
+- [ ] Rolling Recruit opens a dialog: the four +1s (generous pay, purpose, share, reputation), where you're recruiting, and the running total. With a turn-away penalty pending it says so and counts it.
+- [ ] The roll is 2d6 + the ticked terms (- any penalty), plus forward/ongoing as usual; the card lists the terms offered. A pending penalty is cleared by the roll.
+- [ ] The GM's **Create a hireling** makes a hireling working for that character with **Found in** set to where they recruited (so the points range shows).
+- [ ] On a 7-9 or a 6-, the player's **Turn them away** records -1 forward to Recruit (it adds up if done twice) and marks the card. Not offered on a 10+.
+
+**Beyond level 10**
+- [ ] Multiclassing off, a level 10 character with enough XP: the level up button reads **Beyond level 10** (crown) and opens Retire / Take on an apprentice / Change to a new class.
+- [ ] Multiclassing on: a Fighter 6 / Wizard 4 (level 10) levels up normally to 11. A class at level 10 is never offered in "Advanced move from"; if every class they have is at 10, only Multiclass is offered. A character with a class at 10 gets the Beyond level 10 chooser, whose first option is **Level up in another class** (opens the level up).
+- [ ] **Retire**: adds the Retired to Safety move (special), spends the level's XP, posts it, and (ticked by default) makes a new character for the same player, which opens for them. The old sheet's button reads "Retired to safety".
+- [ ] **Take on an apprentice**: confirms, then makes "<name>'s Apprentice" owned by the same player(s), opening for them with Create character; works for a player without actor-creation rights (the GM makes it). The mentor's button reads "Mentoring an apprentice" and XP can't go up (Mark XP or the + button just notifies).
+- [ ] **Change to a new class**: the Start over dialog in reclass mode: tick the class moves to keep (none by default), keep HP (ticked), spells removed, equipment and bonds kept. Then the character creator opens to pick the new class; the level 1 builder keeps ability scores (leave them at "—") and race, and doesn't change max HP when Keep HP was ticked.
+- [ ] The GM's Start over on the Character tab works as before.
+
+**Modifiers in place**
+- [ ] After choosing "Take -1 ongoing to cast" on a Cast a Spell 7-9: a chip "-1 Cast a Spell (until you prepare)" appears under Forward/Ongoing, and the Cast a Spell move row shows a "-1 ongoing" badge; both have a tooltip. The chip's x clears it (as does preparing spells).
+- [ ] After **Turn them away** on Recruit: "-1 Recruit (next roll)" chip and a "-1 forward" badge on Recruit; gone after the next Recruit roll, or with x.
+- [ ] With Apply Gear Rules on: equipped clumsy gear and a heavy/over load show chips ("all moves" / "drop weight or fail"), without an x (they follow the gear).
+
 ## 10. V13 regression (short)
 
 Keep `minimum: "13"` only if this passes. Use a separate V13 data folder or a copied world as well, and don't overwrite the 1.9.0 system in your real data folder.

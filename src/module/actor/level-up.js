@@ -1,5 +1,7 @@
 import { DwClassList, ABILITY_ICONS } from "../config.js";
 import { DwUtility } from "../utility.js";
+import { DwBonds } from "./bonds.js";
+import { DwClassGear } from "../item/class-gear.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
@@ -10,6 +12,12 @@ const PREPARATION_MOVES = {
 };
 
 const PARTIALS = 'systems/dungeonworld/templates/dialog/parts';
+
+/** The highest level a class can reach. */
+export const MAX_CLASS_LEVEL = 10;
+
+/** Damage dice from smallest to largest. */
+const DAMAGE_DICE = ['d4', 'd6', 'd8', 'd10', 'd12'];
 
 /**
  * The level up, class viewer and follow-up picker window, in the same style
@@ -93,6 +101,28 @@ class DwLevelUpWindow extends HandlebarsApplicationMixin(ApplicationV2) {
     }
     for (const control of this.element.querySelectorAll('[data-refresh]')) {
       control.addEventListener('change', event => this.#refresh(event.currentTarget));
+    }
+    // "Choose two": once two are picked, the rest wait until one is unpicked.
+    for (const group of this.element.querySelectorAll('.dw-gear-group[data-gear-count]')) {
+      const count = Number(group.dataset.gearCount) || 0;
+      if (!count) continue;
+      const boxes = [...group.querySelectorAll('input[type="checkbox"][data-gear-option]')];
+      const limit = () => {
+        const full = boxes.filter(b => b.checked).length >= count;
+        for (const box of boxes) {
+          box.disabled = full && !box.checked;
+          box.closest('.dw-choice')?.classList.toggle('is-disabled', box.disabled);
+        }
+      };
+      for (const box of boxes) box.addEventListener('change', limit);
+      limit();
+    }
+    // Typing your own race or alignment picks it.
+    for (const field of this.element.querySelectorAll('[data-own-choice]')) {
+      field.addEventListener('input', () => {
+        const radio = this.element.querySelector(`input[type="radio"][name="${field.dataset.ownChoice}"][data-own]`);
+        if (radio) radio.checked = true;
+      });
     }
   }
 
@@ -339,17 +369,8 @@ export class DwLevelUp {
     const races = class_item && (!details.race.value || !details.race.description) ? entries(class_item.system.races) : [];
     const alignments = class_item && (!details.alignment.value || !details.alignment.description) ? entries(class_item.system.alignments) : [];
 
-    // Get equipment.
-    let equipment = null;
-    let equipment_list = [];
-    if (isNewCharacter && typeof class_item.system.equipment == 'object') {
-      let equipmentObjects = await class_item._getEquipmentObjects();
-      for (let [group, group_items] of Object.entries(equipmentObjects)) {
-        class_item.system.equipment[group]['objects'] = group_items;
-        equipment_list = equipment_list.concat(group_items);
-      }
-      equipment = foundry.utils.duplicate(class_item.system.equipment);
-    }
+    // Starting gear: each group says what to take from it.
+    const equipment = isNewCharacter ? await DwClassGear.prepare(class_item) : [];
 
     // Get ability scores.
     const noAbilityScores = game.settings.get('dungeonworld', 'noAbilityScores');
@@ -357,6 +378,7 @@ export class DwLevelUp {
 
     const templateData = {
       viewer: false,
+      actorId: actor.id,
       char_class_name: actorData.details.class,
       level_label: isNewCharacter
         ? game.i18n.localize('DW.LevelUp.NewCharacter')
@@ -365,7 +387,7 @@ export class DwLevelUp {
       blurb: isNewCharacter && blurb?.length > 0 ? blurb : null,
       races: races.length > 0 ? races : null,
       alignments: alignments.length > 0 ? alignments : null,
-      equipment: equipment ? equipment : null,
+      equipment: equipment.length ? equipment : null,
       ability_scores: isNewCharacter ? ability_scores : null,
       ability_mods_only: noAbilityScores,
       ability_labels: this.#abilityLabels(),
@@ -400,14 +422,17 @@ export class DwLevelUp {
       const others = allowMulticlass
         ? classes.filter(c => !own.some(o => o.item === c) && !c.system.secret).map(c => c.name)
         : [];
-      const mode = own.length ? 'advanced' : 'multiclass';
-      const classNames = mode == 'advanced' ? own.map(c => c.name) : others;
+      // A class at level 10 can't advance further; the level goes to another
+      // class (or a new one, multiclassing).
+      const open = own.filter(c => (classLevels.find(l => DwUtility.sameClass(l.name, c.name))?.level ?? 0) < MAX_CLASS_LEVEL);
+      const mode = open.length ? 'advanced' : 'multiclass';
+      const classNames = mode == 'advanced' ? open.map(c => c.name) : others;
       // Nothing to choose (an unknown class, no multiclassing): the level up
       // still raises an ability.
       templateData.advancement = classNames.length ? {
         mode,
         allowMulticlass,
-        own: own.map(c => c.name),
+        own: open.map(c => c.name),
         others,
         classes: classNames,
         className: classNames[0],
@@ -427,8 +452,9 @@ export class DwLevelUp {
       pool,
       races: races,
       alignments: alignments,
-      equipment: equipment_list,
+      gear: equipment,
       class_item: class_item,
+      classes,
       level,
     };
 
@@ -503,6 +529,22 @@ export class DwLevelUp {
    * Import moves.
    * @param {HTMLFormElement} form The level up window's form.
    */
+  /**
+   * A race or alignment the player wrote themselves. Throws, with a message
+   * for the player, if it has no name.
+   *
+   * @param {HTMLFormElement} form
+   * @param {string} kind "race" or "alignment".
+   * @return {{label: string, description: string}}
+   */
+  static #ownChoice(form, kind) {
+    const label = String(form.querySelector(`[name="own-${kind}-name"]`)?.value ?? '').trim();
+    const description = String(form.querySelector(`[name="own-${kind}-description"]`)?.value ?? '').trim();
+    if (!label) throw new Error(game.i18n.localize(`DW.LevelUp.Own${kind.capitalize()}Missing`));
+    const escape = (text) => Handlebars.escapeExpression(text);
+    return { label, description: description ? `<p>${escape(description)}</p>` : '' };
+  }
+
   async _onLevelUpSave(form, actor, itemData) {
     // The advancement controls only steer what's offered.
     const selected = [...form.querySelectorAll('input:checked, select')]
@@ -512,25 +554,24 @@ export class DwLevelUp {
       return;
     }
 
+    // Starting gear first: an incomplete choice stops the save here.
+    const gear = itemData.gear?.length ? DwClassGear.chosen(form, itemData.gear) : null;
+
     let item_ids = [];
-    let equipment_ids = [];
     let abilities = [];
     let race = null;
     let alignment = null;
     for (let input of selected) {
       if (input.dataset.itemId) {
-        if (input.dataset.type == 'equipment') {
-          equipment_ids.push(input.dataset.itemId);
-        }
-        else if (['move', 'spell'].includes(input.dataset.type)) {
+        if (['move', 'spell'].includes(input.dataset.type)) {
           item_ids.push(input.dataset.itemId);
         }
       }
       else if (input.dataset.race) {
-        race = itemData.races[input.dataset.race];
+        race = input.dataset.race == 'own' ? DwLevelUp.#ownChoice(form, 'race') : itemData.races[input.dataset.race];
       }
       else if (input.dataset.alignment) {
-        alignment = itemData.alignments[input.dataset.alignment];
+        alignment = input.dataset.alignment == 'own' ? DwLevelUp.#ownChoice(form, 'alignment') : itemData.alignments[input.dataset.alignment];
       }
       else if (input.dataset.ability) {
         let val = input.value;
@@ -556,14 +597,8 @@ export class DwLevelUp {
       }
     }
 
-    // Add selected equipment.
-    let new_equipment = null;
-    if (equipment_ids.length > 0) {
-      let equipment = itemData.equipment.filter(e => equipment_ids.includes(e.id));
-      new_equipment = equipment.map(e => {
-        return foundry.utils.duplicate(e);
-      });
-    }
+    // The chosen gear, and any coins that came with it.
+    const new_equipment = gear?.items ?? null;
 
     const system = {};
     if (race) {
@@ -592,17 +627,9 @@ export class DwLevelUp {
       system['attributes.level.value'] = Number(actor.system.attributes.level.value) + 1;
     }
 
-    //Set Level 1 bonds
-    let newbonds = [];
-    if (Number(actor.system.attributes.xp.value) == 0) {
-      let theclass = DwUtility.cleanClass(actor.system.details.class);
-
-      for (let i = 1; i < 7; i++) {
-        if (game.i18n.localize("DW." + theclass + ".Bond" + i ) != "DW." + theclass + ".Bond" + i ) {
-          newbonds.push({name: game.i18n.localize("DW." + theclass + ".Bond" + i), type: 'bond', system: ''});
-        }
-      }
-    }
+    // A new character chooses their bonds after the level up: the class's
+    // bonds are offered, alongside bonds of their own.
+    const isNewCharacter = Number(actor.system.attributes.xp.value) == 0;
 
     // HP, load and damage come from the character's own class, when it's known.
     const class_item = itemData.class_item;
@@ -611,7 +638,9 @@ export class DwLevelUp {
     // up, only when it's still exactly that beforehand; anything else means
     // something custom changed it (a house rule, a homebrew move), so leave
     // it alone. A new character always gets it.
-    if (class_item?.system.hp) {
+    // Someone who changed class beyond level 10 keeps their HP.
+    const keepHp = !!actor.flags?.dungeonworld?.keepHp;
+    if (class_item?.system.hp && !keepHp) {
       const noConstitutionToHP = game.settings.get('dungeonworld', 'noConstitutionToHP');
       const currentCon = noConstitutionToHP ? 0 : Number(actor.system.abilities.con.value);
       const newCon = noConstitutionToHP ? 0 : Number(system['abilities.con.value'] ?? currentCon);
@@ -643,17 +672,24 @@ export class DwLevelUp {
       }
     }
 
-    // Adjust damage die.
-    if (class_item?.system.damage) {
-      system['attributes.damage.value'] = class_item.system.damage;
-    }
-
     // Multiclassing adds the class, so its advanced moves are offered later.
+    if (gear?.coins) system['attributes.coin.value'] = (Number(actor.system.attributes.coin?.value) || 0) + gear.coins;
     const update = { system: system, 'flags.dungeonworld.levelup': false };
+    if (keepHp) Object.assign(update, DwUtility.deletionUpdate('flags.dungeonworld.keepHp'));
     const mode = form.querySelector('[name="dw-advance-mode"]:checked')?.value;
     const advancing = form.querySelector('[name="dw-advance-class"]')?.value;
-    if (mode == 'multiclass' && advancing && !this.#multiclasses.includes(advancing)) {
-      update['flags.dungeonworld.multiclasses'] = [...this.#multiclasses, advancing];
+    const multiclasses = mode == 'multiclass' && advancing && !this.#multiclasses.includes(advancing)
+      ? [...this.#multiclasses, advancing]
+      : this.#multiclasses;
+    if (multiclasses !== this.#multiclasses) update['flags.dungeonworld.multiclasses'] = multiclasses;
+
+    // Damage die: the largest of their classes', so multiclassing into a
+    // class with a bigger die raises it (and later level ups keep it).
+    const dice = [class_item, ...multiclasses.map(name => this.#resolveClass(name, itemData.classes ?? []).item)]
+      .map(c => c?.system?.damage)
+      .filter(die => DAMAGE_DICE.includes(die));
+    if (dice.length) {
+      system['attributes.damage.value'] = dice.reduce((best, die) => DAMAGE_DICE.indexOf(die) > DAMAGE_DICE.indexOf(best) ? die : best);
     }
     // The class chosen for this level gains it; a new class starts at 1.
     if (advancing && system['attributes.level.value']) {
@@ -667,7 +703,6 @@ export class DwLevelUp {
 
     // Create all new items in a single operation.
     const new_items = [
-      ...newbonds,
       ...new_moves,
       ...(new_equipment ?? []),
     ];
@@ -682,7 +717,11 @@ export class DwLevelUp {
     // time. Not awaited, so the level up window closes first.
     const grants = created.filter(i => i.type == 'move'
       && (i.system.grants?.kind || i.system.grants?.moves || i.system.grants?.casting));
-    if (grants.length) this.#pickGrants(grants, itemData.level);
+    const picking = grants.length ? this.#pickGrants(grants, itemData.level) : Promise.resolve();
+
+    if (isNewCharacter) {
+      picking.then(() => DwBonds.choose(actor, DwBonds.classBonds(actor.system.details.class)));
+    }
   }
 
   async #pickGrants(moves, level) {
@@ -946,17 +985,8 @@ export class DwLevelUp {
         });
       }
 
-    // Get equipment.
-    let equipment = null;
-    let equipment_list = [];
-      if (typeof class_item.system.equipment == 'object') {
-        let equipmentObjects = await class_item._getEquipmentObjects();
-        for (let [group, group_items] of Object.entries(equipmentObjects)) {
-          class_item.system.equipment[group]['objects'] = group_items;
-          equipment_list = equipment_list.concat(group_items);
-        }
-        equipment = foundry.utils.duplicate(class_item.system.equipment);
-      }
+    // Starting gear.
+    const equipment = await DwClassGear.prepare(class_item);
 
     // Get ability scores.
     const noAbilityScores = game.settings.get('dungeonworld', 'noAbilityScores');
@@ -1123,7 +1153,7 @@ export class DwLevelUp {
       blurb: blurb?.length > 0 ? blurb : null,
       races: races.length > 0 ? races : null,
       alignments: alignments.length > 0 ? alignments : null,
-      equipment: equipment ? equipment : null,
+      equipment: equipment.length ? equipment : null,
       starting_moves: starting_moves.length > 0 ? starting_moves : null,
       starting_move_groups: starting_move_groups,
       advanced_moves_2: advanced_moves_2.length > 0 ? advanced_moves_2 : null,

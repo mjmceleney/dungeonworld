@@ -77,6 +77,10 @@
           <span class="dw-label">{{localize "DW.ClassSecret"}}</span>
           <input type="checkbox" name="system.secret" {{checked system.secret}}/>
           <span class="dw-fields-hint">{{localize "DW.ClassSecretHelp"}}</span>
+
+          <span class="dw-label">{{localize "DW.ClassLooks"}}</span>
+          <textarea name="system.looks" rows="4" placeholder="{{localize "DW.ClassLooksPlaceholder"}}">{{system.looks}}</textarea>
+          <span class="dw-fields-hint">{{localize "DW.ClassLooksHelp"}}</span>
         </div>
       </div>
     </div>
@@ -89,25 +93,39 @@
     </div>
 
     <div class="dw-equipment-groups">
-      {{#each system.equipment as |equipmentGroup groupId|}}
-      <div class="dw-card dw-list-card" data-index="{{groupId}}">
+      {{#each gearGroups as |group|}}
+      <div class="dw-card dw-list-card" data-index="{{group.key}}">
         <div class="dw-group-head">
-          <input type="text" name="system.equipment.{{groupId}}.label" placeholder="{{localize "DW.ClassEquipmentGroupPlaceholder"}}" value="{{equipmentGroup.label}}"/>
-          <select name="system.equipment.{{groupId}}.mode">
-            {{selectOptions ../selects.equipmentGroupModes selected=equipmentGroup.mode localize=true}}
+          <input type="text" name="system.equipment.{{group.key}}.label" placeholder="{{localize "DW.ClassEquipmentGroupPlaceholder"}}" value="{{group.label}}"/>
+          <select name="system.equipment.{{group.key}}.mode">
+            {{selectOptions ../selects.equipmentGroupModes selected=group.mode localize=true}}
           </select>
+          {{#if (eq group.mode "checkbox")}}
+          <input class="dw-gear-count" type="number" min="0" step="1" name="system.equipment.{{group.key}}.count" value="{{group.count}}" data-tooltip="DW.Gear.CountHint" aria-label="{{localize "DW.Gear.Count"}}"/>
+          {{/if}}
           <button type="button" class="dw-icon-btn" data-action="deleteListEntry" data-type="equipment" aria-label="Delete"><i class="fas fa-trash" inert></i></button>
         </div>
-        <div class="item-container drop-area" data-group="{{groupId}}">
-          {{#each equipmentGroup.objects as |item key|}}
-          <span class="tag dw-equipment-chip" data-item-id="{{item.id}}">
-            {{item.name}}
-            <button type="button" class="dw-icon-btn" data-action="removeEquipment" aria-label="Remove {{item.name}}"><i class="fas fa-xmark" inert></i></button>
-          </span>
-          {{else}}
-          <span>{{localize "DW.ClassEquipmentDropText"}}</span>
+        <ol class="dw-gear-edit-options">
+          {{#each group.options as |option|}}
+          <li class="item-container drop-area dw-gear-edit-option" data-group="{{group.key}}" data-option="{{option.key}}" data-tooltip="DW.Gear.OptionDrop">
+            {{#each option.items as |item|}}
+            <span class="tag dw-equipment-chip" data-item-id="{{item.id}}">
+              <input type="number" min="1" step="1" value="{{item.quantity}}" data-gear-quantity aria-label="{{localize "DW.Gear.Quantity"}}"/>
+              {{item.name}}
+              <button type="button" class="dw-icon-btn" data-action="removeEquipment" aria-label="Remove {{item.name}}"><i class="fas fa-xmark" inert></i></button>
+            </span>
+            {{/each}}
+            <label class="dw-gear-edit-coins">
+              <i class="fas fa-coins" inert></i>
+              <input type="number" min="0" step="1" value="{{option.coins}}" data-gear-coins aria-label="{{localize "DW.Gear.OptionCoins"}}"/>
+            </label>
+            <button type="button" class="dw-icon-btn" data-action="removeGearOption" data-tooltip="DW.Gear.RemoveOption" aria-label="{{localize "DW.Gear.RemoveOption"}}"><i class="fas fa-trash" inert></i></button>
+          </li>
           {{/each}}
-        </div>
+          <li class="item-container drop-area dw-gear-edit-option is-new" data-group="{{group.key}}" data-option="new">
+            <span>{{localize "DW.Gear.AddOption"}}</span>
+          </li>
+        </ol>
       </div>
       {{/each}}
     </div>

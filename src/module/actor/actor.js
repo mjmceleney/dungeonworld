@@ -124,6 +124,10 @@ export class ActorDw extends Actor {
     // Update the value.
     data.attributes.weight.value = weight;
 
+    if (game.settings.get('dungeonworld', 'automateGear')) {
+      this._prepareGear(data, items);
+    }
+
     // Add base flags.
     if (!actorData.flags.dungeonworld) actorData.flags.dungeonworld = {};
     if (!actorData.flags.dungeonworld.sheetDisplay) actorData.flags.dungeonworld.sheetDisplay = {};
@@ -158,6 +162,69 @@ export class ActorDw extends Actor {
     if (actorData?.flags?.dungeonworld) {
       if (!actorData.flags.dungeonworld.rollMode) actorData.flags.dungeonworld.rollMode = 'def';
     }
+  }
+
+  /**
+   * Work out what the character's gear does, per the rules.
+   *
+   * Armor: armor doesn't stack, so the best equipped "N armor" counts, plus
+   * every equipped "+N armor" (a shield), plus ac.misc for moves and other
+   * bonuses. Characters with no equipped armor keep the armor typed in.
+   * Each equipped clumsy item gives −1 to moves (ac.clumsy).
+   *
+   * Load (weight.tier): "ok" up to load, "heavy" (−1) at load+1 or load+2,
+   * and "over" beyond that.
+   *
+   * @param {Object} data The character's system data.
+   * @param {Collection} items
+   */
+  _prepareGear(data, items) {
+    const ac = data.attributes.ac;
+    let best = null;
+    let bonus = 0;
+    let clumsy = 0;
+    const sources = [];
+    // Moves like Armored ignore clumsy on worn armor, or on everything.
+    const ignore = new Set((items ?? []).filter(i => i.type == 'move').map(i => i.system?.ignoreClumsy).filter(Boolean));
+
+    for (const item of items ?? []) {
+      if (item.type != 'equipment' || !item.system?.equipped) continue;
+      let tags = [];
+      try {
+        tags = item.system.tags ? JSON.parse(item.system.tags) : [];
+      } catch (e) {
+        continue;
+      }
+      if (!Array.isArray(tags)) continue;
+      let isClumsy = false;
+      for (const tag of tags) {
+        const text = String(tag?.value ?? tag ?? '').toLowerCase().trim();
+        if (text == 'clumsy') isClumsy = true;
+        const match = text.match(/^(\+)?\s*(\d+)\s*armou?r$|^armou?r\s*(\+)?\s*(\d+)$/);
+        if (!match) continue;
+        const adds = !!(match[1] ?? match[3]);
+        const value = Number(match[2] ?? match[4]) || 0;
+        if (adds) bonus += value;
+        else if (best === null || value > best.value) best = { value, name: item.name };
+        if (adds) sources.push(`${item.name} +${value}`);
+      }
+      const ignored = ignore.has('all') || (ignore.has('armor') && item.system.itemType == 'armor');
+      if (isClumsy && !ignored) clumsy++;
+    }
+
+    const misc = Number(ac.misc) || 0;
+    if (best || bonus) {
+      if (best) sources.unshift(`${best.name} ${best.value}`);
+      if (misc) sources.push(`${game.i18n.localize('DW.Gear.ArmorMisc')} ${misc < 0 ? misc : '+' + misc}`);
+      ac.fromGear = true;
+      ac.value = Math.max(0, (best?.value ?? 0) + bonus + misc);
+      ac.sources = sources.join(', ');
+    }
+    ac.clumsy = clumsy;
+
+    const weight = data.attributes.weight;
+    const load = Number(weight.max) || 0;
+    weight.tier = weight.value <= load ? 'ok' : (weight.value <= load + 2 ? 'heavy' : 'over');
   }
 
   /** @override */
@@ -440,6 +507,11 @@ export class ActorDw extends Actor {
       prototypeToken.actorLink = true;
       setDefault("disposition", CONST.TOKEN_DISPOSITIONS.FRIENDLY, true);
       setDefault("sight.enabled", true, true);
+    }
+    // Each hireling is someone in particular, on the characters' side.
+    else if (this.type === "hireling") {
+      setDefault("actorLink", true);
+      setDefault("disposition", CONST.TOKEN_DISPOSITIONS.FRIENDLY);
     }
     else {
       setDefault("disposition", CONST.TOKEN_DISPOSITIONS.HOSTILE);

@@ -35,25 +35,60 @@ data:
       description: Eschew a convention of the civilized world.
   equipment:
     '0':
-      label: Starting gear
-      mode: checkbox
+      label: You start with
+      mode: all
+      count: 0
       items:
         - 6JcOoZ8CNqYxLgyQ
         - nMag6sXXRqc6SC4Q
         - 1YuCznJbmL9wFSjk
+      options:
+        - items:
+            - 6JcOoZ8CNqYxLgyQ
+          quantities: {}
+          coins: 0
+        - items:
+            - nMag6sXXRqc6SC4Q
+          quantities: {}
+          coins: 0
+        - items:
+            - 1YuCznJbmL9wFSjk
+          quantities: {}
+          coins: 0
     '1':
-      label: Choose your weapon
+      label: Weapon
       mode: radio
+      count: 0
       items:
         - NKIo4WZMF7cWgpAi
         - SIDfurffR6QYixJk
+      options:
+        - items:
+            - NKIo4WZMF7cWgpAi
+          quantities: {}
+          coins: 0
+        - items:
+            - SIDfurffR6QYixJk
+          quantities: {}
+          coins: 0
     '2':
-      label: Choose gear
-      mode: checkbox
+      label: Supplies
+      mode: radio
+      count: 0
       items:
         - YwHV7WYzTPSAOorl
         - 6JcOoZ8CNqYxLgyQ
         - ic5dH6aNzBgEuTjA
+      options:
+        - items:
+            - YwHV7WYzTPSAOorl
+            - 6JcOoZ8CNqYxLgyQ
+          quantities: {}
+          coins: 0
+        - items:
+            - ic5dH6aNzBgEuTjA
+          quantities: {}
+          coins: 0
   hp: 8
   load: 8
   damage: d10

@@ -58,6 +58,26 @@
       <input type="text" name="system.moveGroup" value="{{system.moveGroup}}" placeholder="ex: barbarian-armor"/>
       <span class="dw-fields-hint">{{localize "DW.MoveGroupHelp"}}</span>
 
+      <span class="dw-label">{{localize "DW.IgnoreClumsy.Label"}}</span>
+      <select name="system.ignoreClumsy">
+        {{selectOptions selects.ignoreClumsy selected=system.ignoreClumsy blank=(localize "DW.IgnoreClumsy.None") localize=true}}
+      </select>
+
+      {{!-- A resource the move spends, such as Volley's ammo. --}}
+      <span class="dw-label">{{localize "DW.Resource.Label"}}</span>
+      <input type="text" name="system.resource.name" value="{{system.resource.name}}" placeholder="ex: ammo"/>
+      <span class="dw-fields-hint">{{localize "DW.Resource.Hint"}}</span>
+
+      {{#if system.resource.name}}
+      <span class="dw-label">{{localize "DW.Resource.Amount"}}</span>
+      <input type="number" name="system.resource.amount" value="{{system.resource.amount}}" min="1" step="1"/>
+
+      <span class="dw-label">{{localize "DW.Resource.When"}}</span>
+      <select name="system.resource.when">
+        {{selectOptions selects.resourceWhen selected=system.resource.when localize=true}}
+      </select>
+      {{/if}}
+
       {{!-- Moves like Multiclass Dabbler: after the level up, pick a move (or
            spell) from another class. --}}
       <span class="dw-label">{{localize "DW.Grants.Label"}}</span>

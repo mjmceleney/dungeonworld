@@ -1,0 +1,31 @@
+<header class="dw-card dw-header dw-npc-header {{#if bannerImg}}dw-header--banner{{/if}}">
+  {{#if bannerImg}}
+  <div class="dw-banner-art" style="background-image: url(&quot;{{bannerImg}}&quot;)" aria-hidden="true"></div>
+  {{/if}}
+  <img class="dw-portrait" src="{{actor.img}}" data-edit="img" data-action="editImage" alt="{{actor.name}}" title="{{actor.name}}" width="96" height="96"/>
+
+  <div class="dw-identity">
+    <input class="dw-name" type="text" name="name" value="{{actor.name}}" placeholder="Name" aria-label="Name"/>
+    <div class="dw-hireling-fields">
+      <label>
+        <span class="dw-label">{{localize "DW.Hireling.Employer"}}</span>
+        <select name="system.details.employer">
+          {{selectOptions employers selected=system.details.employer blank="—"}}
+        </select>
+      </label>
+      <label>
+        <span class="dw-label">{{localize "DW.Hireling.CostLabel"}}</span>
+        <input type="text" name="system.details.cost" value="{{system.details.cost}}" list="dw-costs-{{actor.id}}" placeholder="{{localize "DW.Hireling.CostPlaceholder"}}"/>
+        <datalist id="dw-costs-{{actor.id}}">
+          {{#each costs}}<option value="{{this}}"></option>{{/each}}
+        </datalist>
+      </label>
+      <label>
+        <span class="dw-label">{{localize "DW.Hireling.FoundIn"}}</span>
+        <select name="system.details.found">
+          {{selectOptions foundOptions selected=system.details.found blank="—" localize=true}}
+        </select>
+      </label>
+    </div>
+  </div>
+</header>

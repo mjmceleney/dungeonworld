@@ -8,5 +8,16 @@
     <input class="dw-name" type="text" name="name" value="{{actor.name}}" placeholder="Name" aria-label="Name"/>
     <input class="tags-input-source" type="text" name="system.tags" value="{{system.tags}}" placeholder="{{localize "DW.Tags"}}" aria-label="{{localize "DW.Tags"}}"/>
     <input class="dw-qualities" type="text" name="system.attributes.specialQualities.value" value="{{system.attributes.specialQualities.value}}" placeholder="{{localize "DW.SpecialQualities"}}" aria-label="{{localize "DW.SpecialQualities"}}" data-tooltip="DW.SpecialQualities"/>
+    <label class="dw-instinct">
+      <span class="dw-label">{{localize "DW.Instinct"}}</span>
+      <input type="text" name="system.details.instinct" value="{{instinct}}" placeholder="{{localize "DW.InstinctPlaceholder"}}" aria-label="{{localize "DW.Instinct"}}"/>
+    </label>
   </div>
+
+  {{#if editable}}
+  <div class="dw-npc-tools">
+    <button type="button" class="dw-icon-btn" data-action="monsterMaker" data-tooltip="DW.MonsterMaker.Open" aria-label="{{localize "DW.MonsterMaker.Open"}}"><i class="fas fa-dragon" inert></i></button>
+    <button type="button" class="dw-icon-btn" data-action="rollTreasure" data-tooltip="DW.Treasure.Title" aria-label="{{localize "DW.Treasure.Title"}}"><i class="fas fa-gem" inert></i></button>
+  </div>
+  {{/if}}
 </header>

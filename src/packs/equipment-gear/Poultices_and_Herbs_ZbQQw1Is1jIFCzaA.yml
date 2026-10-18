@@ -16,6 +16,9 @@ data:
   magic: false
   itemType: dungeongear
   attributes: {}
+  useHeal: 7
+  useTarget: other
+  useCure: false
 flags: {}
 img: icons/tools/laboratory/mortar-powder-green.webp
 effects: []

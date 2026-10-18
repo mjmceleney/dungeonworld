@@ -1,0 +1,540 @@
+// Small prompts built on core's DialogV2 (stat choice, Last Breath). They
+// keep core's dialog look and theme, using its color variables.
+
+// Choose a stat: each stat is a button showing its modifier and, when the
+// move says, what it's for. The footer's plain copies are hidden.
+.application.dialog.dw-ask-dialog {
+  .form-footer {
+    display: none;
+  }
+
+  .dw-ask-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .dw-ask-stat {
+    display: grid;
+    grid-template-columns: 44px 36px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    height: auto;
+    min-height: 36px;
+    padding: 4px 10px;
+    text-align: left;
+  }
+
+  .dw-ask-abbr {
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .dw-ask-mod {
+    font-size: 17px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .dw-ask-hint {
+    font-size: 13px;
+    line-height: 1.25;
+    opacity: 0.85;
+  }
+
+  .dw-ask-debility {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: rgba(168, 24, 24, 0.18);
+    font-weight: 700;
+  }
+}
+
+.application.dialog.dw-last-breath-dialog {
+  .dw-last-breath-text {
+    font-style: italic;
+
+    p {
+      margin: 0 0 6px;
+    }
+  }
+}
+
+// Treasure: the modifiers, one per line.
+.application.dialog.dw-treasure-dialog {
+  .dw-treasure-modifiers {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    label.checkbox {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      line-height: 1.3;
+
+      input {
+        flex: none;
+        margin-top: 2px;
+      }
+    }
+  }
+}
+
+// Monster maker. Built on the level up window (.dw-levelup-window), whose
+// cards and footer it shares.
+.dw-v2.dw-monster-maker {
+  .dw-levelup-section > input[type="text"] {
+    width: 100%;
+  }
+
+  .dw-mm-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px 14px;
+    margin: 0;
+
+    > div {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .dw-mm-wide {
+      grid-column: span 2;
+    }
+
+    dd {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--dw-navy);
+      overflow-wrap: anywhere;
+    }
+  }
+
+  // A move, special quality or choice an answer asks for, shown once it's
+  // picked.
+  .dw-mm-extra {
+    display: flex;
+    margin-top: 2px;
+
+    input[type="text"],
+    select {
+      flex: 1;
+      width: 100%;
+      height: 28px;
+      font-size: 14px;
+    }
+  }
+
+  .dw-choice:not(:has(> input:checked)) .dw-mm-extra {
+    display: none;
+  }
+
+  .dw-mm-warning {
+    flex: 1;
+    align-self: center;
+    margin: 0;
+  }
+}
+
+// Character creator. Built on the level up window, like the monster maker.
+.dw-v2.dw-creator {
+  .dw-creator-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    input {
+      flex: 1;
+      height: 32px;
+      font-size: 17px;
+    }
+  }
+
+  // One class per row, with room to read it. The class's image sits faded
+  // behind the right of the card, like a character's portrait in the
+  // sheet header, and fades out before the text.
+  .dw-creator-classes {
+    gap: 8px;
+  }
+
+  .dw-creator-class {
+    position: relative;
+    overflow: hidden;
+    align-items: center;
+    min-height: 104px;
+    padding: 14px 16px;
+    gap: 14px;
+
+    > :not(.dw-creator-class-art) {
+      position: relative;
+    }
+
+    .dw-choice-body {
+      max-width: 72%;
+      gap: 6px;
+    }
+
+    .dw-choice-name {
+      font-family: $font-stack-secondary;
+      font-size: 22px;
+      font-weight: normal;
+      color: var(--dw-navy);
+    }
+
+    .dw-choice-text {
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    &:has(input:checked) .dw-creator-class-art {
+      opacity: 0.6;
+    }
+  }
+
+  .dw-creator-class-art {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 42%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.35;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    -webkit-mask-image: linear-gradient(to left, #000 0%, #000 35%, transparent 100%);
+    mask-image: linear-gradient(to left, #000 0%, #000 35%, transparent 100%);
+  }
+
+  .dw-creator-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .dw-creator-look {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .dw-creator-look-option {
+    flex: 0 1 auto;
+    align-items: center;
+    padding: 4px 10px;
+  }
+
+  .dw-levelup-section > input[type="text"] {
+    width: 100%;
+  }
+
+  .dw-creator-next {
+    flex: 1;
+    align-self: center;
+    margin: 0;
+  }
+}
+
+// Filling in bonds: each blank is a choice of character or a typed name.
+.application.dialog.dw-bond-fill-dialog {
+  .dw-bond-fill {
+    display: block;
+    line-height: 2.1;
+  }
+
+  .dw-bond-blank {
+    display: inline-flex;
+    gap: 4px;
+    margin: 0 4px;
+    vertical-align: middle;
+
+    select {
+      width: 150px;
+    }
+
+    input {
+      width: 130px;
+    }
+  }
+}
+
+// Choosing a new character's bonds: one row per bond, added as needed.
+.application.dialog.dw-bond-choose-dialog {
+  .dw-bond-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0 0 8px;
+    padding: 0;
+    list-style: none;
+  }
+
+  .dw-bond-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+    border: 1px solid rgba(127, 127, 127, 0.4);
+    border-radius: 6px;
+  }
+
+  .dw-bond-row-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    select {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .dw-bond-remove {
+      flex: none;
+      width: 30px;
+    }
+  }
+
+  .dw-bond-body:empty {
+    display: none;
+  }
+
+  .dw-bond-fill {
+    margin: 0;
+  }
+
+  .dw-bond-own-text {
+    width: 100%;
+  }
+
+  .dw-bond-add {
+    width: auto;
+  }
+}
+
+// Editing race or alignment.
+.application.dialog.dw-detail-dialog {
+  .dw-detail-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    prose-mirror {
+      min-height: 180px;
+      border: 1px solid var(--color-border, rgba(127, 127, 127, 0.5));
+      border-radius: 4px;
+    }
+  }
+}
+
+// Recover and Prepare Spells.
+.application.dialog.dw-recover-dialog,
+.application.dialog.dw-prepare-dialog {
+  .dw-recover-option,
+  .dw-prepare-spell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 2px 0;
+
+    &.is-disabled {
+      opacity: 0.5;
+    }
+  }
+
+  .dw-recover-debilities .hint {
+    margin: 0 0 4px;
+    font-size: 12px;
+    opacity: 0.85;
+  }
+
+  .dw-prepare-name {
+    flex: 1;
+  }
+
+  .dw-prepare-level {
+    font-size: 12px;
+    opacity: 0.8;
+  }
+
+  .dw-prepare-count {
+    font-weight: 700;
+  }
+
+  .dw-prepare-list {
+    max-height: 420px;
+    overflow-y: auto;
+  }
+}
+
+// GM moves reminder.
+.application.dialog.dw-gm-moves-dialog {
+  h3 {
+    margin: 8px 0 2px;
+    border: 0;
+    font-size: 15px;
+  }
+
+  .dw-gm-moves-list {
+    margin: 0;
+    padding-left: 18px;
+
+    li {
+      margin: 1px 0;
+    }
+  }
+
+  .dw-gm-moves-intro,
+  .dw-gm-moves-hint {
+    font-size: 13px;
+    opacity: 0.85;
+  }
+}
+
+// Recruit: what was made known, each +1.
+.application.dialog.dw-recruit-dialog {
+  .dw-recruit-terms label.checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    span {
+      flex: 1;
+    }
+  }
+
+  .dw-recruit-penalty {
+    font-size: 13px;
+    opacity: 0.85;
+  }
+
+  .dw-recruit-total {
+    margin: 4px 0 0;
+    font-weight: 700;
+  }
+}
+
+// Prepare Spells / Commune: spells grouped by level, with the running total
+// kept in view below them.
+.application.dialog.dw-prepare-dialog {
+  .dw-prepare-groups {
+    max-height: 420px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dw-prepare-group {
+    &.is-locked {
+      opacity: 0.5;
+    }
+  }
+
+  .dw-prepare-group-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding-bottom: 2px;
+    margin-bottom: 2px;
+    border-bottom: 1px solid rgba(127, 127, 127, 0.4);
+    font-weight: 700;
+  }
+
+  .dw-prepare-subtotal {
+    font-weight: normal;
+    font-size: 12px;
+    opacity: 0.85;
+  }
+
+  .dw-prepare-summary {
+    margin-top: 8px;
+    padding: 8px 10px;
+    border: 1px solid rgba(127, 127, 127, 0.4);
+    border-radius: 6px;
+
+    p {
+      margin: 4px 0 0;
+    }
+
+    &.is-over {
+      border-color: #c43c3c;
+
+      .dw-prepare-count {
+        color: #e05656;
+      }
+
+      .dw-prepare-meter-fill {
+        background: #c43c3c;
+      }
+    }
+  }
+
+  .dw-prepare-meter {
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(127, 127, 127, 0.3);
+    overflow: hidden;
+  }
+
+  .dw-prepare-meter-fill {
+    height: 100%;
+    background: #4f8fd6;
+    transition: width 0.15s ease;
+  }
+
+  .dw-prepare-math {
+    font-size: 12px;
+    opacity: 0.85;
+  }
+}
+
+.dw-v2 .dw-spell-caster {
+  .dw-text-btn {
+    margin-left: 6px;
+  }
+}
+
+// Beyond level 10: each choice is a button with what it means.
+.application.dialog.dw-beyond-dialog {
+  .form-footer {
+    display: none;
+  }
+
+  .dw-beyond-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .dw-beyond-choice {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    height: auto;
+    padding: 8px 12px;
+    text-align: left;
+    line-height: 1.3;
+
+    strong {
+      font-size: 15px;
+    }
+
+    span {
+      font-size: 13px;
+      opacity: 0.85;
+    }
+  }
+}
+
+.application.dialog.dw-start-over-dialog .dw-reclass-keep {
+  max-height: 260px;
+  overflow-y: auto;
+}

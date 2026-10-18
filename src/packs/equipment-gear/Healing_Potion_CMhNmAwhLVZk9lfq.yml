@@ -16,6 +16,9 @@ data:
   magic: false
   itemType: dungeongear
   attributes: {}
+  useHeal: 10
+  useTarget: self
+  useCure: true
 flags: {}
 img: icons/tools/laboratory/vials-blue-pink.webp
 effects: []

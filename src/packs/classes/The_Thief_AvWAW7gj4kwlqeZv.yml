@@ -39,35 +39,90 @@ data:
       description: Shift danger or blame from yourself to someone else.
   equipment:
     '0':
-      label: Starting gear
-      mode: checkbox
+      label: You start with
+      mode: all
+      count: 0
       items:
         - 6JcOoZ8CNqYxLgyQ
         - oGiXIqNQbukIjf06
         - fYXLx7SefHMLGUPa
+      options:
+        - items:
+            - 6JcOoZ8CNqYxLgyQ
+          quantities: {}
+          coins: 0
+        - items:
+            - oGiXIqNQbukIjf06
+          quantities: {}
+          coins: 0
+        - items:
+            - fYXLx7SefHMLGUPa
+          quantities: {}
+          coins: 0
+        - items: []
+          quantities: {}
+          coins: 10
     '1':
-      label: Choose your armament
-      mode: checkbox
+      label: Arms
+      mode: radio
+      count: 0
       items:
         - nMag6sXXRqc6SC4Q
         - Bj8EezgO0DZ9OhVQ
         - TJ5kn5ewO47RhbkT
+      options:
+        - items:
+            - nMag6sXXRqc6SC4Q
+            - Bj8EezgO0DZ9OhVQ
+          quantities: {}
+          coins: 0
+        - items:
+            - TJ5kn5ewO47RhbkT
+          quantities: {}
+          coins: 0
     '2':
-      label: Choose a ranged weapon
-      mode: checkbox
+      label: Ranged weapon
+      mode: radio
+      count: 0
       items:
         - onun19OKLyZ4fP9X
         - jSFKrGehEa3y26cO
         - WrnuJ6j8JerAozDO
+      options:
+        - items:
+            - onun19OKLyZ4fP9X
+          quantities:
+            onun19OKLyZ4fP9X: 3
+          coins: 0
+        - items:
+            - jSFKrGehEa3y26cO
+            - WrnuJ6j8JerAozDO
+          quantities: {}
+          coins: 0
     '3':
-      label: Choose gear
+      label: Supplies
       mode: radio
+      count: 0
       items:
         - YwHV7WYzTPSAOorl
         - CMhNmAwhLVZk9lfq
+      options:
+        - items:
+            - YwHV7WYzTPSAOorl
+          quantities: {}
+          coins: 0
+        - items:
+            - CMhNmAwhLVZk9lfq
+          quantities: {}
+          coins: 0
   hp: 6
   load: 9
   damage: d8
+  looks: |-
+    Shifty Eyes or Criminal Eyes
+    Hooded Head, Messy Hair, or Cropped Hair
+    Dark Clothes, Fancy Clothes, or Common Clothes
+    Lithe Body, Knobby Body, or Flabby Body
 flags: {}
 img: systems/dungeonworld/assets/icons/skills/gray_05.webp
 effects: []

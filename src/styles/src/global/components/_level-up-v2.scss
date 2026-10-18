@@ -477,3 +477,62 @@
     background: var(--dw-surface);
   }
 }
+
+// Starting gear: each group's rule beside its title, and options that can be
+// several items.
+.dw-v2.dw-levelup-window {
+  .dw-gear-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .dw-gear-rule {
+    font-weight: 700;
+    color: var(--dw-accent);
+
+    &.is-included {
+      color: var(--dw-muted);
+    }
+  }
+
+  .dw-gear-option {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .dw-gear-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dw-gear-coins {
+    width: 24px;
+    text-align: center;
+    color: var(--dw-mid);
+  }
+
+  // Writing your own race or alignment.
+  .dw-choice--own {
+    cursor: default;
+
+    .dw-choice-name {
+      cursor: pointer;
+    }
+
+    input[type="text"],
+    textarea {
+      width: 100%;
+    }
+
+    textarea {
+      min-height: 44px;
+      resize: vertical;
+    }
+  }
+}

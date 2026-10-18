@@ -1,4 +1,24 @@
 <section class="tab dw-panel {{tab.cssClass}}" data-group="primary" data-tab="spells">
+  {{#if spellcasting}}
+  <div class="dw-summary dw-spell-summary">
+    {{#each spellcasting.casters}}
+    <div class="dw-summary-item dw-spell-caster {{#if over}}dw-summary-item--warn{{/if}}" data-move-id="{{moveId}}" data-tooltip="DW.Spellcasting.BudgetHint">
+      <span class="dw-readonly">{{used}}</span>
+      <span class="dw-of">/ {{max}}</span>
+      <span class="dw-label">{{localize "DW.Spellcasting.PreparedLevels"}}</span>
+      {{#if ../editable}}
+      <button type="button" class="dw-text-btn" data-action="prepareSpells"><i class="fas fa-book-open" inert></i> {{label}}</button>
+      {{/if}}
+    </div>
+    {{/each}}
+    {{#if spellcasting.penalty}}
+    <div class="dw-summary-item dw-summary-item--warn">
+      <span class="dw-hint">{{localize "DW.Spellcasting.PenaltyActive" penalty=spellcasting.penalty}}</span>
+      {{#if editable}}<button type="button" class="dw-icon-btn" data-action="clearCastPenalty" data-tooltip="DW.Spellcasting.ClearPenalty" aria-label="{{localize "DW.Spellcasting.ClearPenalty"}}"><i class="fas fa-times" inert></i></button>{{/if}}
+    </div>
+    {{/if}}
+  </div>
+  {{/if}}
   {{#each spellLevels}}
   <section class="dw-section">
     <header class="dw-section-head">

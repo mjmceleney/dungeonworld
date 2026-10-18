@@ -1,3 +1,9 @@
+import { DwHirelingSheet } from "./actor/hireling-sheet.js";
+import { DwResources } from "./resources.js";
+import { DwSpells } from "./spells.js";
+import { DwGmMoves } from "./gm-moves.js";
+import { DwRecruit } from "./recruit.js";
+
 const { renderTemplate } = foundry.applications.handlebars;
 
 // Damage button markup, rendered once and reused for every message.
@@ -33,6 +39,7 @@ export const displayChatActionButtons = function(message, html, data) {
   if (!game.user.isGM || !game.settings.get('dungeonworld', 'enableDamageButtons')) {
     html.find('.chat-damage-buttons').hide();
   }
+  if (!game.user.isGM) html.find('[data-gm-only]').hide();
 
   if ( chatCard.length > 0 ) {
     // If the user is the message author or the actor owner, proceed.
@@ -72,11 +79,43 @@ function _onChatCardAction(event) {
     _chatActionMarkXp(actor, message);
   }
 
+  // Cast a Spell's 7-9 choices, for the caster's owner.
+  if (action == 'castPenalty' || action == 'forgetSpell') {
+    const actor = card ? _getChatCardActor(card) : null;
+    if (!actor?.isOwner) return;
+    _chatActionCastChoice(actor, message, action, button.dataset.spellId);
+    return;
+  }
+
+  // Recruit: turning the applicants away, for the recruiter's owner.
+  if (action == 'turnAway') {
+    const actor = card ? _getChatCardActor(card) : null;
+    if (!actor?.isOwner) return;
+    button.disabled = true;
+    _chatActionTurnAway(actor, message);
+    return;
+  }
+
+  // Spend a move's resource (Volley's ammo), for the character's owner.
+  if (action == 'spendResource') {
+    const actor = card ? _getChatCardActor(card) : null;
+    if (!actor?.isOwner) return;
+    button.disabled = true;
+    _chatActionSpendResource(actor, message, button);
+    return;
+  }
+
   // Validate permission to proceed with the roll
   if ( !( game.user.isGM ) ) return;
 
   // Chat damage.
   if (action.includes('damage') || action == 'heal') _chatActionDamage(message, action);
+
+  // On a 6-: the GM's moves, as a reminder.
+  if (action == 'gmMoves') DwGmMoves.show();
+
+  // Recruit: make a hireling who works for the recruiter.
+  if (action == 'createHireling') DwHirelingSheet.createFor(card ? _getChatCardActor(card) : null, { found: button.dataset.found });
 }
 
 /**
@@ -132,6 +171,52 @@ async function _chatActionMarkXp(actor, message) {
       content: $content[0].outerHTML
     });
   }
+}
+
+async function _chatActionCastChoice(actor, message, action, spellId) {
+  let text;
+  if (action == 'castPenalty') {
+    const penalty = await DwSpells.addPenalty(actor);
+    text = game.i18n.format('DW.Spellcasting.PenaltyTaken', { penalty });
+  }
+  else {
+    const spell = await DwSpells.forget(actor, spellId);
+    if (!spell) return;
+    text = game.i18n.format('DW.Spellcasting.Lost', { spell: spell.name });
+  }
+  // One choice per cast: replace both buttons with what was chosen.
+  const $content = $('<div>').html(message.content);
+  $content.find('.cast-choices').html(`<span class="button button-disabled">${Handlebars.escapeExpression(text)} <i class="fas fa-check"></i></span>`);
+  const content = $content.html();
+  if (message.isAuthor || game.user.isGM) await message.update({ content });
+  else game.socket.emit('system.dungeonworld', { message: message.id, content });
+}
+
+async function _chatActionTurnAway(actor, message) {
+  const penalty = await DwRecruit.turnAway(actor);
+  const $content = $('<div>').html(message.content);
+  $content.find('[data-action="turnAway"]').replaceWith(`<span class="button button-disabled">${game.i18n.format('DW.Recruit.TurnedAway', { penalty })} <i class="fas fa-check"></i></span>`);
+  const content = $content.html();
+  if (message.isAuthor || game.user.isGM) await message.update({ content });
+  else game.socket.emit('system.dungeonworld', { message: message.id, content });
+}
+
+async function _chatActionSpendResource(actor, message, button) {
+  const name = button.dataset.resource;
+  const amount = Math.max(1, Number(button.dataset.amount) || 1);
+  const { spent, items } = await DwResources.spendResource(actor, name, amount);
+  if (!spent) {
+    button.disabled = false;
+    return ui.notifications.warn(game.i18n.format('DW.Resource.None', { name, actor: actor.name }));
+  }
+
+  // Mark the card, so it isn't spent twice.
+  const $content = $('<div>').html(message.content);
+  const left = DwResources.find(actor, name).reduce((sum, i) => sum + DwResources.remaining(i), 0);
+  $content.find('.resource-button').replaceWith(`<span class="button button-disabled">${game.i18n.format('DW.Resource.Spent', { amount: spent, name: items.join(', '), left })} <i class="fas fa-check"></i></span>`);
+  const content = $content.html();
+  if (message.isAuthor || game.user.isGM) await message.update({ content });
+  else game.socket.emit('system.dungeonworld', { message: message.id, content });
 }
 
 async function _chatActionDamage(message, action) {

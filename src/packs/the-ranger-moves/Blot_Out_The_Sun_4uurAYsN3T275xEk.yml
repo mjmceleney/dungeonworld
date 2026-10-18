@@ -25,6 +25,10 @@ system:
   requiresLevel: 2
   requiresMove: ''
   moveGroup: ''
+  resource:
+    name: ammo
+    amount: 1
+    when: always
 ownership:
   default: 0
 effects: []

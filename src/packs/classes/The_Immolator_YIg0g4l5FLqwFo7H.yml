@@ -43,39 +43,41 @@ data:
   equipment:
     '0':
       label: Starting gear
-      mode: checkbox
+      mode: all
+      count: 0
       items:
         - XVQlZSht2K5vp3te
         - YwHV7WYzTPSAOorl
         - CMhNmAwhLVZk9lfq
-      objects:
-        - _id: XVQlZSht2K5vp3te
-          name: Symbol
-          permission:
-            default: 0
-            Z8KGVPKcXF0jSV2e: 3
-          type: equipment
-          data:
-            name: ''
-            description: <p>A Symbol of your sacrifices past, describe it:</p>
-            quantity: 1
-            weight: 0
-            uses: 0
-            tags: ''
-            tagsString: ''
-            magic: false
-            itemType: ''
-            attributes: {}
-          flags: {}
-          img: icons/svg/mystery-man.svg
-          effects: []
+      options:
+        - items:
+            - XVQlZSht2K5vp3te
+          quantities: {}
+          coins: 0
+        - items:
+            - YwHV7WYzTPSAOorl
+          quantities: {}
+          coins: 0
+        - items:
+            - CMhNmAwhLVZk9lfq
+          quantities: {}
+          coins: 0
     '1':
       label: Choose gear
       mode: checkbox
+      count: 0
       items:
         - 6JcOoZ8CNqYxLgyQ
         - CMhNmAwhLVZk9lfq
-      objects: []
+      options:
+        - items:
+            - 6JcOoZ8CNqYxLgyQ
+          quantities: {}
+          coins: 0
+        - items:
+            - CMhNmAwhLVZk9lfq
+          quantities: {}
+          coins: 0
   hp: 4
   load: 9
   damage: d8

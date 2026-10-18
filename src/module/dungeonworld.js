@@ -14,6 +14,7 @@ import { DwActorSheet } from "./actor/actor-sheet.js";
 import { DwCharacterSheet } from "./actor/character-sheet.js";
 import { DwNpcSheet } from "./actor/npc-sheet.js";
 import { DwActorNpcSheet } from "./actor/actor-npc-sheet.js";
+import { DwHirelingSheet } from "./actor/hireling-sheet.js";
 import { DwClassItemSheet } from "./item/class-item-sheet.js";
 import { DwRegisterHelpers } from "./handlebars.js";
 import { preloadHandlebarsTemplates } from "./templates.js";
@@ -21,6 +22,12 @@ import { DwUtility } from "./utility.js";
 import { CombatSidebarDw } from "./combat/combat.js";
 import { MigrateDw } from "./migrate/migrate.js";
 import { DwJournal } from "./journal.js";
+import { DwLastBreath } from "./last-breath.js";
+import { DwPartyMoves } from "./party-moves.js";
+import { DwTreasure } from "./treasure.js";
+import { DwResources } from "./resources.js";
+import { DwInlineRolls } from "./inline-rolls.js";
+import { DwBeyondTen } from "./actor/beyond-ten.js";
 
 import * as chat from "./chat.js";
 import { BUILD_ID } from "./build-info.js";
@@ -45,6 +52,9 @@ Hooks.once("init", async function() {
     rollItemMacro,
     DwUtility,
     MigrateDw,
+    DwLastBreath,
+    DwPartyMoves,
+    DwTreasure,
   };
 
   // TODO: Extend the combat class.
@@ -77,6 +87,11 @@ Hooks.once("init", async function() {
     types: ['npc'],
     makeDefault: false,
     label: "DW.Sheet.LegacyNpc"
+  });
+  Actors.registerSheet("dungeonworld", DwHirelingSheet, {
+    types: ['hireling'],
+    makeDefault: true,
+    label: "DW.Sheet.Hireling"
   });
   Items.unregisterSheet("core", ItemSheet);
   Items.registerSheet("dungeonworld", DwItemSheet, { makeDefault: false });
@@ -152,6 +167,30 @@ Hooks.once("init", async function() {
   game.settings.register("dungeonworld", "enableDamageButtons", {
     name: game.i18n.localize("DW.Settings.enableDamageButtons.name"),
     hint: game.i18n.localize("DW.Settings.enableDamageButtons.hint"),
+    scope: 'world',
+    config: true,
+    type: Boolean,
+    default: true
+  });
+
+  game.settings.register("dungeonworld", "automateGear", {
+    name: game.i18n.localize("DW.Settings.automateGear.name"),
+    hint: game.i18n.localize("DW.Settings.automateGear.hint"),
+    scope: 'world',
+    config: true,
+    type: Boolean,
+    default: true,
+    onChange: () => {
+      for (const actor of game.actors) actor.reset();
+      for (const app of foundry.applications.instances.values()) {
+        if (app.document?.documentName == 'Actor') app.render();
+      }
+    },
+  });
+
+  game.settings.register("dungeonworld", "lastBreathPrompt", {
+    name: game.i18n.localize("DW.Settings.lastBreathPrompt.name"),
+    hint: game.i18n.localize("DW.Settings.lastBreathPrompt.hint"),
     scope: 'world',
     config: true,
     type: Boolean,
@@ -347,6 +386,10 @@ Hooks.once("init", async function() {
     onChange: () => DwJournal.restyleAll()
   });
   DwJournal.init();
+  DwLastBreath.init();
+  DwPartyMoves.init();
+  DwInlineRolls.init();
+  DwBeyondTen.init();
 
   // Preload template partials.
   preloadHandlebarsTemplates();
@@ -384,6 +427,24 @@ Hooks.once("ready", async function() {
   // Handle sockets.
   game.socket.on('system.dungeonworld', (data) => {
     if (!game.user.isGM) {
+      return;
+    }
+
+    // A new character (an apprentice) a player asked for.
+    if (data?.createCharacter) {
+      DwBeyondTen.createRemote(data.createCharacter);
+      return;
+    }
+
+    // A player healing someone else's character with an item.
+    if (data?.resourceChange) {
+      DwResources.applyRemote(data.resourceChange);
+      return;
+    }
+
+    // A player's change to a party move card.
+    if (data?.partyUpdate) {
+      DwPartyMoves.applyRemote(data.partyUpdate);
       return;
     }
 

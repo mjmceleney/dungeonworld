@@ -1,0 +1,203 @@
+// Party move chat cards (party-moves.js). Chat cards follow core's theme,
+// so colors come from the current text color rather than the sheet palette.
+
+.dw-party {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    width: auto;
+    height: 24px;
+    line-height: 22px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .dw-party-icon {
+    padding: 0 5px;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.dw-party-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  h3 {
+    flex: 1;
+    margin: 0;
+    border: 0;
+    font-size: 16px;
+  }
+}
+
+.dw-party-done,
+.dw-party-badge {
+  padding: 0 6px;
+  border-radius: 10px;
+  background: rgba(127, 127, 127, 0.2);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.dw-party-intro,
+.dw-party-hint,
+.dw-party-meta {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.dw-party-roles,
+.dw-party-members {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dw-party-role,
+.dw-party-member {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 5px 6px;
+  border: 1px solid rgba(127, 127, 127, 0.35);
+  border-radius: 6px;
+}
+
+// A journey role's result, colored like a move's result.
+.dw-party-role.is-success { border-left: 4px solid #1a5fa8; }
+.dw-party-role.is-partial { border-left: 4px solid #a8700f; }
+.dw-party-role.is-failure { border-left: 4px solid #a81818; }
+
+.dw-party-role-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.dw-party-result {
+  font-weight: 700;
+}
+
+.dw-party-outcome {
+  font-size: 13px;
+}
+
+.dw-party-actor,
+.dw-party-drop,
+.dw-party-steps,
+.dw-party-distance,
+.dw-party-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+
+.dw-party-actor {
+  img {
+    flex: none;
+    border: 0;
+    border-radius: 4px;
+  }
+}
+
+.dw-party-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.dw-party-drop {
+  padding: 3px 6px;
+  border: 1px dashed rgba(127, 127, 127, 0.5);
+  border-radius: 4px;
+  font-size: 12px;
+  opacity: 0.85;
+
+  span {
+    flex: 1;
+  }
+}
+
+.dw-party-order {
+  min-width: 18px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.dw-party-check {
+  font-size: 12px;
+
+  &.is-success { color: #1a5fa8; }
+  &.is-partial { color: #a8700f; }
+  &.is-failure { color: #a81818; }
+}
+
+.dw-party-distance {
+  label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  input {
+    width: 52px;
+    height: 24px;
+  }
+}
+
+.dw-party-foot {
+  justify-content: flex-end;
+
+  .dw-party-hint {
+    flex: 1;
+  }
+}
+
+// Choosing which of your characters joins.
+.application.dialog.dw-pick-actor-dialog {
+  .form-footer {
+    display: none;
+  }
+
+  .dw-pick-actors {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .dw-pick-actor {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: auto;
+    padding: 4px 8px;
+    text-align: left;
+
+    img {
+      flex: none;
+      border: 0;
+      border-radius: 4px;
+    }
+
+    span:first-of-type {
+      flex: 1;
+    }
+  }
+
+  .dw-pick-type {
+    font-size: 12px;
+    opacity: 0.75;
+  }
+}

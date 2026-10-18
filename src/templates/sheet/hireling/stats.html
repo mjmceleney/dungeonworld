@@ -1,0 +1,49 @@
+<section class="dw-card dw-npc-stats dw-hireling-stats">
+  <div class="dw-header-stat dw-npc-stat dw-hireling-loyalty">
+    <span class="dw-label">{{localize "DW.Hireling.Loyalty"}}</span>
+    <div class="dw-hp-value">
+      <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.loyalty.value" data-delta="-1" aria-label="{{localize "DW.Sheet.Decrease"}} {{localize "DW.Hireling.Loyalty"}}"><i class="fas fa-minus" inert></i></button>
+      <input class="dw-big" type="number" name="system.attributes.loyalty.value" value="{{loyalty}}" step="1" aria-label="{{localize "DW.Hireling.Loyalty"}}"/>
+      <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.loyalty.value" data-delta="1" aria-label="{{localize "DW.Sheet.Increase"}} {{localize "DW.Hireling.Loyalty"}}"><i class="fas fa-plus" inert></i></button>
+    </div>
+    <div class="dw-hireling-modifiers">
+      <label data-tooltip="DW.Hireling.ForwardHint">
+        <span>{{localize "DW.Forward"}}</span>
+        <input type="number" name="system.attributes.loyalty.forward" value="{{forward}}" step="1"/>
+      </label>
+      <label class="dw-debility {{#if unpaid}}on{{/if}}" data-tooltip="DW.Hireling.UnpaidHint">
+        <input type="checkbox" name="system.details.unpaid" {{checked unpaid}}/>
+        <span>{{localize "DW.Hireling.Unpaid"}}</span>
+      </label>
+    </div>
+    <button type="button" class="dw-roll-chip" data-action="orderHireling" data-tooltip="DW.Hireling.OrderHint">
+      <i class="fas fa-dice-d6" inert></i>
+      <span>{{localize "DW.Hireling.Order"}} {{orderModifier}}</span>
+    </button>
+  </div>
+
+  <div class="dw-divider"></div>
+
+  <div class="dw-header-stat dw-npc-stat dw-npc-stat--hp">
+    <span class="dw-label">{{localize "DW.Sheet.HitPoints"}}</span>
+    <div class="dw-hp-value">
+      <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.hp.value" data-delta="-1" aria-label="{{localize "DW.Sheet.Decrease"}} {{localize "DW.HP"}}"><i class="fas fa-minus" inert></i></button>
+      <input class="dw-big" type="number" name="system.attributes.hp.value" value="{{hp}}" step="1" aria-label="{{localize "DW.HP"}}"/>
+      <span class="dw-of">/</span>
+      <input class="dw-small" type="number" name="system.attributes.hp.max" value="{{hpMax}}" step="1" aria-label="Max {{localize "DW.HP"}}"/>
+      <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.hp.value" data-delta="1" aria-label="{{localize "DW.Sheet.Increase"}} {{localize "DW.HP"}}"><i class="fas fa-plus" inert></i></button>
+    </div>
+    <div class="dw-bar"><div class="dw-bar-fill dw-bar-fill--hp-{{hpState}}" style="width: {{hpPct}}%"></div></div>
+    <div class="dw-hireling-combat">
+      <label>
+        <span class="dw-label">{{localize "DW.Armor"}}</span>
+        <input type="number" name="system.attributes.ac.value" value="{{system.attributes.ac.value}}" step="1" aria-label="{{localize "DW.Armor"}}"/>
+      </label>
+      <label>
+        <span class="dw-label">{{localize "DW.Damage"}}</span>
+        <input type="text" name="system.attributes.damage.value" value="{{system.attributes.damage.value}}" placeholder="d6" aria-label="{{localize "DW.Damage"}}"/>
+      </label>
+      <button type="button" class="dw-icon-btn" data-action="rollDamage" data-tooltip="DW.Damage" aria-label="{{localize "DW.Damage"}}"><i class="fas fa-dice-d20" inert></i></button>
+    </div>
+  </div>
+</section>

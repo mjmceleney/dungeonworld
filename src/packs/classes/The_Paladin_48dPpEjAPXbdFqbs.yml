@@ -36,29 +36,70 @@ data:
       description: Endanger yourself to protect someone weaker than you.
   equipment:
     '0':
-      label: Starting gear
-      mode: checkbox
+      label: You start with
+      mode: all
+      count: 0
       items:
         - 6JcOoZ8CNqYxLgyQ
         - oJ490334TfVi40Zj
         - UCiBklwx0UIjYvLo
+      options:
+        - items:
+            - 6JcOoZ8CNqYxLgyQ
+          quantities: {}
+          coins: 0
+        - items:
+            - oJ490334TfVi40Zj
+          quantities: {}
+          coins: 0
+        - items:
+            - UCiBklwx0UIjYvLo
+          quantities: {}
+          coins: 0
     '1':
-      label: Choose your weapon
-      mode: checkbox
+      label: Weapon
+      mode: radio
+      count: 0
       items:
         - FCIpaJDix5XCpWsz
         - TuCJte0lt1C8CgyS
         - FkfxRU6NiOzEzkIy
+      options:
+        - items:
+            - FCIpaJDix5XCpWsz
+          quantities: {}
+          coins: 0
+        - items:
+            - TuCJte0lt1C8CgyS
+            - FkfxRU6NiOzEzkIy
+          quantities: {}
+          coins: 0
     '2':
-      label: Choose gear
-      mode: checkbox
+      label: Supplies
+      mode: radio
+      count: 0
       items:
         - YwHV7WYzTPSAOorl
         - 6JcOoZ8CNqYxLgyQ
         - CMhNmAwhLVZk9lfq
+      options:
+        - items:
+            - YwHV7WYzTPSAOorl
+          quantities: {}
+          coins: 0
+        - items:
+            - 6JcOoZ8CNqYxLgyQ
+            - CMhNmAwhLVZk9lfq
+          quantities: {}
+          coins: 0
   hp: 10
   load: 12
   damage: d10
+  looks: |-
+    Kind Eyes, Fiery Eyes, or Glowing Eyes
+    Helmet, Styled Hair, or Bald
+    Worn Holy Symbol or Fancy Holy Symbol
+    Fit Body, Bulky Body, or Thin Body
 flags: {}
 img: systems/dungeonworld/assets/icons/skills/light_05.webp
 effects: []

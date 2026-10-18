@@ -542,6 +542,35 @@
     gap: 6px;
   }
 
+  // Armor worked out from equipped gear: the total, then a bonus field.
+  .dw-armor-total {
+    min-width: 28px;
+    font-size: 17px;
+    font-weight: 700;
+    text-align: center;
+    cursor: help;
+  }
+
+  .dw-armor-misc {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    color: var(--dw-muted);
+
+    input[type="number"] {
+      width: 38px;
+      height: 24px;
+      padding: 0 4px;
+      font-size: 14px;
+    }
+  }
+
+  .dw-pill--warn {
+    background: var(--dw-deb);
+    color: var(--dw-deb-ink);
+    font-weight: 700;
+  }
+
   .dw-inline-divider {
     width: 1px;
     align-self: stretch;
@@ -862,6 +891,18 @@
     .dw-hint {
       color: var(--dw-bad);
       font-weight: 700;
+    }
+
+    .dw-hint[data-tooltip] {
+      cursor: help;
+    }
+  }
+
+  // A heavy load is a penalty, not yet a crisis.
+  .dw-summary-item--warn.dw-load--heavy {
+    .dw-readonly,
+    .dw-hint {
+      color: var(--dw-mid);
     }
   }
 
@@ -1363,6 +1404,47 @@
     font-style: italic;
   }
 
+  .dw-instinct {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    input {
+      flex: 1;
+      height: 28px;
+      font-weight: 700;
+      color: var(--dw-accent);
+    }
+  }
+
+  // Monster maker and treasure, beside the NPC's name.
+  .dw-npc-tools {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-self: flex-start;
+  }
+
+  // Moves a compendium monster lists in its description, before they're
+  // added as move items.
+  .dw-listed-moves {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    border: 1px dashed var(--dw-line);
+    border-radius: 8px;
+    background: var(--dw-sunken);
+
+    ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+  }
+
   // HP, armor and damage in one band, centered segments.
   .dw-npc-stats {
     display: flex;
@@ -1420,5 +1502,96 @@
     background: var(--dw-sunken);
     font-family: $font-stack-base;
     font-size: 14px;
+  }
+}
+
+// Race and alignment: shown in full, edited in a dialog.
+.dw-v2 {
+  .dw-detail-name {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--dw-ink);
+  }
+
+  .dw-detail-text {
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--dw-ink);
+
+    p {
+      margin: 0 0 6px;
+    }
+
+    > :last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+// Inline roll links in move text and journals.
+a.dw-inline-roll {
+  padding: 0 4px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  white-space: nowrap;
+  cursor: pointer;
+
+  i {
+    font-size: 0.85em;
+  }
+}
+
+.dw-v2 {
+  .dw-spell-summary {
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+}
+
+// Modifiers in place (casting, Recruit, gear), under forward and ongoing.
+.dw-v2 {
+  .dw-effects {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+  }
+
+  .dw-effect {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 4px 1px 8px;
+    border-radius: 12px;
+    background: var(--dw-deb);
+    color: var(--dw-deb-ink);
+    font-size: 12px;
+    cursor: help;
+
+    em {
+      opacity: 0.85;
+    }
+  }
+
+  .dw-effect-clear {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    font-size: 10px;
+    line-height: 18px;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.15);
+    }
+  }
+
+  .dw-badge--effect {
+    background: var(--dw-deb);
+    color: var(--dw-deb-ink);
+    cursor: help;
   }
 }

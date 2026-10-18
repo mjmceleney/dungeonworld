@@ -22,20 +22,38 @@
     {{> "systems/dungeonworld/templates/sheet/character/trackers.html"}}
   </section>
 
-  <section class="dw-card dw-side-card">
+  <section class="dw-card dw-side-card dw-detail-card">
     <header class="dw-side-head">
       <span class="dw-section-title">{{localizeOverride "DW.Race" "raceSingle"}}</span>
+      {{#if editable}}
+      <button type="button" class="dw-icon-btn dw-add-small" data-action="editDetail" data-detail="race" aria-label="{{localize "DW.Sheet.EditDetail"}}" data-tooltip="DW.Sheet.EditDetail"><i class="fas fa-pen" inert></i></button>
+      {{/if}}
     </header>
-    <input type="text" name="system.details.race.value" value="{{system.details.race.value}}" aria-label="{{localizeOverride "DW.Race" "raceSingle"}}"/>
-    <prose-mirror class="dw-compact" name="system.details.race.description" value="{{system.details.race.description}}" toggled>{{{enriched.race}}}</prose-mirror>
+    {{#if system.details.race.value}}
+    <div class="dw-detail-name">{{system.details.race.value}}</div>
+    {{else}}
+    <div class="dw-hint">{{localize "DW.Sheet.DetailNone"}}</div>
+    {{/if}}
+    {{#if enriched.race}}
+    <div class="dw-detail-text">{{{enriched.race}}}</div>
+    {{/if}}
   </section>
 
-  <section class="dw-card dw-side-card">
+  <section class="dw-card dw-side-card dw-detail-card">
     <header class="dw-side-head">
       <span class="dw-section-title">{{localizeOverride "DW.Alignment" "alignmentSingle"}}</span>
+      {{#if editable}}
+      <button type="button" class="dw-icon-btn dw-add-small" data-action="editDetail" data-detail="alignment" aria-label="{{localize "DW.Sheet.EditDetail"}}" data-tooltip="DW.Sheet.EditDetail"><i class="fas fa-pen" inert></i></button>
+      {{/if}}
     </header>
-    <input type="text" name="system.details.alignment.value" value="{{system.details.alignment.value}}" aria-label="{{localizeOverride "DW.Alignment" "alignmentSingle"}}"/>
-    <prose-mirror class="dw-compact" name="system.details.alignment.description" value="{{system.details.alignment.description}}" toggled>{{{enriched.alignment}}}</prose-mirror>
+    {{#if system.details.alignment.value}}
+    <div class="dw-detail-name">{{system.details.alignment.value}}</div>
+    {{else}}
+    <div class="dw-hint">{{localize "DW.Sheet.DetailNone"}}</div>
+    {{/if}}
+    {{#if enriched.alignment}}
+    <div class="dw-detail-text">{{{enriched.alignment}}}</div>
+    {{/if}}
     <span class="dw-hint">{{localize "DW.Sheet.AlignmentHint"}}</span>
   </section>
 
@@ -43,6 +61,9 @@
     <header class="dw-side-head">
       <span class="dw-section-title">{{localizeOverride "DW.Bonds" "bondPlural"}}</span>
       {{#if editable}}
+      {{#if bondBlanks}}
+      <button type="button" class="dw-icon-btn dw-add-small" data-action="fillBonds" aria-label="{{localize "DW.BondFill.Title"}}" data-tooltip="DW.BondFill.Title"><i class="fas fa-link" inert></i></button>
+      {{/if}}
       <button type="button" class="dw-add" data-action="createItem" data-type="bond" aria-label="{{localize "DW.Add"}}"><i class="fas fa-plus" inert></i></button>
       {{/if}}
     </header>

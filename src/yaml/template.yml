@@ -2,6 +2,7 @@ Actor:
   types:
     - character
     - npc
+    - hireling
   templates:
     base:
       attributes:
@@ -13,6 +14,8 @@ Actor:
           value: 0
           base: 0
           min: 0
+          # Armor from moves and other bonuses, added to armor from gear.
+          misc: 0
         damage:
           value: d6
           misc: ''
@@ -91,8 +94,33 @@ Actor:
   npc:
     templates:
       - base
+    details:
+      instinct: ''
     tags: '[]'
     tagsString: ''
+  # Hirelings, per the rules: skills with ranks (0 for a skill they don't
+  # have), a cost, and loyalty. Loyalty forward is used up by the next Order
+  # Hirelings roll; an unpaid cost is -1 ongoing until it's paid.
+  hireling:
+    templates:
+      - base
+    attributes:
+      loyalty:
+        value: 0
+        forward: 0
+    details:
+      cost: ''
+      employer: ''
+      found: ''
+      unpaid: false
+    skills:
+      adept: 0
+      burglar: 0
+      minstrel: 0
+      priest: 0
+      protector: 0
+      tracker: 0
+      warrior: 0
 Item:
   types:
     - move
@@ -128,6 +156,16 @@ Item:
     requiresMove: ''
     moveType:
     moveGroup: ''
+    # A resource the move can spend, such as Volley's ammo: gear whose name
+    # or tags match, how much, and when the chat card offers it (always, on a
+    # hit, on a 7-9 or on a 10+).
+    resource:
+      name: ''
+      amount: 1
+      when: ''
+    # Moves like Armored: ignore the clumsy tag on armor you wear ("armor"),
+    # or on all your gear ("all").
+    ignoreClumsy: ''
     # Moves such as Multiclass Dabbler grant a move (or spell) from another
     # class, chosen after the level up. classes: comma-separated names, blank
     # for any other class. levelOffset: -1 for "treat your level as one lower".
@@ -158,6 +196,11 @@ Item:
     magic: false
     itemType: null
     attributes: {}
+    # What using the item does (its Use button spends one): heal this much,
+    # to yourself or someone else, optionally "or remove a debility instead".
+    useHeal: 0
+    useTarget: self
+    useCure: false
   spell:
     templates:
       - base
@@ -182,3 +225,6 @@ Item:
     damage: d6
     # Secret classes aren't offered for multiclassing or as "another class".
     secret: false
+    # Look options for character creation: one group per line, options
+    # separated by commas or "or" (e.g. "Hard Eyes, Dead Eyes, or Eager Eyes").
+    looks: ''

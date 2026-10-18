@@ -33,7 +33,7 @@
     <div class="dw-header-stat dw-header-stat--level">
       <label class="dw-level">
         <span class="dw-label">{{localize "DW.Level"}}</span>
-        <input class="dw-small" type="number" name="system.attributes.level.value" value="{{system.attributes.level.value}}" min="1" max="10" step="1"/>
+        <input class="dw-small" type="number" name="system.attributes.level.value" value="{{system.attributes.level.value}}" min="1" step="1"/>
       </label>
       <div class="dw-xp-line">
         <span class="dw-label">{{localize "DW.Sheet.XpShort"}}</span>
@@ -46,14 +46,24 @@
       <div class="dw-xp-actions">
         <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.xp.value" data-delta="-1" aria-label="{{localize "DW.Sheet.RemoveXp"}}"><i class="fas fa-minus" inert></i></button>
         <button type="button" class="dw-step" data-action="adjustResource" data-attr="attributes.xp.value" data-delta="1" aria-label="{{localize "DW.Sheet.MarkXp"}}"><i class="fas fa-plus" inert></i></button>
-        <button type="button" class="dw-levelup-btn {{#if levelUp.ready}}ready{{/if}}" data-action="levelUp" {{#unless levelUp.ready}}disabled{{/unless}}>
-          {{#if levelUp.ready}}
+        {{#if creation}}
+        <button type="button" class="dw-levelup-btn ready" data-action="createCharacter">
+          <i class="fas fa-user-plus" inert></i>
+          <span>{{localize "DW.Creator.Open"}}</span>
+        </button>
+        {{else}}
+        <button type="button" class="dw-levelup-btn {{#if levelUp.ready}}ready{{/if}}" data-action="{{#if levelUp.beyond}}beyondTen{{else}}levelUp{{/if}}" {{#unless levelUp.ready}}disabled{{/unless}}>
+          {{#if levelUp.beyond}}
+          <i class="fas fa-crown" inert></i>
+          <span>{{levelUp.hint}}</span>
+          {{else if levelUp.ready}}
           <i class="fas fa-user-plus" inert></i>
           <span>{{localize "DW.Sheet.LevelUp"}}</span>
           {{else}}
           <span>{{levelUp.hint}}</span>
           {{/if}}
         </button>
+        {{/if}}
       </div>
     </div>
     <div class="dw-header-stat dw-header-stat--hp">
@@ -68,9 +78,20 @@
       <div class="dw-bar"><div class="dw-bar-fill dw-bar-fill--hp-{{hpState}}" style="width: {{hpPct}}%"></div></div>
     </div>
     <div class="dw-header-inline">
-      <div class="dw-inline-stat">
+      <div class="dw-inline-stat dw-armor">
         <span class="dw-label">{{localize "DW.Armor"}}</span>
+        {{#if armor.fromGear}}
+        <span class="dw-big dw-armor-total" data-tooltip="{{armor.tooltip}}" aria-label="{{localize "DW.Armor"}}: {{armor.tooltip}}">{{armor.value}}</span>
+        <label class="dw-armor-misc" data-tooltip="DW.Gear.ArmorMiscHint">
+          <span>+</span>
+          <input type="number" name="system.attributes.ac.misc" value="{{armor.misc}}" step="1" aria-label="{{localize "DW.Gear.ArmorMisc"}}"/>
+        </label>
+        {{else}}
         <input class="dw-big" type="number" name="system.attributes.ac.value" value="{{system.attributes.ac.value}}" step="1" aria-label="{{localize "DW.Armor"}}"/>
+        {{/if}}
+        {{#if armor.clumsy}}
+        <span class="dw-pill dw-pill--warn" data-tooltip="DW.Gear.ClumsyHint">{{localize "DW.Gear.Clumsy"}} −{{armor.clumsy}}</span>
+        {{/if}}
       </div>
       <div class="dw-inline-divider"></div>
       <div class="dw-inline-stat">
