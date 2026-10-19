@@ -1,5 +1,5 @@
 import { DwUtility } from "../utility.js";
-const { renderTemplate } = foundry.applications.handlebars;
+import { DwRolls } from "../rolls.js";
 
 /**
  * Helper class to handle rendering the custom combat tracker.
@@ -14,39 +14,38 @@ export class CombatSidebarDw {
     Hooks.on('ready', () => {
       // Damage rolls from the combat tracker.
       $('body').on('click', '.dw-rollable', (event) => {
-        let $self = $(event.currentTarget);
-        let $actorElem = $self.parents('.actor-elem');
-        let combatant_id = $actorElem.length > 0 ? $actorElem.attr('data-combatant-id') : null;
-        if (combatant_id) {
-          let combatant = game.combat.combatants.get(combatant_id);
-          let actor = combatant.actor ? combatant.actor : null;
-          if (actor) {
-            actor._onRoll(event, actor);
-          }
-        }
+        event.preventDefault();
+        const button = event.currentTarget;
+        const combatantId = button.closest('.actor-elem')?.dataset.combatantId;
+        const actor = combatantId ? game.combat?.combatants.get(combatantId)?.actor : null;
+        if (!actor || !button.dataset.roll) return;
+        DwRolls.rollMove({
+          actor,
+          data: null,
+          formula: button.dataset.roll,
+          templateData: {
+            title: button.dataset.label,
+            flavor: button.dataset.flavor,
+            rollType: 'damage',
+          },
+        });
       });
 
       // HP change in the combat tracker.
       $('body').on('change', '.ct-item input', (event) => {
         event.preventDefault();
 
-        // Get the incput and actor element.
+        // Get the input and actor element.
         const dataset = event.currentTarget.dataset;
         let $input = $(event.currentTarget);
         let $actorRow = $input.parents('.combatant.actor-elem');
 
         // If there isn't an actor element, don't proceed.
-        if (!$actorRow.length > 0) {
-          return;
-        }
+        if (!$actorRow.length) return;
 
-        // Retrieve the combatant for this actor, or exit if not valid.
-        const combatant = game.combat.combatants.find(c => c.id == $actorRow.data('combatant-id'));
-        if (!combatant) {
-          return;
-        }
-
-        const actor = combatant.actor;
+        // Retrieve the combatant's actor, or exit if not valid.
+        const actor = game.combat?.combatants.get($actorRow.data('combatant-id'))?.actor;
+        if (!actor) return;
 
         // Check for bad numbers, otherwise convert into a Number type.
         let value = $input.val();
@@ -58,21 +57,12 @@ export class CombatSidebarDw {
           }
         }
 
-        // Prepare update data for the actor.
-        let updateData = {};
         // If this started with a "+" or "-", handle it as a relative change.
-        let operation = $input.val().match(/^\+|\-/g);
-        if (operation) {
-          updateData[$input.attr('name')] = Number(actor.system.attributes.hp.value) + value;
-        }
         // Otherwise, set it absolutely.
-        else {
-          updateData[$input.attr('name')] = value;
-        }
-
-        // Update the actor.
-        actor.update(updateData);
-        return;
+        const relative = /^[+-]/.test($input.val().trim());
+        actor.update({
+          [$input.attr('name')]: relative ? Number(actor.system.attributes.hp.value) + value : value,
+        });
       });
 
       // Add drag events.
@@ -87,129 +77,78 @@ export class CombatSidebarDw {
             // Store the combatant type for reference. We have to do this
             // because dragover doesn't have access to the drag data, so we
             // store it as a new type entry that can be split later.
-            let newCombatant = game.combat.combatants.find(c => c.id == dragData.combatantId);
             event.originalEvent.dataTransfer.setData(`newtype--${dragData.actorType}`, '');
           })
           // Add a class on hover, if the actor types match.
           .on('dragover', '#combat .combatant.actor-elem', (event) => {
             // Get the drop target.
-            let $self = $(event.originalEvent.target);
-            let $dropTarget = $self.parents('.combatant');
+            let $dropTarget = $(event.originalEvent.target).parents('.combatant');
 
             // Exit early if we don't need to make any changes.
-            if ($dropTarget.hasClass('drop-hover')) {
-              return;
-            }
-
-            if (!$dropTarget.data('combatant-id')) {
-              return;
-            }
+            if ($dropTarget.hasClass('drop-hover') || !$dropTarget.data('combatant-id')) return;
 
             // Retrieve the actor type for the drop target, exit early if
             // it doesn't exist.
-            let oldType = $dropTarget.data('actor-type');
-            let newType = null;
+            const oldType = $dropTarget.data('actor-type');
+            if (!oldType) return;
 
-            if (!oldType) {
-              return;
-            }
-
-            // Retrieve the actor type for the actor being dragged.
-            newType = event.originalEvent.dataTransfer.types.find(t => t.includes('newtype'));
-            newType = newType ? newType.split('--')[1] : null;
-
-            // If the type matches, add a css class to let the user know this
-            // is a valid drop target.
-            if (newType == oldType) {
-              $dropTarget.addClass('drop-hover');
-            }
-            // Otherwise, we should exit.
-            else {
-              return false;
-            }
-
+            // Retrieve the actor type for the actor being dragged. If the
+            // type matches, add a css class to let the user know this is a
+            // valid drop target.
+            const newType = event.originalEvent.dataTransfer.types.find(t => t.includes('newtype'))?.split('--')[1] ?? null;
+            if (newType == oldType) $dropTarget.addClass('drop-hover');
             return false;
           })
           // Remove the class on drag leave.
           .on('dragleave', '#combat .combatant.actor-elem', (event) => {
             // Get the drop target and remove any hover classes on it when
             // the mouse leaves it.
-            let $self = $(event.originalEvent.target);
-            let $dropTarget = $self.parents('.combatant');
-            $dropTarget.removeClass('drop-hover');
+            $(event.originalEvent.target).parents('.combatant').removeClass('drop-hover');
             return false;
           })
           // Update initiative on drop.
           .on('drop', '#combat .combatant.actor-elem', async (event) => {
-            // Retrieve the default encounter.
-            let combat = game.combat;
+            const combat = game.combat;
+            if (!combat) return;
 
-            // Retreive the drop target, remove any hover classes.
-            let $self = $(event.originalEvent.target);
-            let $dropTarget = $self.parents('.combatant');
+            // Retrieve the drop target, remove any hover classes.
+            let $dropTarget = $(event.originalEvent.target).parents('.combatant');
             $dropTarget.removeClass('drop-hover');
 
             // Attempt to retrieve and parse the data transfer from the drag.
             let data;
             try {
               data = JSON.parse(event.originalEvent.dataTransfer.getData('text/plain'));
-              // if (data.type !== "Item") return;
             } catch (err) {
               return false;
             }
 
-            // Retrieve the combatant being dropped.
-            let newCombatant = combat.combatants.find(c => c.id == data.combatantId);
+            // The combatant being dropped, and the others of its type.
+            const dropped = combat.combatants.get(data.combatantId);
+            const group = this.getCombatantsData()[dropped?.actor?.type];
+            if (!group) return;
 
-            // Retrieve the combatants grouped by type.
-            let combatants = this.getCombatantsData(false);
-            // Retrieve the combatant being dropped onto.
-            let originalCombatant = combatants[newCombatant.actor.type].find(c => {
-              return c.id == $dropTarget.data('combatant-id');
-            });
+            // The combatant being dropped onto. Without one, nothing moves.
+            const target = group.find(c => c.id == $dropTarget.data('combatant-id'));
+            if (!target || target.initiative === null) return;
 
-            // Set the initiative equal to the drop target's initiative.
-            let oldInit = originalCombatant ? originalCombatant.initiative : null;
-
-            // If the initiative was valid, we need to update the initiative
-            // for every combatant to reset their numbers.
-            if (oldInit !== null) {
-              // Set the initiative of the actor being draged to the drop
-              // target's +1. This will later be adjusted increments of 10.
-              let updatedCombatant = combatants[newCombatant.actor.type].find(c => c.id == newCombatant.id);
-              updatedCombatant.initiative = Number(oldInit) + 1;
-
-              // Loop through all combatants in initiative order, and assign
-              // a new initiative in increments of 10. The "updates" variable
-              // will be an array of objects iwth _id and initiative keys.
-              let updatedInit = 0;
-              let updates = combatants[newCombatant.actor.type].sort((a, b) => a.initiative - b.initiative).map(c => {
-                let result = {
-                  _id: c.id,
-                  initiative: updatedInit
-                };
-                updatedInit = updatedInit + 10;
-                return result;
-              });
-
-              // If there are updates, update the combatants at once.
-              if (updates) {
-                await combat.updateEmbeddedDocuments('Combatant', updates, {});
-              }
-            }
+            // Place the dropped combatant just after the target, then number
+            // everyone of its type in increments of 10.
+            const position = (c) => c.id == dropped.id ? Number(target.initiative) + 1 : Number(c.initiative);
+            const updates = group
+              .sort((a, b) => position(a) - position(b))
+              .map((c, index) => ({ _id: c.id, initiative: index * 10 }));
+            await combat.updateEmbeddedDocuments('Combatant', updates);
           });
       }
     });
 
-    // Re-render combat when actors in the current combat are modified.
-    Hooks.on('updateActor', (actor, data, options, id) => {
-      if (game.combat?.combatants.some(c => c.actorId === actor.id)) {
-        ui.combat.render();
-      }
-    });
-
-    Hooks.on('updateToken', (scene, token, data, options, id) => {
-      if (data.actorData) {
+    // Re-render combat when what the tracker shows (name, image, HP, armor
+    // and damage) changes for an actor in the current combat.
+    Hooks.on('updateActor', (actor, changes) => {
+      const shown = changes.name !== undefined || changes.img !== undefined
+        || foundry.utils.hasProperty(changes, 'system.attributes');
+      if (shown && game.combat?.combatants.some(c => c.actorId === actor.id)) {
         ui.combat.render();
       }
     });
@@ -219,29 +158,15 @@ export class CombatSidebarDw {
     // initiative formula using a d20, in case the reroll initiative button
     // is used.
     Hooks.on('preCreateCombatant', (document, data, options, userId) => {
-      if (!data.initiative) {
-        let highestInit = 0;
-        let token = canvas.tokens.get(data.tokenId);
-        let actorType = token.actor ? token.actor.type : 'character';
+      if (data.initiative) return;
+      const actorType = document.actor?.type ?? 'character';
 
-        // Iterate over actors of this type and update the initiative of this
-        // actor based on that.
-        document.parent.combatants.filter(c => c.actor.type == actorType).forEach(c => {
-          let init = Number(c.initiative) ?? 0;
-          if (init >= highestInit) {
-            highestInit = init + 10;
-          }
-        });
-
-        // Update this combatant.
-        document.updateSource({initiative: highestInit ?? 0});
-      }
+      // Go after the others of this type.
+      const inits = document.parent.combatants
+        .filter(c => c.actor?.type == actorType)
+        .map(c => Number(c.initiative) || 0);
+      document.updateSource({ initiative: inits.length ? Math.max(...inits) + 10 : 0 });
     });
-
-    // TODO: Replace this hack that triggers an extra render.
-    // Hooks.on('renderSidebar', (app, html, options) => {
-    //   ui.combat.render();
-    // });
 
     // When the combat tracker is rendered, we need to completely replace
     // its HTML with a custom version.
@@ -253,143 +178,108 @@ export class CombatSidebarDw {
       }
 
       // If there's as combat, we can proceed.
-      if (game.combat) {
-        // Retrieve a list of the combatants grouped by actor type and sorted
-        // by their initiative count.
-        let combatants = this.getCombatantsData();
+      if (!game.combat) return;
 
-        // Add a counter for the total number of moves all characters have made.
-        let moveTotal = 0;
-        if (combatants.character) {
-          combatants.character.forEach(c => {
-            moveTotal = c.flags.dungeonworld ? moveTotal + Number(c.flags.dungeonworld.moveCount) : moveTotal;
-          });
-        }
+      // Retrieve a list of the combatants grouped by actor type and sorted
+      // by their initiative count.
+      const combatants = this.getCombatantsData();
 
-        // Get the custom template.
-        let template = 'systems/dungeonworld/templates/combat/combat.html';
-        let templateData = {
-          combatants: combatants,
-          moveTotal: moveTotal
-        };
+      // Add a counter for the total number of moves all characters have made.
+      const moveTotal = (combatants.character ?? [])
+        .reduce((total, c) => total + (Number(c.flags.dungeonworld?.moveCount) || 0), 0);
 
-        // Render the template and update the markup with our new version.
-        let content = await foundry.applications.handlebars.renderTemplate(template, templateData)
-        newHtml.find('.combat-tracker').remove();
-        newHtml.find('.combat-tracker-header').after(content);
+      // Render the template and update the markup with our new version.
+      const content = await foundry.applications.handlebars.renderTemplate('systems/dungeonworld/templates/combat/combat.html', {
+        combatants: combatants,
+        moveTotal: moveTotal
+      });
+      newHtml.find('.combat-tracker').remove();
+      newHtml.find('.combat-tracker-header').after(content);
 
-        // Drag handler for the combat tracker.
-        if (game.user.isGM) {
-          newHtml.find('.combatant.actor-elem').attr('draggable', true).addClass('draggable');
-        }
+      // Drag handler for the combat tracker.
+      if (game.user.isGM) {
+        newHtml.find('.combatant.actor-elem').attr('draggable', true).addClass('draggable');
       }
     });
   }
 
   /**
-   * Retrieve a list of combatants for the current combat.
-   *
-   * Combatants will be sorted into groups by actor type. Set the
-   * updateInitiative argument to true to reassign init numbers.
-   * @param {Boolean} updateInitiative
+   * A player's move counter, on the active GM's client. Only the move count
+   * of a combatant in the current combat changes.
+   * @param {{combatant: string, moveCount: number}} data
    */
-  getCombatantsData(updateInitiative = false) {
-    // If there isn't a combat, exit and return an empty array.
+  static async applyRemoteMoveCount(data) {
+    const combatant = game.combat?.combatants.get(data?.combatant);
+    const moveCount = Number(data?.moveCount);
+    if (!combatant || !Number.isInteger(moveCount) || moveCount < 0) return;
+    await combatant.update({ 'flags.dungeonworld.moveCount': moveCount });
+  }
+
+  /**
+   * Retrieve the combatants of the current combat, grouped by actor type and
+   * sorted by initiative.
+   * @returns {Object<string, Combatant[]>}
+   */
+  getCombatantsData() {
+    // If there isn't a combat, exit and return an empty list.
     if (!game.combat) {
-      return [];
+      return {};
     }
 
-    let currentInitiative = 0;
     const orphanedIds = [];
-    // Reduce the combatants array into a new object with keys based on
-    // the actor types.
-    let combatants = game.combat.combatants.reduce((groups, combatant) => {
+    const groups = {};
+    for (const combatant of game.combat.combatants) {
       // If this is for a combatant that has had its token/actor deleted,
       // queue it for removal from the combat.
       if (!combatant.actor) {
         orphanedIds.push(combatant.id);
-      }
-      // Append valid actors to the appropriate group.
-      else {
-        // Initialize the group if it doesn't exist.
-        let group = combatant.actor.type;
-        if (!groups[group]) {
-          groups[group] = [];
-        }
-
-        // Retrieve the health bars mode from the token's resource settings.
-        let displayBarsMode = Object.entries(CONST.TOKEN_DISPLAY_MODES).find(i => i[1] == combatant.token.displayBars)[0];
-        // Assume player characters should always show their health bar.
-        let displayHealth = group == 'character' ? true : false;
-
-        // If this is a group other than character (such as NPC), we need to
-        // evaluate whether or not this player can see its health bar.
-        if (group != 'character') {
-          // If the mode is one of the owner options, only the token owner or
-          // the GM should be able to see it.
-          if (displayBarsMode.includes("OWNER")) {
-            if (combatant.isOwner || game.user.isGM) {
-              displayHealth = true;
-            }
-          }
-          // For other modes, always show it.
-          else if (displayBarsMode != "NONE") {
-            displayHealth = true;
-          }
-          // If it's set to the none mode, hide it from players, but allow
-          // the GM to see it.
-          else {
-            displayHealth = game.user.isGM ? true : false;
-          }
-
-          // If the updateInitiative flag was set to true, recalculate the
-          // initiative for each actor while we're looping through them.
-          if (updateInitiative) {
-            combatant.initiative = currentInitiative;
-            currentInitiative = currentInitiative + 10;
-          }
-        }
-
-        // Set a property based on the health mode earlier.
-        combatant.displayHealth = displayHealth;
-        // Set a property for whether or not this is editable. This controls
-        // whether editabel fields like HP will be shown as an input or a div
-        // in the combat tracker HTML template.
-        combatant.editable = combatant.isOwner || game.user.isGM;
-
-        // Build the radial progress circle settings for the template.
-        combatant.healthSvg = DwUtility.getProgressCircle({
-          current: combatant.actor.system.attributes.hp.value,
-          max: combatant.actor.system.attributes.hp.max,
-          radius: 16
-        });
-
-        // If this is the GM or the owner, push to the combatants list.
-        // Otherwise, only push if the token isn't hidden in the scene.
-        const combatantToken = combatant?.token ?? combat?._token;
-        if (game.user.isGM || combatant.isOwner || !combatantToken?.hidden) {
-          groups[group].push(combatant);
-        }
+        continue;
       }
 
-      // Return the updated group.
-      return groups;
-    }, {});
+      const group = combatant.actor.type;
+      groups[group] ??= [];
 
-    // Remove orphaned combatants in a single operation. Only the GM has
-    // permission to do this.
-    if (orphanedIds.length > 0 && game.user.isGM) {
+      // Player characters always show their health. For others, it depends
+      // on the token's bar display mode: owner modes for the owner and GM,
+      // none for the GM, and anything else for everyone.
+      let displayHealth = true;
+      if (group != 'character') {
+        const mode = combatant.token?.displayBars ?? CONST.TOKEN_DISPLAY_MODES.OWNER;
+        const modeName = Object.entries(CONST.TOKEN_DISPLAY_MODES).find(([, value]) => value == mode)?.[0] ?? 'OWNER';
+        if (modeName.includes('OWNER')) displayHealth = combatant.isOwner || game.user.isGM;
+        else if (modeName == 'NONE') displayHealth = game.user.isGM;
+      }
+
+      // Set a property based on the health mode earlier.
+      combatant.displayHealth = displayHealth;
+      // Whether fields like HP are shown as inputs or text.
+      combatant.editable = combatant.isOwner || game.user.isGM;
+
+      // Build the radial progress circle settings for the template.
+      combatant.healthSvg = DwUtility.getProgressCircle({
+        current: combatant.actor.system.attributes.hp.value,
+        max: combatant.actor.system.attributes.hp.max,
+        radius: 16
+      });
+
+      // If this is the GM or the owner, push to the combatants list.
+      // Otherwise, only push if the token isn't hidden in the scene.
+      if (game.user.isGM || combatant.isOwner || !combatant.token?.hidden) {
+        groups[group].push(combatant);
+      }
+    }
+
+    // Remove orphaned combatants in a single operation. Only the active GM
+    // does this, so two GMs don't both try.
+    if (orphanedIds.length > 0 && game.users.activeGM?.isSelf) {
       game.combat.deleteEmbeddedDocuments('Combatant', orphanedIds);
     }
 
     // Sort the combatants in each group by initiative.
-    for (let [groupKey, group] of Object.entries(combatants)) {
-      combatants[groupKey].sort((a, b) => {
-        return Number(a.initiative) - Number(b.initiative)
-      });
+    for (const group of Object.values(groups)) {
+      group.sort((a, b) => Number(a.initiative) - Number(b.initiative));
     }
 
-    // Return the list of combatants.
-    return combatants;
+    return groups;
   }
 }

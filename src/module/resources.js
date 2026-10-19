@@ -1,7 +1,7 @@
 import { DwUtility } from "./utility.js";
+import { DwMoveActions } from "./move-actions.js";
 
 const { DialogV2 } = foundry.applications.api;
-const { renderTemplate } = foundry.applications.handlebars;
 
 /**
  * Gear that gets used up: ammo, rations, potions, bandages, poison and the
@@ -36,27 +36,27 @@ export class DwResources {
   }
 
   /**
-   * The character's gear matching a resource name, by name or tag ("ammo"
-   * matches a Bundle of Arrows tagged "3 ammo"), with something left.
-   * Equipped gear comes first.
+   * The character's gear matching a resource name, as a whole word in its
+   * name or a tag ("ammo" matches a Bundle of Arrows tagged "3 ammo";
+   * "ration" matches Dungeon Rations but not an Inspiration Draught), with
+   * something left. Equipped gear comes first.
    *
    * @param {Actor} actor
    * @param {string} name
    * @return {Item[]}
    */
   static find(actor, name) {
-    const wanted = String(name ?? '').trim().toLowerCase();
-    if (!wanted) return [];
+    if (!DwUtility.nameKey(name)) return [];
     return actor.items.filter(item => {
       if (item.type != 'equipment' || DwResources.remaining(item) <= 0) return false;
-      if (item.name.toLowerCase().includes(wanted)) return true;
-      try {
-        const tags = item.system.tags ? JSON.parse(item.system.tags) : [];
-        return Array.isArray(tags) && tags.some(t => String(t?.value ?? t).toLowerCase().includes(wanted));
-      } catch (e) {
-        return false;
-      }
+      if (DwUtility.hasWord(item.name, name)) return true;
+      return DwUtility.parseTags(item.system.tags).some(tag => DwUtility.hasWord(tag, name));
     }).sort((a, b) => Number(!!b.system.equipped) - Number(!!a.system.equipped));
+  }
+
+  /** How much of a resource the character has left, across all their gear. */
+  static count(actor, name) {
+    return DwResources.find(actor, name).reduce((sum, item) => sum + DwResources.remaining(item), 0);
   }
 
   /**
@@ -131,17 +131,20 @@ export class DwResources {
     }
     const heal = Math.max(0, Number(item.system.useHeal) || 0);
     let effect = '';
-    if (heal) {
-      const target = item.system.useTarget == 'other' ? await DwResources.#chooseTarget(actor, item) : actor;
-      if (!target) return;
+    // Skipping who it's for (bandaging an NPC, say) still uses it up, but
+    // heals no one: the table handles what it does.
+    const target = heal && item.system.useTarget == 'other'
+      ? await DwResources.chooseTarget(actor, item.name, game.i18n.format('DW.Use.Who', { item: item.name }), { skip: true }) : actor;
+    if (target === null) return;
+    if (heal && target) {
       const choice = item.system.useCure ? await DwResources.#healOrCure(target, heal, item) : { heal };
       if (!choice) return;
       if (choice.debility) {
-        await DwResources.#apply(target, { debility: choice.debility });
+        await DwMoveActions.change(target, { removeDebilities: [choice.debility] });
         effect = game.i18n.format('DW.Use.Cured', { target: target.name, debility: target.system.abilities[choice.debility]?.debilityLabel || choice.debility });
       }
       else {
-        await DwResources.#apply(target, { heal: choice.heal });
+        await DwMoveActions.change(target, { heal: choice.heal });
         effect = game.i18n.format('DW.Use.Healed', { target: target.name, heal: choice.heal });
       }
     }
@@ -149,58 +152,77 @@ export class DwResources {
     // Counted first: an item used up is removed.
     const left = Math.max(0, DwResources.remaining(item) - 1);
     await DwResources.spend(item, 1);
-    const chatData = {
-      speaker: ChatMessage.getSpeaker({ actor }),
-      content: await renderTemplate('systems/dungeonworld/templates/chat/chat-move.html', {
-        actor,
-        image: item.img,
-        title: game.i18n.format('DW.Use.Title', { item: item.name }),
-        details: item.system.description,
-        resultLabel: effect || null,
-        result: effect ? 'success' : null,
-        flavor: game.i18n.format('DW.Use.Left', { count: left }),
-      }),
-    };
-    DwUtility.applyMessageMode(chatData);
-    await ChatMessage.create(chatData);
+    await DwUtility.postCard(actor, {
+      image: item.img,
+      title: game.i18n.format('DW.Use.Title', { item: item.name }),
+      details: item.system.description,
+      resultLabel: effect || null,
+      result: effect ? 'success' : null,
+      flavor: game.i18n.format('DW.Use.Left', { count: left }),
+    });
   }
 
   /**
-   * Who an item that treats someone else is used on: the targeted token,
-   * else a choice of the characters and hirelings.
+   * Who an item (or a move) is used on: the targeted token, else a choice of
+   * the tokens on the scene. For allies (a heal), only characters and
+   * hirelings; otherwise anyone there (damage, a condition). With no one
+   * suitable on the scene, a choice of the world's characters and hirelings.
+   *
+   * @param {Actor} actor The user.
+   * @param {string} title The dialog's title.
+   * @param {string} prompt The question asked.
+   * @param {{allies?: boolean, skip?: boolean}} [options] skip: offer to
+   *   go on without choosing anyone.
+   * @return {Promise<Actor|null|false>} The target; null if cancelled; false
+   *   if skipped.
    */
-  static async #chooseTarget(actor, item) {
-    const targeted = [...game.user.targets].map(t => t.actor).filter(Boolean);
+  static async chooseTarget(actor, title, prompt, { allies = true, skip = false } = {}) {
+    const isAlly = (a) => ['character', 'hireling'].includes(a?.type);
+    const fits = (a) => !!a && (!allies || isAlly(a));
+    const targeted = [...game.user.targets].map(t => t.actor).filter(fits);
     if (targeted.length == 1) return targeted[0];
-    const escape = (value) => Handlebars.escapeExpression(String(value ?? ''));
-    const people = game.actors.filter(a => ['character', 'hireling'].includes(a.type))
-      .sort((a, b) => (a.id == actor.id) - (b.id == actor.id) || a.name.localeCompare(b.name));
+
+    // Tokens the user can see, each with its own actor (three goblins are
+    // three targets), named as on the scene.
+    let choices = (canvas.scene?.tokens ?? []).filter(t => (!t.hidden || game.user.isGM) && fits(t.actor))
+      .map(t => ({ uuid: t.actor.uuid, name: t.name || t.actor.name }));
+    if (!choices.length) choices = game.actors.filter(isAlly).map(a => ({ uuid: a.uuid, name: a.name }));
+    choices = [...new Map(choices.map(c => [c.uuid, c])).values()]
+      .sort((a, b) => (a.uuid == actor.uuid) - (b.uuid == actor.uuid) || a.name.localeCompare(b.name));
+    // Tell apart tokens with the same name: Goblin, Goblin (2)...
+    const seen = new Map();
+    for (const choice of choices) {
+      const count = (seen.get(choice.name) ?? 0) + 1;
+      seen.set(choice.name, count);
+      if (count > 1) choice.name = `${choice.name} (${count})`;
+    }
+
     const content = document.createElement('div');
-    content.innerHTML = `<p>${escape(game.i18n.format('DW.Use.Who', { item: item.name }))}</p>
-      <div class="form-group"><select name="target">${people.map(a => `<option value="${a.id}">${escape(a.name)}</option>`).join('')}</select></div>`;
-    const id = await DialogV2.wait({
-      window: { title: item.name },
+    content.innerHTML = `<p>${DwUtility.escape(prompt)}</p>
+      <div class="form-group"><select name="target">${choices.map(c => `<option value="${DwUtility.escape(c.uuid)}">${DwUtility.escape(c.name)}</option>`).join('')}</select></div>`;
+    const uuid = await DwUtility.ask({
+      window: { title },
       position: { width: 360 },
       content,
-      buttons: [
-        { action: 'ok', label: 'DW.Use.Treat', icon: 'fa-solid fa-hand-holding-medical', default: true,
-          callback: (event, button) => button.form.elements.target.value },
-        { action: 'cancel', label: 'DW.Cancel', icon: 'fa-solid fa-xmark', callback: () => null },
-      ],
-      rejectClose: false,
+      ok: {
+        label: allies ? 'DW.Use.Treat' : 'DW.MoveActions.TargetButton',
+        icon: allies ? 'fa-solid fa-hand-holding-medical' : 'fa-solid fa-crosshairs',
+        callback: (event, button) => button.form.elements.target.value,
+      },
+      buttons: skip ? [{ action: 'skip', label: 'DW.MoveActions.Skip', icon: 'fa-solid fa-forward', callback: () => 'skip' }] : [],
     });
-    return id ? game.actors.get(id) : null;
+    if (uuid == 'skip') return false;
+    return uuid ? fromUuidSync(uuid) : null;
   }
 
   /** Heal, or remove one of the target's debilities instead. */
   static async #healOrCure(target, heal, item) {
     const debilities = Object.entries(target.system.abilities ?? {}).filter(([, a]) => a.debility);
     if (!debilities.length) return { heal };
-    const escape = (value) => Handlebars.escapeExpression(String(value ?? ''));
     const choice = await DialogV2.wait({
       window: { title: item.name },
       position: { width: 380 },
-      content: `<p>${escape(game.i18n.localize('DW.Use.HealOrCure'))}</p>`,
+      content: `<p>${DwUtility.escape(game.i18n.localize('DW.Use.HealOrCure'))}</p>`,
       buttons: [
         { action: 'heal', label: game.i18n.format('DW.Use.HealButton', { heal }), icon: 'fa-solid fa-heart', default: true },
         ...debilities.map(([key, a]) => ({ action: key, label: game.i18n.format('DW.Use.CureButton', { debility: a.debilityLabel || key }), icon: 'fa-solid fa-hand-sparkles' })),
@@ -209,31 +231,5 @@ export class DwResources {
     });
     if (!choice) return null;
     return choice == 'heal' ? { heal } : { debility: choice };
-  }
-
-  /** Heal someone or clear a debility, through the GM if it isn't ours. */
-  static async #apply(target, change) {
-    if (target.isOwner) return DwResources.applyChange(target, change);
-    if (!game.users.activeGM) return ui.notifications.warn(game.i18n.localize('DW.Party.NeedsGM'));
-    game.socket.emit('system.dungeonworld', { resourceChange: { actor: target.uuid, ...change } });
-  }
-
-  /** Apply a heal or cure: on this client, or the GM's for another's actor. */
-  static async applyChange(target, { heal = 0, debility = null } = {}) {
-    if (heal) {
-      const hp = target.system.attributes.hp;
-      const amount = Math.min(heal, Math.max(0, Number(hp.max) - Number(hp.value)));
-      if (amount > 0) await target.applyDamage(amount, { op: 'heal' });
-    }
-    if (debility && target.system.abilities?.[debility]) {
-      await target.update({ [`system.abilities.${debility}.debility`]: false });
-    }
-  }
-
-  /** A player's heal or cure for someone else's character, on the active GM. */
-  static async applyRemote(data) {
-    if (!game.users.activeGM?.isSelf) return;
-    const target = await fromUuid(data?.actor);
-    if (target) await DwResources.applyChange(target, { heal: Number(data.heal) || 0, debility: data.debility ?? null });
   }
 }

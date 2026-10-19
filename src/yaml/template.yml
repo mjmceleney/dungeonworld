@@ -156,13 +156,19 @@ Item:
     requiresMove: ''
     moveType:
     moveGroup: ''
-    # A resource the move can spend, such as Volley's ammo: gear whose name
-    # or tags match, how much, and when the chat card offers it (always, on a
-    # hit, on a 7-9 or on a 10+).
-    resource:
-      name: ''
-      amount: 1
-      when: ''
+    # A procedure the system runs for the move, such as choosing a spell to
+    # cast (see DwMoves.AUTOMATIONS); blank for nothing. Moves are never
+    # recognized by name.
+    automation: ''
+    # The move's effects, each a chat card button (see DwMoveActions): type
+    # (heal, spend...), target (self, ally or any), amount, stat (a debility),
+    # condition (a status effect id, such as disease),
+    # name (gear's name or tag, for spend), when (always, hit, partial,
+    # success) and transfer (what's done to someone else passes to the
+    # character). actionsChoose: how many of a card's effects the player
+    # picks, 0 for all.
+    actions: []
+    actionsChoose: 0
     # Moves like Armored: ignore the clumsy tag on armor you wear ("armor"),
     # or on all your gear ("all").
     ignoreClumsy: ''
@@ -178,6 +184,19 @@ Item:
       levelOffset: 0
       moves: ''
       casting: false
+    # Moves like Hospitaller: heals from the character's moves heal this
+    # much more (amount, a formula), for anyone or only someone else
+    # (target), from any move or only those named (moves, comma-separated).
+    healBonus:
+      amount: ''
+      target: any
+      moves: ''
+    # Moves like Prodigy: the character chooses this many spells (count) of
+    # the move's class, each prepared as if it were this many levels lower
+    # (levels).
+    lowerSpells:
+      count: 0
+      levels: 1
   npcMove:
     templates:
       - base
@@ -208,6 +227,9 @@ Item:
     rollFormula: ''
     prepared: false
     class: null
+    # Effects, as for moves, on the Cast a Spell card when it's cast.
+    actions: []
+    actionsChoose: 0
   bond:
     templates:
       - base

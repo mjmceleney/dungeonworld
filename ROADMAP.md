@@ -17,7 +17,7 @@ Rules reference: the Dungeon World SRD (CC-BY 3.0), at [github.com/Sagelt/Dungeo
 ## Open questions
 
 - [x] Is the GM side (fronts, monster maker, steadings) in scope now, or later?
-  In scope: the monster maker, treasure and hirelings are done. Fronts and steadings are still open.
+  In scope: the monster maker, treasure, hirelings and fronts are done. Steadings are still open.
 - [ ] Should automation apply effects directly (ammo, HP) or only suggest them?
 - [ ] Use Foundry's Active Effects, or keep to the system's own fields?
 
@@ -88,8 +88,9 @@ Rules reference: the Dungeon World SRD (CC-BY 3.0), at [github.com/Sagelt/Dungeo
 
 ## 6. GM side
 
-- [ ] **Fronts** (M–L)
+- [x] **Fronts** (M–L)
   Dangers with grim portents and an impending doom, plus stakes questions. Grim portents use the tracker clocks. Journal page type or actor type (to decide).
+  *Done* as a GM-only **Fronts** window (button in the Journal sidebar, or `game.dungeonworld.DwFronts.open()`) listing every front with a line per danger (its portent clock and next grim portent), filterable by campaign or adventure; a front opens in full. A front has stakes questions, a cast that can link to actors, and dangers; each danger has a type from the book's lists (which fills in its impulse), grim portents as a clock and a checklist, and an impending doom. Not yet: the front's custom moves. Stored in one world setting rather than as documents, so fronts can't be linked with @UUID or put in a compendium.
 - [x] **Monster maker** (M)
   Walk through the rules' monster questions (group size, size, armor, what it's known for) to work out HP, damage, armor and tags, then fill in the NPC sheet. Show instinct and monster moves more prominently on the NPC sheet.
   *Done:* opened from the NPC sheet; the answers are saved on the NPC so it can be rebuilt. NPCs have an **Instinct** field. For compendium monsters it's read from the description, and their listed moves can be added as move items.

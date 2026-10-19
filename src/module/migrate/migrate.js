@@ -1,75 +1,252 @@
+import { DwUtility } from "../utility.js";
+import { DwMoves } from "../moves.js";
+
 export class MigrateDw {
 
   static async runMigration() {
     // Only a GM can update world data and settings.
     if (!game.user.isGM) return;
 
-    // Retrieve the version.
-    let version = game.settings.get('dungeonworld', 'systemMigrationVersion');
+    // Each update, in order. The setting holds how many have been applied.
+    const migrations = [
+      // 1: Assign basic/special moves on actors.
+      () => this.updateSpecialMoves(),
+      // 2: Move each character's custom resource into the trackers list.
+      () => this.migrateResourceToTrackers(),
+      // 3: Player characters' tokens are linked to the character. New
+      // characters already are; this fixes ones made before that.
+      () => this.linkCharacterPrototypes(),
+      // 4: Last Breath is "just roll", with nothing added, rather than a
+      // prompt for a modifier.
+      () => this.plainLastBreath(),
+      // 5: class gear groups for what a character starts with ("Starting
+      // gear") were checklists to tick; they're now included.
+      () => this.includeStartingGear(),
+      // 6: fix "sing charm" (for "using charm") in copies of Defy Danger
+      // taken from the compendium before it was corrected.
+      () => this.fixDefyDangerTypo(),
+      // 7: copies of moves and gear taken from the compendium before they
+      // spent resources or healed: Volley and Blot Out the Sun spend ammo;
+      // healing potions, bandages and poultices heal when used.
+      () => this.addResources(),
+      // 8: moves that ignore the clumsy tag on armor (Fighter's and
+      // Paladin's Armored, Barbarian's Full Plate and Packing Steel).
+      () => this.addIgnoreClumsy(),
+      // 9: moves that prepare a spell as if it were one level lower
+      // (Wizard's Prodigy and Master, Cleric's Chosen One and Anointed).
+      () => this.addLowerSpells(),
+      // 10: moves the system automates (Recover, Cast a Spell and so on) are
+      // set up by their Automation setting rather than recognized by name.
+      () => this.addAutomation(),
+      // 11: Recover's dialog and a move's spent resource (Volley's ammo) are
+      // now effect lines.
+      () => this.addMoveActions(),
+      // 12: healing moves are wired together. Hospitaller, Healing Song and
+      // the like add to heals; Lay on Hands and Arcane Art heal from their
+      // card, so their text no longer rolls the dice.
+      () => this.addHealing(),
+      // 13: spells have effects too: the Cure spells and Heal heal,
+      // Contagion gives a disease.
+      () => this.syncEffects(),
+      // 14: Arcane Art's text doesn't roll its dice either: the heal is its
+      // card's button, and the 1d4 is rolled with the ally's damage.
+      () => this.fixArcaneArtRolls(),
+      // 15: more compendium moves and spells have effects (Defend's hold,
+      // Aid's +1 or -2, Bless, Invisibility...). New batches go in the
+      // packs, and add another syncEffects step to copy them into the world.
+      () => this.syncEffects(),
+    ];
 
-    // Update 1: Assign basic/special moves on actors.
-    if (version < 1) {
-      this.updateSpecialMoves();
-      version = 1;
-      await game.settings.set('dungeonworld', 'systemMigrationVersion', version);
+    const applied = game.settings.get('dungeonworld', 'systemMigrationVersion');
+    for (let version = applied; version < migrations.length; version++) {
+      await migrations[version]();
+      await game.settings.set('dungeonworld', 'systemMigrationVersion', version + 1);
     }
 
-    // Update 2: Move each character's custom resource into the trackers list.
-    if (version < 2) {
-      await this.migrateResourceToTrackers();
-      version = 2;
-      await game.settings.set('dungeonworld', 'systemMigrationVersion', version);
-    }
+    // With update 3, offer to link tokens already placed. Asked once it's
+    // recorded, so reloading during the question doesn't ask again.
+    if (applied < 3) await this.linkCharacterTokens({ ask: true });
+  }
 
-    // Update 3: Player characters' tokens are linked to the character. New
-    // characters already are; this fixes ones made before that.
-    if (version < 3) {
-      await this.linkCharacterPrototypes();
-      version = 3;
-      await game.settings.set('dungeonworld', 'systemMigrationVersion', version);
-      await this.linkCharacterTokens({ ask: true });
+  /**
+   * Update items in the world and on every actor.
+   *
+   * @param {(item: Item) => Object|null} updateFor  An item's update, or null
+   *   to leave it as it is.
+   */
+  static async #updateItems(updateFor) {
+    const worldUpdates = game.items.map(updateFor).filter(Boolean);
+    if (worldUpdates.length) await Item.implementation.updateDocuments(worldUpdates);
+    for (const actor of game.actors) {
+      const updates = actor.items.map(updateFor).filter(Boolean);
+      if (updates.length) await actor.updateEmbeddedDocuments('Item', updates);
     }
+  }
 
-    // Update 4: Last Breath is "just roll", with nothing added, rather than a
-    // prompt for a modifier.
-    if (version < 4) {
-      await this.plainLastBreath();
-      version = 4;
-      await game.settings.set('dungeonworld', 'systemMigrationVersion', version);
-    }
+  /**
+   * Existing copies of the compendium's automated moves, by name, get their
+   * Automation setting; the Cleric's Cast a Spell also revokes lost spells.
+   * Moves already set up are left alone.
+   */
+  static async addAutomation() {
+    await MigrateDw.#updateItems(item => {
+      if (item.type != 'move' || item.system.automation) return null;
+      const automation = DwMoves.forName(item.name);
+      if (!automation) return null;
+      return { _id: item.id, 'system.automation': automation };
+    });
+  }
 
-    // Update 5: class gear groups for what a character starts with ("Starting
-    // gear") were checklists to tick; they're now included.
-    if (version < 5) {
-      await this.includeStartingGear();
-      version = 5;
-      await game.settings.set('dungeonworld', 'systemMigrationVersion', version);
-    }
+  /**
+   * Recover (set up as such, or by name) gets its effects: heal fully, and
+   * remove debilities. A move's resource becomes a line that spends it.
+   * Moves that already have effects are left alone.
+   */
+  static async addMoveActions() {
+    await MigrateDw.#updateItems(item => {
+      if (item.type != 'move' || item.system.actions?.length) return null;
+      const actions = [];
+      const update = { _id: item.id };
+      const recover = item.system.automation == 'recover'
+        || (!item.system.automation && DwUtility.nameKey(item.name) == 'recover');
+      if (recover) {
+        actions.push(
+          { type: 'heal', target: 'self', amount: '', stat: '', name: '', when: 'always' },
+          { type: 'removeDebility', target: 'self', amount: '', stat: '', name: '', when: 'always' },
+        );
+        if (item.system.automation == 'recover') update['system.automation'] = '';
+      }
+      const resource = item.system.resource;
+      if (resource?.name && resource.when) {
+        actions.push({ type: 'spend', target: 'self', amount: String(resource.amount ?? 1), stat: '', name: resource.name, when: resource.when });
+        update['system.resource.name'] = '';
+      }
+      if (!actions.length) return null;
+      update['system.actions'] = actions;
+      return update;
+    });
+  }
 
-    // Update 6: fix "sing charm" (for "using charm") in copies of Defy Danger
-    // taken from the compendium before it was corrected.
-    if (version < 6) {
-      await this.fixDefyDangerTypo();
-      version = 6;
-      await game.settings.set('dungeonworld', 'systemMigrationVersion', version);
-    }
+  /**
+   * Existing copies of the compendium's healing moves, by name: bonuses for
+   * Hospitaller and the like, effects for Lay on Hands and Arcane Art, and
+   * their text's dice rolls (now rolled by the card) taken out. Settings
+   * already made are kept; only the rolls are taken out of the text.
+   */
+  static async addHealing() {
+    const bonuses = {
+      'hospitaller': { amount: '1d8', target: 'other', moves: '' },
+      'perfect hospitaller': { amount: '2d8', target: 'other', moves: '' },
+      'healing song': { amount: '1d8', target: 'any', moves: 'Arcane Art' },
+      'healing chorus': { amount: '2d8', target: 'any', moves: 'Arcane Art' },
+      'devoted healer': { amount: '@level.value', target: 'other', moves: '' },
+    };
+    const line = (type, when, transfer, extra = {}) =>
+      ({ type, target: 'ally', amount: '', stat: '', condition: '', name: '', when, transfer, ...extra });
+    const actions = {
+      'lay on hands': [
+        line('heal', 'success', false, { amount: '1d8' }),
+        line('removeCondition', 'success', false, { condition: 'disease' }),
+        line('heal', 'partial', true, { amount: '1d8' }),
+        line('removeCondition', 'partial', true, { condition: 'disease' }),
+      ],
+      'arcane art': [line('heal', 'hit', false, { amount: '1d8' })],
+    };
+    // "Additional healing roll: [[/roll 1d8]]", and "[[1d8]]" in "heal [[1d8]]".
+    const rollLine = /\s*<p>(Additional healing roll|Healing roll):\s*\[\[\/roll [^\]]+\]\]<\/p>/;
+    const healRoll = /(heal )\[\[(1d8)\]\]/gi;
+    await MigrateDw.#updateItems(item => {
+      if (item.type != 'move') return null;
+      const key = DwUtility.nameKey(item.name);
+      const update = {};
+      if (bonuses[key] && !String(item.system.healBonus?.amount ?? '').trim()) update['system.healBonus'] = bonuses[key];
+      if (actions[key] && !item.system.actions?.length) {
+        update['system.actions'] = actions[key];
+        if (key == 'lay on hands') update['system.actionsChoose'] = 1;
+      }
+      const description = item.system.description ?? '';
+      const text = bonuses[key] ? description.replace(rollLine, '') : key == 'arcane art' ? description.replace(healRoll, '$1$2') : description;
+      if (text != description) update['system.description'] = text;
+      if (key == 'lay on hands') {
+        for (const result of ['success', 'partial']) {
+          const value = item.system.moveResults?.[result]?.value ?? '';
+          const fixed = value.replace(healRoll, '$1$2');
+          if (fixed != value) update[`system.moveResults.${result}.value`] = fixed;
+        }
+      }
+      return foundry.utils.isEmpty(update) ? null : { _id: item.id, ...update };
+    });
+  }
 
-    // Update 7: copies of moves and gear taken from the compendium before
-    // they spent resources or healed: Volley and Blot Out the Sun spend ammo;
-    // healing potions, bandages and poultices heal when used.
-    if (version < 7) {
-      await this.addResources();
-      version = 7;
-      await game.settings.set('dungeonworld', 'systemMigrationVersion', version);
-    }
+  /**
+   * Take the dice rolls out of Arcane Art's text ("Heal [[1d8]] damage",
+   * "+ [[1d4]] forward to damage"). Only those rolls are changed.
+   */
+  static async fixArcaneArtRolls() {
+    const fix = (text) => text.replace(/(heal )\[\[(1d8)\]\]/gi, '$1$2').replace(/\+ ?\[\[(1d4)\]\]( forward to damage)/gi, '+$1$2');
+    await MigrateDw.#updateItems(item => {
+      if (item.type != 'move' || DwUtility.nameKey(item.name) != 'arcane art') return null;
+      const description = item.system.description ?? '';
+      const fixed = fix(description);
+      return fixed != description ? { _id: item.id, 'system.description': fixed } : null;
+    });
+  }
 
-    // Update 8: moves that ignore the clumsy tag on armor (Fighter's and
-    // Paladin's Armored, Barbarian's Full Plate and Packing Steel).
-    if (version < 8) {
-      await this.addIgnoreClumsy();
-      version = 8;
-      await game.settings.set('dungeonworld', 'systemMigrationVersion', version);
+  /**
+   * Copy the compendium's effect settings into world copies of its moves and
+   * spells (same type and name, and class when several share a name) that
+   * don't have them yet: effects, how many to choose, heal bonus, and a roll
+   * the compendium has but the copy lacks. The packs are the one place these
+   * settings live, so a new batch of them only needs this run again. When
+   * effects are added, a description line rolling what the card's buttons
+   * now roll ("Self damage roll: [[/roll 1d6]]") is taken out.
+   */
+  static async syncEffects() {
+    const fields = ['system.class', 'system.actions', 'system.actionsChoose', 'system.healBonus', 'system.rollType'];
+    const sources = new Map();
+    for (const pack of game.packs.filter(p => p.metadata.type == 'Item' && p.metadata.packageName == 'dungeonworld')) {
+      for (const entry of await pack.getIndex({ fields })) {
+        if (entry.type != 'move' && entry.type != 'spell') continue;
+        const key = `${entry.type}:${DwUtility.nameKey(entry.name)}`;
+        if (!sources.has(key)) sources.set(key, []);
+        sources.get(key).push(entry);
+      }
     }
+    const rollLine = /\s*<p>[^<]*roll:\s*\[\[\/roll [^\]]+\]\]<\/p>/i;
+    await MigrateDw.#updateItems(item => {
+      const candidates = sources.get(`${item.type}:${DwUtility.nameKey(item.name)}`);
+      if (!candidates) return null;
+      const source = (candidates.find(e => DwUtility.sameClass(e.system?.class ?? '', item.system.class ?? '')) ?? candidates[0]).system ?? {};
+      const update = {};
+      if (source.actions?.length && !item.system.actions?.length) {
+        update['system.actions'] = source.actions;
+        if (Number(source.actionsChoose) && !Number(item.system.actionsChoose)) update['system.actionsChoose'] = Number(source.actionsChoose);
+        const description = item.system.description ?? '';
+        if (rollLine.test(description)) update['system.description'] = description.replace(rollLine, '');
+      }
+      if (source.healBonus?.amount && !item.system.healBonus?.amount) update['system.healBonus'] = source.healBonus;
+      if (source.rollType && !item.system.rollType) update['system.rollType'] = source.rollType;
+      return foundry.utils.isEmpty(update) ? null : { _id: item.id, ...update };
+    });
+  }
+
+  /**
+   * Existing copies of the compendium's moves like Prodigy, by name and
+   * class. Copies already set up are left alone.
+   */
+  static async addLowerSpells() {
+    const moves = {
+      'prodigy': /wizard/i,
+      'master': /wizard/i,
+      'chosen one': /cleric/i,
+      'anointed': /cleric/i,
+    };
+    const updateFor = (item) => {
+      const cls = moves[DwUtility.nameKey(item.name)];
+      return item.type == 'move' && cls?.test(item.system.class ?? '') && !Number(item.system.lowerSpells?.count)
+        ? { _id: item.id, 'system.lowerSpells': { count: 1, levels: 1 } } : null;
+    };
+    await MigrateDw.#updateItems(updateFor);
   }
 
   /**
@@ -80,12 +257,7 @@ export class MigrateDw {
     const updateFor = (item) => item.type == 'move' && !item.system.ignoreClumsy
       && /ignore the clumsy tag on (any )?armor/i.test(item.system.description ?? '')
       ? { _id: item.id, 'system.ignoreClumsy': 'armor' } : null;
-    const worldUpdates = game.items.map(updateFor).filter(Boolean);
-    if (worldUpdates.length) await Item.implementation.updateDocuments(worldUpdates);
-    for (const actor of game.actors) {
-      const updates = actor.items.map(updateFor).filter(Boolean);
-      if (updates.length) await actor.updateEmbeddedDocuments('Item', updates);
-    }
+    await MigrateDw.#updateItems(updateFor);
   }
 
   /**
@@ -103,7 +275,7 @@ export class MigrateDw {
       'poultices and herbs': { useHeal: 7, useTarget: 'other', useCure: false },
     };
     const updateFor = (item) => {
-      const name = item.name.trim().toLowerCase();
+      const name = DwUtility.nameKey(item.name);
       if (item.type == 'move' && moves[name] && !item.system.resource?.name) {
         return { _id: item.id, 'system.resource': moves[name] };
       }
@@ -114,12 +286,7 @@ export class MigrateDw {
       }
       return null;
     };
-    const worldUpdates = game.items.map(updateFor).filter(Boolean);
-    if (worldUpdates.length) await Item.implementation.updateDocuments(worldUpdates);
-    for (const actor of game.actors) {
-      const updates = actor.items.map(updateFor).filter(Boolean);
-      if (updates.length) await actor.updateEmbeddedDocuments('Item', updates);
-    }
+    await MigrateDw.#updateItems(updateFor);
   }
 
   /**
@@ -129,14 +296,8 @@ export class MigrateDw {
    */
   static async fixDefyDangerTypo() {
     const typo = /(<li>\s*)sing charm/;
-    const isTypo = (item) => item.type == 'move' && typo.test(item.system.description ?? '');
-    const update = (item) => ({ _id: item.id, 'system.description': item.system.description.replace(typo, '$1using charm') });
-    const worldItems = game.items.filter(isTypo);
-    if (worldItems.length) await Item.implementation.updateDocuments(worldItems.map(update));
-    for (const actor of game.actors) {
-      const items = actor.items.filter(isTypo);
-      if (items.length) await actor.updateEmbeddedDocuments('Item', items.map(update));
-    }
+    await MigrateDw.#updateItems(item => item.type == 'move' && typo.test(item.system.description ?? '')
+      ? { _id: item.id, 'system.description': item.system.description.replace(typo, '$1using charm') } : null);
   }
 
   /**
@@ -163,14 +324,8 @@ export class MigrateDw {
    * compendium version) roll plain 2d6 instead.
    */
   static async plainLastBreath() {
-    const isOld = (item) => item.type == 'move' && item.name.trim().toLowerCase() == 'last breath' && item.system.rollType == 'BOND';
-    const update = (item) => ({ _id: item.id, 'system.rollType': 'PLAIN' });
-    const worldItems = game.items.filter(isOld);
-    if (worldItems.length) await Item.implementation.updateDocuments(worldItems.map(update));
-    for (const actor of game.actors) {
-      const items = actor.items.filter(isOld);
-      if (items.length) await actor.updateEmbeddedDocuments('Item', items.map(update));
-    }
+    await MigrateDw.#updateItems(item => item.type == 'move' && DwUtility.sameName(item.name, 'last breath') && item.system.rollType == 'BOND'
+      ? { _id: item.id, 'system.rollType': 'PLAIN' } : null);
   }
 
   /**
@@ -284,87 +439,14 @@ export class MigrateDw {
       'Undertake A Perilous Journey'
     ];
 
-    // Query actors.
-    let actors = game.actors.filter(a => a.type == 'character');
-    for (let actor of actors) {
-      // Query moves on this actor.
-      let items = actor.items.filter(i => i.type == 'move');
-      // Iterate through each move and update them as needed.
-      for (let item of items) {
-        let moveType = null;
+    const moveTypeFor = (name) => basicMoves.includes(name) ? 'basic' : (specialMoves.includes(name) ? 'special' : null);
 
-        // Basic moves.
-        if (basicMoves.includes(item.name)) {
-          moveType = 'basic';
-        }
-        // Special moves.
-        else if (specialMoves.includes(item.name)) {
-          moveType = 'special';
-        }
-
-        // If this is a valid move, update it.
-        if (moveType) {
-          await actor.updateEmbeddedDocuments("Item", {
-            _id: item.id,
-            name: item.name,
-            data: {
-              moveType: moveType
-            }
-          });
-        }
-      }
-    }
-
-  }
-
-  /*
-   * Manual migration function.
-   *
-   * This function should not be part of an automatic migration. It is instead
-   * a template that can be used if the IDs on class equipment groups get out
-   * of sync, with the intent that an older version of the equipment compendiums
-   * are pulled from a previous commit to use as a mapping.
-   */
-  static async updateClassCompendiums() {
-    let classes = [];
-    let itemsCurrent = [];
-    let itemsOld = [];
-    let itemMap = {};
-    // Grab compendium data.
-    for (let pack of game.packs) {
-      if (pack.metadata.name.includes('equipment')) {
-        if (pack.metadata.name.includes('old')) {
-          itemsOld = itemsOld.concat(await pack.getDocuments());
-        }
-        else {
-          itemsCurrent = itemsCurrent.concat(await pack.getDocuments());
-        }
-      }
-      else if (pack.metadata.name.includes('classes')) {
-        classes = await pack.getDocuments();
-      }
-    }
-    // Build a mapping of old > new items.
-    for (let oldItem of itemsOld) {
-      let newItem = itemsCurrent.find(i => i.name == oldItem.name);
-      if (newItem?.id) {
-        itemMap[oldItem.id] = newItem.id;
-      }
-    }
-    // Get the class compendium data.
-    for (let charClass of classes) {
-      let classItem = charClass.system;
-      let hasUpdate = false;
-      for (let [k,v] of Object.entries(classItem.system.equipment)) {
-        v.items = v.items.map(i => {
-          return itemMap[i];
-        });
-      }
-      let updates = {
-        _id: classItem.id,
-        "system.equipment": classItem.system.equipment
-      };
-      await charClass.update(updates);
+    // Update each character's basic and special moves in one operation.
+    for (const actor of game.actors.filter(a => a.type == 'character')) {
+      const updates = actor.items
+        .filter(i => i.type == 'move' && moveTypeFor(i.name))
+        .map(i => ({ _id: i.id, 'system.moveType': moveTypeFor(i.name) }));
+      if (updates.length) await actor.updateEmbeddedDocuments('Item', updates);
     }
   }
 

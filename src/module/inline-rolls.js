@@ -1,8 +1,6 @@
 import { DwRolls } from "./rolls.js";
 import { DwUtility } from "./utility.js";
-
-/** Ability names as they appear in move text ("roll+Dex"). */
-const STATS = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+import { STATS } from "./config.js";
 
 /**
  * Roll links in text: "roll+DEX" in a move's description or a journal page
@@ -61,7 +59,7 @@ export class DwInlineRolls {
     if (actor) link.dataset.actor = actor.uuid;
     if (source?.documentName == 'Item' && source.type == 'move') link.dataset.item = source.uuid;
 
-    link.innerHTML = `<i class="fas fa-dice-d6" inert></i> ${Handlebars.escapeExpression(label)}`;
+    link.innerHTML = `<i class="fas fa-dice-d6" inert></i> ${DwUtility.escape(label)}`;
     return link;
   }
 
@@ -78,11 +76,10 @@ export class DwInlineRolls {
 
     // @Move[Name]: the actor's own move, else the world's, else a compendium's.
     if (link.dataset.move) {
-      const name = link.dataset.move.toLowerCase();
-      const matches = (item) => ['move', 'npcMove'].includes(item.type) && item.name.trim().toLowerCase() == name;
-      let move = actor.items.find(matches);
-      if (move) return move.roll();
-      move = game.items.find(matches) ?? (await DwInlineRolls.#compendiumMove(matches));
+      const matches = (item) => ['move', 'npcMove'].includes(item.type) && DwUtility.sameName(item.name, link.dataset.move);
+      const own = actor.items.find(matches);
+      if (own) return own.roll();
+      const move = await DwUtility.findMove(null, matches);
       if (!move) return ui.notifications.warn(game.i18n.format('DW.InlineRoll.NoMove', { move: link.dataset.move }));
       return DwRolls.rollMove({ actor, data: move });
     }
@@ -102,17 +99,5 @@ export class DwInlineRolls {
       formula: stat,
       templateData: { title: game.i18n.format('DW.InlineRoll.Stat', { stat: stat.toUpperCase() }) },
     });
-  }
-
-  static async #compendiumMove(matches) {
-    for (const slug of ['basic-moves']) {
-      const found = (await DwUtility.loadCompendia(slug)).find(matches);
-      if (found) return found;
-    }
-    for (const pack of game.packs.filter(p => p.metadata.type == 'Item' && p.metadata.packageName == 'dungeonworld')) {
-      const entry = pack.index.find(e => matches({ type: e.type, name: e.name }));
-      if (entry) return pack.getDocument(entry._id);
-    }
-    return null;
   }
 }

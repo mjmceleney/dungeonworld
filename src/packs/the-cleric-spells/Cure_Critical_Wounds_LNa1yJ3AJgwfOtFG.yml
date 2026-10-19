@@ -7,6 +7,15 @@ data:
   description: <p>Heal an ally you touch of 3d8 damage.</p>
   spellLevel: 5
   rollFormula: 3d8
+  actions:
+    - type: heal
+      target: 'ally'
+      amount: '3d8'
+      stat: ''
+      condition: ''
+      name: ''
+      when: hit
+      transfer: false
   class: The Cleric
   prepared: false
 flags: {}

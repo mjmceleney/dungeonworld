@@ -21,6 +21,10 @@ system:
   rollMod: 0
   requiresLevel: 2
   requiresMove: ''
+  healBonus:
+    amount: 1d8
+    target: any
+    moves: Arcane Art
   moveGroup: ''
 ownership:
   default: 0

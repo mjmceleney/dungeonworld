@@ -8,10 +8,10 @@ import { DwResources } from "../resources.js";
 import { DwSpells } from "../spells.js";
 import { DwStartOver } from "./start-over.js";
 import { DwBeyondTen } from "./beyond-ten.js";
-import { DwRecruit } from "../recruit.js";
+import { DwPenalties } from "../penalties.js";
 import { DwCharacterCreator } from "./character-creator.js";
 
-const { HandlebarsApplicationMixin, DialogV2 } = foundry.applications.api;
+const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
 const { TextEditor, DragDrop, FormDataExtended } = foundry.applications.ux;
 
@@ -23,26 +23,6 @@ const DEFAULT_COLLAPSED = ['special', 'other'];
 
 /** Spell levels, in display order. */
 const SPELL_LEVELS = [0, 1, 3, 5, 7, 9];
-
-/**
- * Normalize a class name so that "The Fighter", "Fighter" and "fighter" match.
- *
- * @param {string} name
- * @return {string}
- */
-function classKey(name) {
-  return DwUtility.cleanClass(String(name ?? '').trim()).replace(/^the-/, '');
-}
-
-/**
- * Display name for a class, without a leading "The".
- *
- * @param {string} name
- * @return {string}
- */
-function classLabel(name) {
-  return String(name ?? '').trim().replace(/^the\s+/i, '');
-}
 
 /**
  * The Dungeon World character sheet, built on ApplicationV2.
@@ -102,8 +82,7 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       toggleDetails: DwCharacterSheet.#onToggleDetails,
       toggleFavorite: DwCharacterSheet.#onToggleFavorite,
       toggleSection: DwCharacterSheet.#onToggleSection,
-      toggleEquipped: DwCharacterSheet.#onToggleEquipped,
-      togglePrepared: DwCharacterSheet.#onTogglePrepared,
+      toggleItemField: DwCharacterSheet.#onToggleItemField,
       // Trackers (trackers.js).
       addTracker: function(event, target) { return this.trackers.add(event, target); },
       editTracker: function(event, target) { return this.trackers.edit(event, target); },
@@ -123,13 +102,9 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         // Each casting class has its own button, naming its move.
         return DwSpells.prepare(this.actor, this.actor.items.get(event.target.closest('[data-move-id]')?.dataset.moveId ?? '') ?? null);
       },
-      clearRecruitPenalty: function(event) {
+      clearPenalty: function(event, target) {
         event.preventDefault();
-        return this.actor.unsetFlag('dungeonworld', 'recruitPenalty');
-      },
-      clearCastPenalty: function(event) {
-        event.preventDefault();
-        return this.actor.unsetFlag('dungeonworld', 'castPenalty');
+        return DwPenalties.clear(this.actor, target.dataset.penalty);
       },
       useItem: function(event, target) {
         event.preventDefault();
@@ -175,14 +150,8 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
 
   /** @inheritdoc */
   _initializeApplicationOptions(options) {
-    options = super._initializeApplicationOptions(options);
-
-    // Match core's light or dark theme choice for this sheet.
-    let dark = DwUtility.nightmode;
-    if (options.classes.includes('theme-dark')) dark = true;
-    else if (options.classes.includes('theme-light')) dark = false;
-    if (dark) options.classes.push('dw-dark');
-    return options;
+    // Match core's light or dark theme choice.
+    return DwUtility.applyThemeClass(super._initializeApplicationOptions(options));
   }
 
   /** @override */
@@ -195,37 +164,58 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   /* -------------------------------------------- */
 
   /**
-   * The document sheet's own context, without any character data. Lets
-   * subclasses such as the NPC sheet build their own context from scratch.
+   * The context every actor sheet shares: the document sheet's own, plus the
+   * actor, whether it's editable, the tabs, the banner and HP. Subclasses
+   * such as the NPC sheet build the rest of their context on it.
    *
    * @param {Object} options
    * @return {Promise<Object>}
    */
-  _prepareDocumentContext(options) {
-    return super._prepareContext(options);
+  async _prepareDocumentContext(options) {
+    const context = await super._prepareContext(options);
+    const actor = this.actor;
+    return Object.assign(context, {
+      actor: actor,
+      system: actor.system,
+      editable: this.isEditable,
+      owner: actor.isOwner,
+      cssClass: this.isEditable ? 'editable' : 'locked',
+      tabs: this._prepareSheetTabs(),
+      // The portrait doubles as a faded banner behind the header, except for
+      // the default silhouette.
+      bannerImg: actor.img && actor.img !== CONST.DEFAULT_TOKEN ? actor.img : null,
+      ...DwUtility.hpContext(actor.system),
+    });
+  }
+
+  /**
+   * Enrich one of the actor's text fields (biography, look...) for display.
+   *
+   * @param {string} text
+   * @return {Promise<string>}
+   */
+  _enrich(text) {
+    return TextEditor.implementation.enrichHTML(text ?? '', {
+      secrets: this.actor.isOwner,
+      rollData: this.actor.getRollData(),
+      relativeTo: this.actor,
+    });
   }
 
   /** @override */
   async _prepareContext(options) {
-    const context = await super._prepareContext(options);
+    const context = await this._prepareDocumentContext(options);
     const actor = this.actor;
     const system = actor.system;
     const isEditable = this.isEditable;
 
-    const enrichmentOptions = {
-      secrets: actor.isOwner,
-      rollData: actor.getRollData(),
-      relativeTo: actor,
-    };
-    const enrich = (text) => TextEditor.implementation.enrichHTML(text ?? '', enrichmentOptions);
-
     // Start loading the class list and enriching every field at once.
     const classlistPromise = DwClassList.getClasses(false);
     const detailsPromise = Promise.all([
-      enrich(system.details.look),
-      enrich(system.details.alignment?.description),
-      enrich(system.details.race?.description),
-      enrich(system.details.biography),
+      this._enrich(system.details.look),
+      this._enrich(system.details.alignment?.description),
+      this._enrich(system.details.race?.description),
+      this._enrich(system.details.biography),
     ]);
     const items = await this._prepareItems();
     const [classItems, [look, alignment, race, biography]] = await Promise.all([classlistPromise, detailsPromise]);
@@ -237,28 +227,18 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const level = Number(system.attributes.level.value ?? 1);
     const xp = Number(system.attributes.xp.value ?? 0);
     const xpMax = Number(system.attributes.xp.max ?? level + 7);
-    const hp = Number(system.attributes.hp.value ?? 0);
-    const hpMax = Number(system.attributes.hp.max ?? 0);
     const weight = Number(system.attributes.weight.value ?? 0);
     const weightMax = Number(system.attributes.weight.max ?? 0);
     const classLevels = this._prepareClassLevels(level);
     // Classes with levels show their level instead of a "+ class" tag.
     const multiclass = moveSections.multiclass
-      .filter(name => !classLevels?.list.some(c => classKey(c.name) === classKey(name)));
+      .filter(name => !classLevels?.list.some(c => DwUtility.classKey(c.name) === DwUtility.classKey(name)));
 
     return Object.assign(context, {
-      actor: actor,
-      system: system,
-      editable: isEditable,
-      owner: actor.isOwner,
-      cssClass: isEditable ? 'editable' : 'locked',
       isToken: actor.token != null,
       noAbilityScores: game.settings.get('dungeonworld', 'noAbilityScores'),
-      tabs: this._prepareSheetTabs(),
 
-      // Header. The portrait doubles as a faded banner behind the header,
-      // except for the default silhouette.
-      bannerImg: actor.img && actor.img !== CONST.DEFAULT_TOKEN ? actor.img : null,
+      // Header.
       classlist: classSuggestions,
       multiclass: multiclass,
       classLevels: classLevels,
@@ -272,10 +252,6 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       creation: isEditable && actor.token == null && level <= 1 && xp == 0 && items.startingCount < 1,
 
       // Vitals.
-      hp: hp,
-      hpMax: hpMax,
-      hpPct: hpMax > 0 ? Math.max(0, Math.min(100, Math.round(100 * hp / hpMax))) : 0,
-      hpState: hpMax > 0 && hp / hpMax <= 0.25 ? 'low' : (hpMax > 0 && hp / hpMax <= 0.5 ? 'mid' : 'high'),
       damageFormula: `${system.attributes.damage.value ?? ''}${system.attributes.damage.misc ? '+' + system.attributes.damage.misc : ''}`,
       damages: { d4: 'd4', d6: 'd6', d8: 'd8', d10: 'd10', d12: 'd12' },
       weight: weight,
@@ -285,8 +261,8 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
 
       // Stats.
       abilities: this._prepareAbilities(),
-      forwardText: DwCharacterSheet.#signed(system.attributes.forward?.value),
-      ongoingText: DwCharacterSheet.#signed(system.attributes.ongoing?.value),
+      forwardText: DwUtility.signed(system.attributes.forward?.value),
+      ongoingText: DwUtility.signed(system.attributes.ongoing?.value),
       rollModes: this._prepareRollModes(),
       effects: this._prepareEffects(),
 
@@ -388,7 +364,7 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     if (list.length < 2) return null;
     const sum = list.reduce((total, c) => total + c.level, 0);
     return {
-      list: list.map(c => ({ ...c, short: classLabel(c.name) })),
+      list: list.map(c => ({ ...c, short: DwUtility.shortClassName(c.name) })),
       mismatch: sum !== level ? game.i18n.format('DW.Sheet.ClassLevelsMismatch', { sum, level }) : null,
     };
   }
@@ -465,24 +441,8 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
    */
   _prepareEffects() {
     const actor = this.actor;
-    const effects = [];
     const loc = (key, data) => data ? game.i18n.format(key, data) : game.i18n.localize(key);
-    const castPenalty = DwSpells.castPenalty(actor);
-    if (castPenalty) effects.push({
-      label: actor.items.find(i => DwSpells.isCastMove(i))?.name ?? loc('DW.Effects.Cast'),
-      value: `−${castPenalty}`,
-      scope: loc('DW.Effects.UntilPrepare'),
-      tooltip: loc('DW.Effects.CastHint', { penalty: castPenalty }),
-      clear: 'clearCastPenalty',
-    });
-    const recruitPenalty = DwRecruit.penalty(actor);
-    if (recruitPenalty) effects.push({
-      label: actor.items.find(i => DwRecruit.isRecruit(i))?.name ?? loc('DW.Effects.Recruit'),
-      value: `−${recruitPenalty}`,
-      scope: loc('DW.Effects.NextRoll'),
-      tooltip: loc('DW.Effects.RecruitHint', { penalty: recruitPenalty }),
-      clear: 'clearRecruitPenalty',
-    });
+    const effects = DwPenalties.effects(actor);
     if (game.settings.get('dungeonworld', 'automateGear')) {
       const clumsy = Number(actor.system.attributes.ac?.clumsy) || 0;
       if (clumsy) effects.push({
@@ -498,19 +458,6 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     return effects;
   }
 
-  /** The modifier in place for one move, for a badge on its row. */
-  _moveEffect(item) {
-    if (DwSpells.isCastMove(item)) {
-      const penalty = DwSpells.castPenalty(this.actor);
-      if (penalty) return { text: game.i18n.format('DW.Effects.OngoingBadge', { penalty }), tooltip: game.i18n.format('DW.Effects.CastHint', { penalty }) };
-    }
-    if (DwRecruit.isRecruit(item)) {
-      const penalty = DwRecruit.penalty(this.actor);
-      if (penalty) return { text: game.i18n.format('DW.Effects.ForwardBadge', { penalty }), tooltip: game.i18n.format('DW.Effects.RecruitHint', { penalty }) };
-    }
-    return null;
-  }
-
   _prepareAbilities() {
     const abilities = [];
     for (let [key, ability] of Object.entries(this.actor.system.abilities ?? {})) {
@@ -521,7 +468,7 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         label: ability.label ?? key,
         value: ability.value,
         mod: ability.mod,
-        modText: DwCharacterSheet.#signed(ability.mod),
+        modText: DwUtility.signed(ability.mod),
         debility: !!ability.debility,
         debilityLabel: ability.debilityLabel ?? '',
       });
@@ -547,12 +494,15 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const actor = this.actor;
     const secrets = actor.isOwner;
     const enrichments = [];
+    // The actor's roll data, built once and shared by every item's text.
+    const actorRollData = actor.getRollData();
+    const itemOptions = new Map();
     const enrich = (target, key, text, item) => {
-      enrichments.push(TextEditor.implementation.enrichHTML(text ?? '', {
-        secrets: secrets,
-        rollData: item.getRollData(),
-        relativeTo: item,
-      }).then(html => target[key] = html));
+      if (!itemOptions.has(item.id)) {
+        itemOptions.set(item.id, { secrets, rollData: { ...item.system, ...actorRollData }, relativeTo: item });
+      }
+      enrichments.push(TextEditor.implementation.enrichHTML(text ?? '', itemOptions.get(item.id))
+        .then(html => target[key] = html));
     };
 
     const moves = [];
@@ -598,7 +548,7 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         }
         if (row.moveType == 'starting') startingCount++;
         // A modifier in place for this move (casting or Recruit penalties).
-        row.effect = this._moveEffect(item);
+        row.effect = DwPenalties.moveBadge(actor, item);
         for (let [key, label, css] of [['success', '10+', 'success'], ['partial', '7–9', 'partial'], ['failure', '6-', 'failure']]) {
           const value = system.moveResults?.[key]?.value;
           if (value) {
@@ -618,18 +568,15 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         // Gear that gets used up, or that does something when used.
         row.canUse = (Number(system.uses) > 0 || Number(system.useHeal) > 0) && DwResources.remaining(item) > 0;
         row.weight = system.weight;
-        try {
-          const tags = system.tags ? JSON.parse(system.tags) : [];
-          row.tagList = Array.isArray(tags) ? tags.map(t => t?.value ?? t).filter(Boolean) : [];
-        } catch (e) {
-          row.tagList = [];
-        }
+        row.tagList = DwUtility.parseTags(system.tags);
         equipment.push(row);
       }
       else if (item.type == 'spell') {
         row.rollIcon = system.rollFormula ? 'formula' : 'none';
         row.prepared = !!system.prepared;
         row.canCast = canCast;
+        const lowered = DwSpells.loweredBy(actor, item);
+        if (lowered) row.badge = game.i18n.format('DW.Spellcasting.LoweredBadge', { move: lowered.name, level: DwSpells.preparedLevel(actor, item) });
         const level = Number(system.spellLevel ?? 0);
         (spellsByLevel[level] ??= []).push(row);
       }
@@ -663,47 +610,32 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
    */
   _prepareMoveSections(moves) {
     const primaryName = this.actor.system.details.class ?? '';
-    const primaryKey = classKey(primaryName);
-    const collapsed = this._getCollapsedState();
+    const primaryKey = DwUtility.classKey(primaryName);
 
     const basic = [];
     const special = [];
     const other = [];
     const classGroups = new Map();
-    classGroups.set(primaryKey, { label: classLabel(primaryName), moves: [], primary: true });
+    classGroups.set(primaryKey, { label: DwUtility.shortClassName(primaryName), moves: [], primary: true });
 
     for (let move of moves) {
       if (move.moveType == 'basic') basic.push(move);
       else if (move.moveType == 'special') special.push(move);
       else if (move.moveType == 'starting' || move.moveType == 'advanced') {
-        const key = move.className ? classKey(move.className) : primaryKey;
+        const key = move.className ? DwUtility.classKey(move.className) : primaryKey;
         if (!classGroups.has(key)) {
-          classGroups.set(key, { label: classLabel(move.className), moves: [], primary: false });
+          classGroups.set(key, { label: DwUtility.shortClassName(move.className), moves: [], primary: false });
         }
         classGroups.get(key).moves.push(move);
       }
       else other.push(move);
     }
 
-    const section = (id, title, rows, extra = {}) => {
-      const isCollapsed = collapsed[id] ?? this._isCollapsedByDefault(id);
-      return {
-        id: id,
-        title: title,
-        rows: rows,
-        count: rows.length,
-        collapsed: isCollapsed,
-        ...extra,
-        // createType is the new move's type; null means no add button.
-        canCreate: extra.createType !== undefined && extra.createType !== null,
-      };
-    };
-
     const sections = [];
-    sections.push(section('favorites', game.i18n.localize('DW.Sheet.Favorites'), moves.filter(m => m.favorite), {
+    sections.push(this._moveSection('favorites', game.i18n.localize('DW.Sheet.Favorites'), moves.filter(m => m.favorite), {
       emptyText: game.i18n.localize('DW.Sheet.FavoritesEmpty'),
     }));
-    sections.push(section('basic', game.i18n.localize('DW.MovesBasic'), basic, { createType: 'basic' }));
+    sections.push(this._moveSection('basic', game.i18n.localize('DW.MovesBasic'), basic, { createType: 'basic' }));
 
     const multiclass = [];
     for (let [key, group] of classGroups) {
@@ -715,20 +647,42 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       const title = group.label
         ? game.i18n.format('DW.Sheet.ClassMoves', { class: group.label })
         : game.i18n.localize('DW.Sheet.ClassMovesDefault');
-      sections.push(section(`class-${key || 'primary'}`, title, rows, {
+      sections.push(this._moveSection(`class-${key || 'primary'}`, title, rows, {
         createType: group.primary ? 'starting' : null,
         hint: group.primary ? '' : game.i18n.localize('DW.Sheet.Multiclass'),
         emptyText: game.i18n.localize('DW.Sheet.NoMoves'),
       }));
     }
 
-    sections.push(section('special', game.i18n.localize('DW.MovesSpecial'), special, { createType: 'special' }));
-    sections.push(section('other', game.i18n.localize('DW.MovesOther'), other, {
+    sections.push(this._moveSection('special', game.i18n.localize('DW.MovesSpecial'), special, { createType: 'special' }));
+    sections.push(this._moveSection('other', game.i18n.localize('DW.MovesOther'), other, {
       createType: '',
       emptyText: game.i18n.localize('DW.Sheet.NoMoves'),
     }));
 
     return { sections, multiclass };
+  }
+
+  /**
+   * One section of the Moves tab.
+   *
+   * @param {string} id Section id.
+   * @param {string} title
+   * @param {Object[]} rows Prepared move rows.
+   * @param {Object} [extra] More for the template: createType (the new
+   *   move's type; null or absent means no add button), emptyText, hint.
+   * @return {Object}
+   */
+  _moveSection(id, title, rows, extra = {}) {
+    return {
+      id: id,
+      title: title,
+      rows: rows,
+      count: rows.length,
+      collapsed: this._getCollapsedState()[id] ?? this._isCollapsedByDefault(id),
+      ...extra,
+      canCreate: extra.createType !== undefined && extra.createType !== null,
+    };
   }
 
   /**
@@ -1112,18 +1066,16 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     }
   }
 
-  /** @this {DwCharacterSheet} */
-  static async #onToggleEquipped(event, target) {
+  /**
+   * Turn an item's equipped or prepared state on or off.
+   * @this {DwCharacterSheet}
+   */
+  static async #onToggleItemField(event, target) {
     event.preventDefault();
     const item = this._getItem(target);
-    if (item) await item.update({ 'system.equipped': !item.system.equipped });
-  }
-
-  /** @this {DwCharacterSheet} */
-  static async #onTogglePrepared(event, target) {
-    event.preventDefault();
-    const item = this._getItem(target);
-    if (item) await item.update({ 'system.prepared': !item.system.prepared });
+    const field = target.dataset.field;
+    if (!item || !['equipped', 'prepared'].includes(field)) return;
+    await item.update({ [`system.${field}`]: !item.system[field] });
   }
 
   /**
@@ -1136,34 +1088,28 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const kind = target.dataset.detail;
     if (!['race', 'alignment'].includes(kind)) return;
     const detail = this.actor.system.details[kind] ?? {};
-    const escape = (value) => Handlebars.escapeExpression(String(value ?? ''));
     const label = kind == 'race'
       ? (game.settings.get('dungeonworld', 'raceSingle') || game.i18n.localize('DW.Race'))
       : (game.settings.get('dungeonworld', 'alignmentSingle') || game.i18n.localize('DW.Alignment'));
 
     const content = document.createElement('div');
     content.innerHTML = `<div class="form-group">
-        <label>${escape(game.i18n.localize('DW.LevelUp.OwnName'))}</label>
-        <input type="text" name="value" value="${escape(detail.value)}" autofocus>
+        <label>${DwUtility.escape(game.i18n.localize('DW.LevelUp.OwnName'))}</label>
+        <input type="text" name="value" value="${DwUtility.escape(detail.value)}" autofocus>
       </div>
       <div class="dw-detail-editor">
-        <label>${escape(game.i18n.localize(kind == 'race' ? 'DW.Sheet.RaceDescription' : 'DW.Sheet.AlignmentDescription'))}</label>
-        <prose-mirror name="description" value="${escape(detail.description)}"></prose-mirror>
+        <label>${DwUtility.escape(game.i18n.localize(kind == 'race' ? 'DW.Sheet.RaceDescription' : 'DW.Sheet.AlignmentDescription'))}</label>
+        <prose-mirror name="description" value="${DwUtility.escape(detail.description)}"></prose-mirror>
       </div>`;
 
-    const result = await DialogV2.wait({
+    const result = await DwUtility.ask({
       classes: ['dw-detail-dialog'],
       window: { title: game.i18n.format('DW.Sheet.EditDetailTitle', { detail: label }), icon: 'fa-solid fa-pen' },
       position: { width: 520 },
       content,
-      buttons: [
-        { action: 'save', label: 'DW.Sheet.Save', icon: 'fa-solid fa-check', default: true,
-          callback: (event, button) => new FormDataExtended(button.form).object },
-        { action: 'cancel', label: 'DW.Cancel', icon: 'fa-solid fa-xmark', callback: () => null },
-      ],
-      rejectClose: false,
+      ok: { label: 'DW.Sheet.Save', callback: (event, button) => new FormDataExtended(button.form).object },
     });
-    if (!result || typeof result != 'object') return;
+    if (!result) return;
     await this.actor.update({
       [`system.details.${kind}.value`]: String(result.value ?? '').trim(),
       [`system.details.${kind}.description`]: String(result.description ?? ''),
@@ -1179,31 +1125,24 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
    * @return {Promise<Object|null>} The checked options by name, or null.
    */
   async _confirmWithOptions(title, text, options, confirm) {
-    const escape = (value) => Handlebars.escapeExpression(String(value ?? ''));
-    const content = `<p>${escape(text)}</p>` + options.map(o => `
+    const content = `<p>${DwUtility.escape(text)}</p>` + options.map(o => `
       <div class="form-group">
         <label class="checkbox">
           <input type="checkbox" name="${o.name}" ${o.checked ? 'checked' : ''}>
-          ${escape(o.label)}
+          ${DwUtility.escape(o.label)}
         </label>
       </div>`).join('');
-    const result = await DialogV2.wait({
+    return DwUtility.ask({
       window: { title },
       position: { width: 420 },
       content,
-      buttons: [
-        { action: 'confirm', label: confirm, icon: 'fa-solid fa-check', default: true,
-          callback: (event, button) => ({ ...new FormDataExtended(button.form).object }) },
-        { action: 'cancel', label: 'DW.Cancel', icon: 'fa-solid fa-xmark', callback: () => null },
-      ],
-      rejectClose: false,
+      ok: { label: confirm, callback: (event, button) => ({ ...new FormDataExtended(button.form).object }) },
     });
-    return result && typeof result == 'object' ? result : null;
   }
 
   /** The character's moves and spells from a class. */
   _classItems(className) {
-    const fromClass = (item) => classKey(item.system.class) === classKey(className);
+    const fromClass = (item) => DwUtility.classKey(item.system.class) === DwUtility.classKey(className);
     return {
       moves: this.actor.items.filter(i => i.type == 'move' && i.system.class && fromClass(i)),
       spells: this.actor.items.filter(i => i.type == 'spell' && i.system.class && fromClass(i)),
@@ -1226,7 +1165,7 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       ? [{ name: 'items', checked: true, label: game.i18n.format('DW.Sheet.RemoveClassItems', { moves: moves.length, spells: spells.length }) }]
       : [];
     const result = await this._confirmWithOptions(
-      game.i18n.format('DW.Sheet.RemoveMulticlassTitle', { class: classLabel(name) }),
+      game.i18n.format('DW.Sheet.RemoveMulticlassTitle', { class: DwUtility.shortClassName(name) }),
       game.i18n.format('DW.Sheet.RemoveMulticlassText', { class: name, actor: this.actor.name }),
       options, 'DW.Sheet.Remove');
     if (!result) return;
@@ -1250,18 +1189,5 @@ export class DwCharacterSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     event.preventDefault();
     if (!game.user.isGM) return;
     await DwStartOver.run(this.actor);
-  }
-
-  /* -------------------------------------------- */
-
-  /**
-   * Format a number with an explicit sign.
-   *
-   * @param {number} value
-   * @return {string}
-   */
-  static #signed(value) {
-    const n = Number(value ?? 0) || 0;
-    return n < 0 ? `−${Math.abs(n)}` : `+${n}`;
   }
 }

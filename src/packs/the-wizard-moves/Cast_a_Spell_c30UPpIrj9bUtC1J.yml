@@ -33,6 +33,7 @@ system:
   requiresLevel: 0
   requiresMove: ''
   moveGroup: ''
+  automation: castSpell
 ownership:
   default: 0
 effects: []

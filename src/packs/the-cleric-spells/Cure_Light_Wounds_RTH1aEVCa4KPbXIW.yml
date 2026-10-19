@@ -9,6 +9,15 @@ data:
     of 1d8 damage.</p>
   spellLevel: 1
   rollFormula: 1d8
+  actions:
+    - type: heal
+      target: 'ally'
+      amount: '1d8'
+      stat: ''
+      condition: ''
+      name: ''
+      when: hit
+      transfer: false
   class: The Cleric
   prepared: false
 flags: {}

@@ -1,5 +1,4 @@
 import { DwUtility } from '../utility.js';
-const { renderTemplate } = foundry.applications.handlebars;
 
 /**
  * Extends the basic Actor class for Dungeon World.
@@ -12,12 +11,7 @@ export class ActorDw extends Actor {
    */
   prepareData() {
     super.prepareData();
-
-    const actorData = this;
-    const data = actorData.system;
-    const flags = actorData.flags;
-
-    if (actorData.type === 'character') this._prepareCharacterData(actorData);
+    if (this.type === 'character') this._prepareCharacterData(this);
   }
 
   /**
@@ -26,19 +20,14 @@ export class ActorDw extends Actor {
   _prepareCharacterData(actorData) {
     const data = actorData.system;
 
-    let debilities = {
+    const debilityLabels = {
       "str": game.settings.get('dungeonworld', 'debilityLabelSTR'),
       "dex": game.settings.get('dungeonworld', 'debilityLabelDEX'),
       "con": game.settings.get('dungeonworld', 'debilityLabelCON'),
       "int": game.settings.get('dungeonworld', 'debilityLabelINT'),
       "wis": game.settings.get('dungeonworld', 'debilityLabelWIS'),
       "cha": game.settings.get('dungeonworld', 'debilityLabelCHA')
-    }
-
-    debilities = Object.entries(debilities).reduce((obj, e) => {
-      obj[e[0]] = game.i18n.localize(e[1]);
-      return obj;
-    }, {});
+    };
 
     const noAbilityScores = game.settings.get('dungeonworld', 'noAbilityScores');
     const disDebility = game.settings.get("dungeonworld", "disDebility");
@@ -67,101 +56,81 @@ export class ActorDw extends Actor {
 
       // Add labels.
       abl.label = CONFIG.DW.abilities[a];
-      abl.debilityLabel = debilities[a];
+      abl.debilityLabel = game.i18n.localize(debilityLabels[a]);
       // Adjust mod based on debility.
       if (abl.debility && !disDebility) {
         abl.mod -= 1;
       }
     }
 
-    // Calculate weight.
-    let coin = data.attributes.coin.value ?? 0;
-    let coinWeight = game.settings.get("dungeonworld", "coinWeight");
-    let weight = coinWeight > 0 ? Math.floor(coin/coinWeight ) : 0;
-    let items = actorData.items;
-    if (items) {
-      let equipment = items.filter(i => i.type == 'equipment');
-      equipment.forEach(i => {
-        // Add weight for each item.
-        let itemQuantity = Number(i.system.quantity);
-        let itemWeight = Number(i.system.weight);
-        if (itemWeight > 0) {
-          weight = weight + (itemQuantity * itemWeight);
-        }
-        // Add weapon tags.
-        if (i.system?.equipped && i.system.itemType == 'weapon') {
-          let tags = i.system.tags ? JSON.parse(i.system.tags) : [];
-          for (let tag of tags) {
-          // Match for piercing, armor, and damage tags.
-            let piercing = tag.value.toLowerCase().match(/(\d+)\s*piercing|piercing\s*(\d+)/) ?? [];
-            let ignoreArmor = tag.value.toLowerCase().includes('ignores armor');
-            let dmgBonus = tag.value.toLowerCase().match(/[+](\d+)\s*damage|damage\s*[+](\d+)/) ?? [];
+    // Each piece of equipment with its tags, lower case, parsed once.
+    const items = actorData.items ?? [];
+    const equipment = items.filter(i => i.type == 'equipment')
+      .map(item => ({ item, tags: DwUtility.parseTags(item.system.tags).map(tag => tag.toLowerCase()) }));
 
-            // Add matching piercing tags if it's unset or if the value is higher.
-            if (piercing[1] > 0 || piercing[2] > 0) {
-              piercing = (piercing[1] ?? piercing[2]) ?? 0;
-              if (!data.attributes.damage?.piercing || piercing > data.attributes.damage.piercing) {
-                data.attributes.damage.piercing = piercing;
-              }
-            }
-
-            // Add matching ignore armor tags if it's unset.
-            if (!data.attributes.damage?.ignoreArmor) {
-              data.attributes.damage.ignoreArmor = ignoreArmor;
-            }
-
-              // Add matching damage bonus tags if it's unset or if the value is higher.
-              if (dmgBonus[1] > 0 || dmgBonus[2] > 0) {
-                dmgBonus = (dmgBonus[1] ?? dmgBonus[2]) ?? 0;
-                if (!data.attributes.damage?.dmgBonus || dmgBonus > data.attributes.damage.dmgBonus) {
-                  data.attributes.damage.dmgBonus = dmgBonus;
-                }
-              }
-            }
-        }
-      });
+    // Calculate weight, and the damage tags of equipped weapons.
+    const coin = data.attributes.coin.value ?? 0;
+    const coinWeight = game.settings.get("dungeonworld", "coinWeight");
+    let weight = coinWeight > 0 ? Math.floor(coin / coinWeight) : 0;
+    const damage = data.attributes.damage ??= {};
+    for (const { item, tags } of equipment) {
+      const itemWeight = Number(item.system.weight);
+      if (itemWeight > 0) {
+        weight += (Number(item.system.quantity ?? 1) || 0) * itemWeight;
+      }
+      if (!item.system.equipped || item.system.itemType != 'weapon') continue;
+      for (const tag of tags) {
+        // The highest piercing and damage bonus count; any "ignores armor" does.
+        const { piercing, ignoreArmor, dmgBonus } = DwUtility.damageTags(tag);
+        if (piercing > (Number(damage.piercing) || 0)) damage.piercing = piercing;
+        damage.ignoreArmor ||= ignoreArmor;
+        if (dmgBonus > (Number(damage.dmgBonus) || 0)) damage.dmgBonus = dmgBonus;
+      }
     }
-    // Update the value.
     data.attributes.weight.value = weight;
 
     if (game.settings.get('dungeonworld', 'automateGear')) {
-      this._prepareGear(data, items);
+      this._prepareGear(data, items, equipment);
     }
 
     // Add base flags.
     if (!actorData.flags.dungeonworld) actorData.flags.dungeonworld = {};
     if (!actorData.flags.dungeonworld.sheetDisplay) actorData.flags.dungeonworld.sheetDisplay = {};
+    if (!actorData.flags.dungeonworld.rollMode) actorData.flags.dungeonworld.rollMode = 'def';
 
     // Handle max XP.
-    let rollData = this.getRollData();
-    if (!rollData.attributes.level.value) rollData.attributes.level.value = 1;
-    let xpRequiredFormula = game.settings.get('dungeonworld', 'xpFormula');
-    let xpRequired = parseInt(xpRequiredFormula)
-    if (isNaN(xpRequired)) {
-      // Plain arithmetic (such as the default formula) can be computed
-      // directly, which is much cheaper than building and evaluating a Roll.
-      const replaced = Roll.replaceFormulaData(xpRequiredFormula, rollData);
-      if (/^[\d\s.+\-*/()]+$/.test(replaced)) {
-        try {
-          xpRequired = Roll.safeEval(replaced);
-        }
-        catch (error) {
-          xpRequired = NaN;
-        }
+    if (!data.attributes.level.value) data.attributes.level.value = 1;
+    data.attributes.xp.max = this._xpRequired();
+  }
+
+  /**
+   * The XP needed for the next level, from the XP formula setting. Plain
+   * arithmetic (such as the default formula) is computed directly, which is
+   * much cheaper than building and evaluating a Roll.
+   * @returns {number}
+   */
+  _xpRequired() {
+    const formula = game.settings.get('dungeonworld', 'xpFormula');
+    const rollData = this.getRollData();
+    const replaced = Roll.replaceFormulaData(formula, rollData);
+    if (/^[\d\s.+\-*/()]+$/.test(replaced)) {
+      try {
+        const total = Roll.safeEval(replaced);
+        if (Number.isFinite(total)) return total;
+      }
+      catch (error) {
+        // Fall back to a Roll below.
       }
     }
-    if (isNaN(xpRequired)) {
-      // Evaluate the max XP roll.
-      let xpRequiredRoll = new Roll(xpRequiredFormula, rollData);
-      xpRequiredRoll.evaluateSync();
-      xpRequired = xpRequiredRoll?.total ?? Number(data.attributes.level.value) + 7;
+    try {
+      const roll = new Roll(formula, rollData);
+      roll.evaluateSync();
+      if (Number.isFinite(roll.total)) return roll.total;
     }
-    data.attributes.xp.max = xpRequired;
-
-    // Handle roll mode flag.
-    if (actorData?.flags?.dungeonworld) {
-      if (!actorData.flags.dungeonworld.rollMode) actorData.flags.dungeonworld.rollMode = 'def';
+    catch (error) {
+      console.warn(`Dungeon World | Invalid XP formula "${formula}"`, error);
     }
+    return Number(this.system.attributes.level.value) + 7;
   }
 
   /**
@@ -177,36 +146,32 @@ export class ActorDw extends Actor {
    *
    * @param {Object} data The character's system data.
    * @param {Collection} items
+   * @param {{item: Item, tags: string[]}[]} equipment The equipment, with its
+   *   tags in lower case.
    */
-  _prepareGear(data, items) {
+  _prepareGear(data, items, equipment) {
     const ac = data.attributes.ac;
     let best = null;
     let bonus = 0;
     let clumsy = 0;
     const sources = [];
     // Moves like Armored ignore clumsy on worn armor, or on everything.
-    const ignore = new Set((items ?? []).filter(i => i.type == 'move').map(i => i.system?.ignoreClumsy).filter(Boolean));
+    const ignore = new Set(items.filter(i => i.type == 'move').map(i => i.system?.ignoreClumsy).filter(Boolean));
 
-    for (const item of items ?? []) {
-      if (item.type != 'equipment' || !item.system?.equipped) continue;
-      let tags = [];
-      try {
-        tags = item.system.tags ? JSON.parse(item.system.tags) : [];
-      } catch (e) {
-        continue;
-      }
-      if (!Array.isArray(tags)) continue;
+    for (const { item, tags } of equipment) {
+      if (!item.system?.equipped) continue;
       let isClumsy = false;
-      for (const tag of tags) {
-        const text = String(tag?.value ?? tag ?? '').toLowerCase().trim();
+      for (const text of tags) {
         if (text == 'clumsy') isClumsy = true;
         const match = text.match(/^(\+)?\s*(\d+)\s*armou?r$|^armou?r\s*(\+)?\s*(\d+)$/);
         if (!match) continue;
         const adds = !!(match[1] ?? match[3]);
         const value = Number(match[2] ?? match[4]) || 0;
-        if (adds) bonus += value;
+        if (adds) {
+          bonus += value;
+          sources.push(`${item.name} +${value}`);
+        }
         else if (best === null || value > best.value) best = { value, name: item.name };
-        if (adds) sources.push(`${item.name} +${value}`);
       }
       const ignored = ignore.has('all') || (ignore.has('armor') && item.system.itemType == 'armor');
       if (isClumsy && !ignored) clumsy++;
@@ -215,7 +180,7 @@ export class ActorDw extends Actor {
     const misc = Number(ac.misc) || 0;
     if (best || bonus) {
       if (best) sources.unshift(`${best.name} ${best.value}`);
-      if (misc) sources.push(`${game.i18n.localize('DW.Gear.ArmorMisc')} ${misc < 0 ? misc : '+' + misc}`);
+      if (misc) sources.push(`${game.i18n.localize('DW.Gear.ArmorMisc')} ${DwUtility.signed(misc)}`);
       ac.fromGear = true;
       ac.value = Math.max(0, (best?.value ?? 0) + bonus + misc);
       ac.sources = sources.join(', ');
@@ -227,161 +192,36 @@ export class ActorDw extends Actor {
     weight.tier = weight.value <= load ? 'ok' : (weight.value <= load + 2 ? 'heavy' : 'over');
   }
 
-  /** @override */
+  /**
+   * Roll data with shortcuts: each attribute and ability at the top level
+   * (@str, @hp), with .val for .value, and @attr and @abil for the groups.
+   * Built from copies, so the actor's own data isn't changed.
+   * @override
+   */
   getRollData() {
-    const rollData = super.getRollData();
+    const rollData = { ...super.getRollData() };
 
-    for (let prop of ['attributes', 'abilities']) {
-      if (!rollData?.[prop]) continue;
-      for (let [k, v] of Object.entries(rollData[prop])) {
-        v.val = v.value;
-        rollData[k] = v;
-      }
+    for (const prop of ['attributes', 'abilities']) {
+      if (!rollData[prop]) continue;
+      rollData[prop] = Object.fromEntries(Object.entries(rollData[prop]).map(([k, v]) => [
+        k,
+        v && typeof v == 'object' ? { ...v, val: v.value } : v,
+      ]));
+      Object.assign(rollData, rollData[prop]);
     }
 
-    if (rollData?.attributes) rollData.attr = rollData.attributes;
-    if (rollData?.abilities) rollData.abil = rollData.abilities;
+    if (rollData.attributes) rollData.attr = rollData.attributes;
+    if (rollData.abilities) rollData.abil = rollData.abilities;
 
     return rollData;
   }
 
-  /**
-   * Listen for click events on rollables.
-   * @param {MouseEvent} event
-   */
-  async _onRoll(event, actor = null) {
-    actor = !actor ? this.actor : actor;
-
-    // Initialize variables.
-    event.preventDefault();
-
-    if (!actor.system) {
-      return;
-    }
-
-    const a = event.currentTarget;
-    const data = a.dataset;
-    const actorData = actor.system;
-    const itemId = $(a).parents('.item').attr('data-item-id');
-    const item = actor.items.get(itemId);
-    let formula = null;
-    let titleText = null;
-    let flavorText = null;
-    let templateData = {};
-
-    // Handle rolls coming directly from the ability score.
-    if ($(a).hasClass('ability-rollable') && data.mod) {
-      formula = `2d6+${data.mod}`;
-      flavorText = data.label;
-      if (data.debility) {
-        flavorText += ` (${data.debility})`;
-      }
-
-      templateData = {
-        title: flavorText
-      };
-
-      this.rollMove(formula, actor, data, templateData);
-    }
-    else if ($(a).hasClass('damage-rollable') && data.roll) {
-      formula = data.roll;
-      titleText = data.label;
-      flavorText = data.flavor;
-      templateData = {
-        title: titleText,
-        flavor: flavorText
-      };
-
-      this.rollMove(formula, actor, data, templateData, null, true);
-    }
-    else if (itemId != undefined) {
-      item.roll();
-    }
-  }
-
-  /**
-   * Roll a move and use the chat card template.
-   * @param {Object} templateData
-   */
-  async rollMove(roll, actor, dataset, templateData, form = null, applyDamage = false) {
-    let actorData = actor.system;
-    // Render the roll.
-    let template = 'systems/dungeonworld/templates/chat/chat-move.html';
-    // GM rolls.
-    let chatData = {
-      user: game.user.id,
-      speaker: ChatMessage.getSpeaker({ actor: actor })
-    };
-    DwUtility.applyMessageMode(chatData);
-    // Handle dice rolls.
-    if (roll) {
-      // Roll can be either a formula like `2d6+3` or a raw stat like `str`.
-      let formula = '';
-      // Handle bond (user input).
-      if (roll == 'BOND') {
-        formula = form.bond.value ? `2d6+${form.bond.value}` : '2d6';
-        if (dataset.mod && dataset.mod != 0) {
-          formula += `+${dataset.mod}`;
-        }
-      }
-      // Handle ability scores (no input).
-      else if (roll.match(/(\d*)d\d+/g)) {
-        formula = roll;
-      }
-      // Handle moves.
-      else {
-        formula = `2d6+${actorData.abilities[roll].mod}`;
-        if (dataset.mod && dataset.mod != 0) {
-          formula += `+${dataset.mod}`;
-        }
-      }
-      if (formula != null) {
-        // Do the roll.
-        let roll = new Roll(`${formula}`, actor.getRollData());
-        await roll.roll();
-        // Add success notification.
-        if (formula.includes('2d6')) {
-          if (roll.total < 7) {
-            templateData.result = 'failure';
-          }
-          else if (roll.total > 6 && roll.total < 10) {
-            templateData.result = 'partial';
-          }
-          else {
-            templateData.result = 'success';
-          }
-        }
-        // Render it.
-        roll.render().then(r => {
-          templateData.rollDw = r;
-          renderTemplate(template, templateData).then(content => {
-            chatData.content = content;
-            if (game.dice3d) {
-              game.dice3d.showForRoll(roll, game.user, true, chatData.whisper, chatData.blind).then(displayed => ChatMessage.create(chatData));
-            }
-            else {
-              chatData.sound = CONFIG.sounds.dice;
-              ChatMessage.create(chatData);
-            }
-          });
-        });
-      }
-    }
-    else {
-      renderTemplate(template, templateData).then(content => {
-        chatData.content = content;
-        ChatMessage.create(chatData);
-      });
-    }
-  }
-
   async applyDamage(amount, options = {op: 'full', ignoreArmor: false, piercing: 0, dmgBonus: 0}) {
     let newAmount = Number(amount);
-    let dmgBonus = options?.dmgBonus;
 
     // Apply dmgbonus.
     if (options.op !== 'heal') {
-        newAmount += parseInt(dmgBonus);
+      newAmount += Number(options.dmgBonus) || 0;
     }
 
     switch (options.op) {
@@ -400,7 +240,7 @@ export class ActorDw extends Actor {
     let hp = this.system?.attributes?.hp?.value ?? 0;
     let hpMax = this.system?.attributes?.hp?.max ?? 1;
     let armor = this.system?.attributes?.ac?.value ?? 0;
-    let piercing = options?.ignoreArmor ? armor : options?.piercing;
+    let piercing = options?.ignoreArmor ? armor : (Number(options?.piercing) || 0);
     let reduced = armor;
 
     if (!hp && !amount) return;
@@ -408,7 +248,6 @@ export class ActorDw extends Actor {
     // Reduce armor if needed.
     if (options.piercing && options.piercing > 0) reduced = Math.max(armor - options.piercing, 0);
     if (options.ignoreArmor) reduced = 0;
-    if (isNaN(piercing)) piercing = 0;
 
     // Reduce damage by armor.
     if (options.op !== 'heal' && !options.ignoreArmor) {
@@ -446,7 +285,7 @@ export class ActorDw extends Actor {
    */
   showScrollingText(delta, max, suffix="", overrideOptions={}) {
     // Show scrolling text of hp update
-    const tokens = this.isToken ? [this.token?.object] : this.getActiveTokens(true);
+    const tokens = (this.isToken ? [this.token?.object] : this.getActiveTokens(true)).filter(Boolean);
     if (tokens.length > 0) {
       if (!delta) delta = 0;
 
@@ -522,12 +361,13 @@ export class ActorDw extends Actor {
 
   /** @override */
   async _preUpdate(data, options, userId) {
-    await super._preUpdate(data, options, userId);
-    options.dw = options?.dw ?? {};
-
-    if (!options.dw?.preUpdate) {
-      options.dw.preUpdate = {system: foundry.utils.duplicate(this.system)};
-    }
+    const allowed = await super._preUpdate(data, options, userId);
+    if (allowed === false) return false;
+    // Note the HP before the change for the scrolling text. The update's
+    // options go to every client, so only what's needed is kept.
+    options.dw ??= {};
+    const hp = this.system.attributes?.hp;
+    options.dw.preUpdate ??= { hp: { value: hp?.value ?? null, max: hp?.max ?? null } };
   }
 
   /** @override */
@@ -543,9 +383,9 @@ export class ActorDw extends Actor {
     // Prepare the scrolling text update.
     if (updateData.system?.attributes?.hp?.value !== undefined) {
       let hp = {
-        original: context.system.attributes.hp.value ?? null,
+        original: context.hp?.value ?? null,
         current: updateData.system.attributes.hp.value ?? null,
-        max: context.system.attributes.hp?.max ?? updateData.system.attributes.hp.max
+        max: context.hp?.max ?? updateData.system.attributes.hp.max
       }
 
       if (!isNaN(hp.original) && !isNaN(hp.current)) {

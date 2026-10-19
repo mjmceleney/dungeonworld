@@ -23,6 +23,10 @@ system:
   rollMod: 0
   requiresLevel: 2
   requiresMove: ''
+  healBonus:
+    amount: '@level.value'
+    target: other
+    moves: ''
   moveGroup: ''
 ownership:
   default: 0

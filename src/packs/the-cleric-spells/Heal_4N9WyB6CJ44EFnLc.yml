@@ -9,6 +9,15 @@ data:
     maximum HP.</p>
   spellLevel: 7
   rollFormula: ''
+  actions:
+    - type: heal
+      target: 'ally'
+      amount: '@hp.max'
+      stat: ''
+      condition: ''
+      name: ''
+      when: hit
+      transfer: false
   class: The Cleric
   prepared: false
 flags: {}

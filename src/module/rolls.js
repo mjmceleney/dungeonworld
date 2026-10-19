@@ -1,20 +1,24 @@
 import { DwUtility } from "./utility.js";
-import { DwResources } from "./resources.js";
+import { DwMoveActions } from "./move-actions.js";
 import { DwSpells } from "./spells.js";
+import { DwRecruit } from "./recruit.js";
+import { DwSocket } from "./socket.js";
 const { renderTemplate } = foundry.applications.handlebars;
+const { DialogV2 } = foundry.applications.api;
 
+/** The dice of a move. */
+const DICE = '2d6';
+
+/** The chat card for moves and rolls. */
+const TEMPLATE = 'systems/dungeonworld/templates/chat/chat-move.html';
+
+/**
+ * Rolling moves, stats and formulas to chat.
+ *
+ * Each roll passes its actor and item along explicitly, since several rolls
+ * can be under way at once (each waiting on a dialog or the dice).
+ */
 export class DwRolls {
-
-  constructor() {
-    this.actor = null;
-    this.actorData = null;
-    this.item = null;
-  }
-
-  static getRollFormula(defaultFormula = '2d6') {
-    // TODO: Incorporate adv/dis/ongoing/forward.
-    return defaultFormula;
-  }
 
   /**
    * Check whether a formula can be evaluated, without rolling any dice or
@@ -31,13 +35,31 @@ export class DwRolls {
     }
   }
 
+  /** A formula with a modifier added: "2d6" and -1 gives "2d6-1". */
+  static addTerm(formula, modifier) {
+    const n = Number(modifier) || 0;
+    if (!n) return formula;
+    return `${formula}${n < 0 ? n : '+' + n}`;
+  }
+
+  /** Forward and ongoing, as terms to add to a roll. */
   static getModifiers(actor) {
-    let forward = Number(actor.system.attributes?.forward?.value) ?? 0;
-    let ongoing = Number(actor.system.attributes?.ongoing?.value) ?? 0;
-    let result = '';
-    if (forward) result += `+${forward}`;
-    if (ongoing) result += `+${ongoing}`;
-    return result;
+    const forward = Number(actor.system.attributes?.forward?.value) || 0;
+    const ongoing = Number(actor.system.attributes?.ongoing?.value) || 0;
+    return DwRolls.addTerm(DwRolls.addTerm('', forward), ongoing);
+  }
+
+  /**
+   * The result ("failure", "partial" or "success") a total falls in, per
+   * CONFIG.DW.rollResults.
+   * @param {number} total
+   * @return {string|null}
+   */
+  static resultFor(total) {
+    for (const [key, { start, end }] of Object.entries(CONFIG.DW.rollResults)) {
+      if ((start == null || total >= start) && (end == null || total <= end)) return key;
+    }
+    return null;
   }
 
   /**
@@ -73,21 +95,19 @@ export class DwRolls {
    * @return {Promise<string|null>} The ability key, or null if dismissed.
    */
   static async askStat(actor, item) {
-    const DialogV2 = foundry.applications.api.DialogV2;
-    const escape = (value) => Handlebars.escapeExpression(String(value ?? ''));
     const hints = DwRolls.statHints(item);
     const stats = Object.entries(actor.system.abilities ?? {});
 
     const content = document.createElement('div');
-    content.innerHTML = `<p>${game.i18n.format('DW.Dialog.askContent', { name: escape(item.name) })}</p>`
+    content.innerHTML = `<p>${game.i18n.format('DW.Dialog.askContent', { name: DwUtility.escape(item.name) })}</p>`
       + '<div class="dw-ask-stats">'
       + stats.map(([key, ability]) => {
         const mod = Number(ability.mod) || 0;
-        const debility = ability.debility ? `<span class="dw-ask-debility">${escape(ability.debilityLabel)}</span>` : '';
+        const debility = ability.debility ? `<span class="dw-ask-debility">${DwUtility.escape(ability.debilityLabel)}</span>` : '';
         return `<button type="button" class="dw-ask-stat" data-action="${key}">
-          <span class="dw-ask-abbr">${escape(game.i18n.localize(`DW.${key.toUpperCase()}`))}</span>
-          <span class="dw-ask-mod">${mod < 0 ? '−' + Math.abs(mod) : '+' + mod}</span>
-          <span class="dw-ask-hint">${escape(hints[key] ?? '')}${debility}</span>
+          <span class="dw-ask-abbr">${DwUtility.escape(game.i18n.localize(`DW.${key.toUpperCase()}`))}</span>
+          <span class="dw-ask-mod">${DwUtility.signed(mod)}</span>
+          <span class="dw-ask-hint">${DwUtility.escape(hints[key] ?? '')}${debility}</span>
         </button>`;
       }).join('')
       + '</div>';
@@ -101,6 +121,35 @@ export class DwRolls {
       position: { width: 400 },
       content,
       buttons: stats.map(([key]) => ({ action: key, label: `DW.${key.toUpperCase()}`, callback: () => key })),
+      rejectClose: false,
+    });
+  }
+
+  /**
+   * Ask for the modifier of a move that rolls +bond (or another modifier the
+   * player knows).
+   *
+   * @param {Item} item
+   * @return {Promise<number|null>} The modifier, or null if dismissed.
+   */
+  static async askModifier(item) {
+    const classes = ['dungeonworld', 'dw-dialog'];
+    if (DwUtility.nightmode) classes.push('nightmode');
+    const content = await renderTemplate('systems/dungeonworld/templates/chat/roll-dialog.html', {
+      title: game.i18n.format('DW.Dialog.bondContent', { name: DwUtility.escape(item.name) }),
+      bond: null,
+    });
+    return DialogV2.wait({
+      classes,
+      window: { title: game.i18n.localize('DW.Dialog.bondTitle') },
+      content,
+      buttons: [{
+        action: 'roll',
+        label: 'DW.Roll',
+        icon: 'fa-solid fa-dice',
+        default: true,
+        callback: (event, button) => Number(button.form.elements.bond?.value) || 0,
+      }],
       rejectClose: false,
     });
   }
@@ -127,7 +176,6 @@ export class DwRolls {
       result.formula += `-1[${game.i18n.localize('DW.Gear.Load')}]`;
     }
     else if (tier == 'over') {
-      const DialogV2 = foundry.applications.api.DialogV2;
       const choice = await DialogV2.wait({
         window: { title: game.i18n.localize('DW.Gear.OverloadTitle') },
         position: { width: 420 },
@@ -149,170 +197,98 @@ export class DwRolls {
   }
 
   /**
-   * The resource a move's card offers to spend for this result, if any
-   * (Volley: 1 ammo on a 7-9), with how much the character has left.
+   * Roll a move, spell, piece of equipment, stat or formula to chat.
    *
-   * @param {Actor} actor
-   * @param {Item|null} item
-   * @param {string|null} result "success", "partial", "failure", or null
-   *   for a move without a roll.
-   * @return {{name: string, amount: number, left: number}|null}
+   * @param {Object} options
+   * @param {Actor} options.actor
+   * @param {Item|null} [options.data] The item to roll.
+   * @param {string} [options.formula] Without an item: a formula, a stat
+   *   ("str"), or "plain" for 2d6 with nothing added.
+   * @param {Object} [options.templateData] Extra data for the chat card.
+   * @param {Item} [options.spell] Cast a Spell: the spell being cast.
+   * @param {number} [options.modifier] A +bond move's modifier, already
+   *   worked out, so the player isn't asked.
+   * @return {Promise<{roll: Roll|null, result: string|null}|null|undefined|false>}
    */
-  static resourceOffer(actor, item, result) {
-    const resource = item?.system?.resource;
-    if (!resource?.name || !resource.when || !actor) return null;
-    const offered = {
-      always: true,
-      hit: result == 'success' || result == 'partial',
-      partial: result == 'partial',
-      success: result == 'success',
-    }[resource.when];
-    if (!offered) return null;
-    const left = DwResources.find(actor, resource.name).reduce((sum, i) => sum + DwResources.remaining(i), 0);
-    return { name: resource.name, amount: Math.max(1, Number(resource.amount) || 1), left };
-  }
-
   static async rollMove(options = {}) {
-    let dice = this.getRollFormula('2d6');
-
     // TODO: Create a way to resolve this using the formula only, sans actor.
-    // If there's no actor, we need to exit.
-    if (!options.actor) {
-      return false;
-    }
+    const actor = options.actor;
+    if (!actor) return false;
 
     // If there's no formula or item, we need to exit.
-    if (!options.formula && !options.data) {
-      return false;
-    }
+    if (!options.formula && !options.data) return false;
 
-    // Grab the actor data.
-    this.actor = options.actor;
-    this.actorData = this.actor ? this.actor.system : {};
-    let actorType = this.actor.type;
-
-    // Grab the item data, if any.
-    this.item = options?.data;
-
-    // Grab the formula, if any.
-    let formula = options.formula ?? null;
-    let label = options?.data?.label ?? '';
+    const item = options.data ?? null;
+    const context = { actor, item };
 
     // Prepare template data for the roll.
-    let templateData = options.templateData ? foundry.utils.duplicate(options.templateData): {};
-    let data = {};
+    let templateData = options.templateData ? foundry.utils.duplicate(options.templateData) : {};
+    const data = {};
 
-    let dlgOptions = {
-      classes: ['dungeonworld', 'dw-dialog']
-    };
+    // Formula-only rolls.
+    if (!item) return DwRolls.rollMoveExecute(context, options.formula ?? null, data, templateData);
 
-    if (DwUtility.nightmode) dlgOptions.classes.push('nightmode');
-
-    // Handle item rolls (moves).
-    if (this.item) {
-      // Handle moves.
-      if (this.item.type == 'move' || this.item.type == 'npcMove') {
-        formula = dice;
-        // Anything the caller added (Recruit's terms) stays on the card.
-        templateData = {
-          ...templateData,
-          image: this.item.img,
-          title: this.item.name,
-          trigger: null,
-          details: this.item.system.description,
-          moveResults: this.item.system.moveResults,
-          choices: this.item.system.choices
-        };
-        // Cast a Spell for a particular spell: show the spell, so a 7-9 can
-        // lose it.
-        if (options.spell) {
-          templateData.title = `${this.item.name}: ${options.spell.name}`;
-          templateData.details = options.spell.system.description || templateData.details;
-          templateData.castSpell = options.spell.id;
-        }
-
-        if (this.item.type == 'npcMove' || this.item.system?.rollType == 'FORMULA') {
-          data.roll = this.item.system.rollFormula;
-          data.rollType = this.item.system.rollType ? this.item.system.rollType.toLowerCase() : 'npc';
-        }
-        else {
-          data.roll = this.item.system.rollType.toLowerCase();
-          data.rollType = this.item.system.rollType.toLowerCase();
-        }
-        data.mod = this.item.type == 'move' ? this.item.system.rollMod : 0;
-        // If this is an ASK roll, ask which stat to roll first.
-        if (data.roll == 'ask') {
-          const { actor, item } = this;
-          const stat = await DwRolls.askStat(actor, item);
-          if (!stat) return;
-          // Another roll may have started while the dialog was open.
-          this.actor = actor;
-          this.actorData = actor.system;
-          this.item = item;
-          return this.rollMoveExecute(stat, data, templateData);
-        }
-        // If this is a PROMPT roll, render a different bond to let the user
-        // enter their bond value.
-        else if (data.roll == 'bond') {
-          // A modifier already worked out (Recruit's terms) needs no prompt.
-          if (options.modifier !== undefined) {
-            return this.rollMoveExecute('bond', data, templateData, { bond: { value: Number(options.modifier) || 0 } });
-          }
-          let template = 'systems/dungeonworld/templates/chat/roll-dialog.html';
-          let dialogData = {
-            title: game.i18n.format('DW.Dialog.bondContent', {name: this.item.name}),
-            bond: null
-          };
-          const html = await renderTemplate(template, dialogData);
-          return new Promise(resolve => {
-            new Dialog({
-              title: game.i18n.localize('DW.Dialog.bondTitle'),
-              content: html,
-              buttons: {
-                submit: {
-                  label: 'Roll',
-                  callback: html => {
-                    resolve(this.rollMoveExecute('bond', data, templateData, html[0].querySelector("form")));
-                  }
-                }
-              },
-              close: () => resolve(null),
-            }, dlgOptions).render(true);
-          })
-
-        }
-        // Otherwise, grab the data from the move and pass it along.
-        else {
-          return this.rollMoveExecute(data.roll, data, templateData);
-        }
+    // Moves.
+    if (item.type == 'move' || item.type == 'npcMove') {
+      // Anything the caller added (Recruit's terms) stays on the card.
+      templateData = {
+        ...templateData,
+        image: item.img,
+        title: item.name,
+        trigger: null,
+        details: item.system.description,
+        moveResults: item.system.moveResults,
+        choices: item.system.choices
+      };
+      // Cast a Spell for a particular spell: show the spell, so a 7-9 can
+      // lose it.
+      if (options.spell) {
+        templateData.title = `${item.name}: ${options.spell.name}`;
+        templateData.details = options.spell.system.description || templateData.details;
+        templateData.castSpell = options.spell.id;
       }
-      // Handle spells.
-      else if (this.item.type == 'spell') {
-        templateData = {
-          image: this.item.img,
-          title: this.item.name,
-          trigger: null,
-          details: this.item.system.description
-        };
-        data.roll = this.item.system.rollFormula;
-        return this.rollMoveExecute(data.roll, data, templateData);
+      // Effects for an ally or anyone (a heal) are for whoever the player picks
+      // now, before the roll.
+      const target = await DwMoveActions.chooseTarget(actor, [item, options.spell].filter(Boolean));
+      if (target === null) return null;
+      if (target) templateData.actionTarget = target.uuid;
+
+      if (item.type == 'npcMove' || item.system?.rollType == 'FORMULA') {
+        data.roll = item.system.rollFormula;
+        data.rollType = item.system.rollType ? item.system.rollType.toLowerCase() : 'npc';
       }
-      // Handle equipment.
-      else if (this.item.type == 'equipment') {
-        templateData = {
-          image: this.item.img,
-          title: this.item.name,
-          trigger: null,
-          details: this.item.system.description,
-          tags: this.item.system.tags
-        }
-        data.roll = this.item.system.rollFormula;
-        return this.rollMoveExecute(data.roll, data, templateData);
+      else {
+        data.roll = (item.system.rollType ?? '').toLowerCase();
+        data.rollType = data.roll;
       }
+      data.mod = item.type == 'move' ? item.system.rollMod : 0;
+
+      // An ASK roll asks which stat to roll first.
+      if (data.roll == 'ask') {
+        const stat = await DwRolls.askStat(actor, item);
+        if (!stat) return;
+        return DwRolls.rollMoveExecute(context, stat, data, templateData);
+      }
+      // A +bond roll asks for the modifier, unless it's already been worked
+      // out (Recruit's terms).
+      if (data.roll == 'bond') {
+        const bond = options.modifier !== undefined ? Number(options.modifier) || 0 : await DwRolls.askModifier(item);
+        if (bond === null) return null;
+        return DwRolls.rollMoveExecute(context, 'bond', data, templateData, bond);
+      }
+      return DwRolls.rollMoveExecute(context, data.roll, data, templateData);
     }
-    // Handle formula-only rolls.
-    else {
-      return this.rollMoveExecute(formula, data, templateData);
+
+    // Spells and equipment roll their own formula.
+    if (item.type == 'spell' || item.type == 'equipment') {
+      templateData = {
+        image: item.img,
+        title: item.name,
+        trigger: null,
+        details: item.system.description,
+      };
+      data.roll = item.system.rollFormula;
+      return DwRolls.rollMoveExecute(context, data.roll, data, templateData);
     }
   }
 
@@ -321,7 +297,6 @@ export class DwRolls {
    * fail rather than drop weight. It isn't a roll, so no XP is offered.
    */
   static async #postAutomaticMiss(actor, templateData, chatData) {
-    const template = 'systems/dungeonworld/templates/chat/chat-move.html';
     const failure = CONFIG.DW.rollResults.failure;
     Object.assign(templateData, {
       actor,
@@ -332,74 +307,78 @@ export class DwRolls {
       xp: false,
       gmMoves: true,
     });
-    chatData.content = await renderTemplate(template, templateData);
+    chatData.content = await renderTemplate(TEMPLATE, templateData);
     return ChatMessage.create(chatData);
   }
 
-  static async rollMoveExecute(roll, dataset, templateData, form = null) {
-    // Render the roll.
-    let template = 'systems/dungeonworld/templates/chat/chat-move.html';
-    let dice = DwUtility.getRollFormula('2d6');
+  /** Render a roll's card and post it, after the 3D dice if they're used. */
+  static async #postRoll(roll, templateData, chatData) {
+    templateData.rollDw = await roll.render();
+    templateData.roll = roll;
+    chatData.content = await renderTemplate(TEMPLATE, templateData);
+    if (game.dice3d) await game.dice3d.showForRoll(roll, game.user, true, chatData.whisper, chatData.blind);
+    else chatData.sound = CONFIG.sounds.dice;
+    return ChatMessage.create(chatData);
+  }
+
+  /** The tags shown on a roll's card, with the character's damage tags. */
+  static #cardTags(actor, item, templateData) {
+    const tags = DwUtility.parseTags(item?.system?.tags ?? actor.system?.tags);
+    const has = (text) => tags.some(tag => tag.toLowerCase().includes(text));
+    // Add piercing and armor tags.
+    if (item?.system?.itemType == 'weapon' || templateData?.rollType == 'damage') {
+      const damage = actor.system.attributes?.damage ?? {};
+      const piercing = damage.piercing ?? 0;
+      const dmgBonus = damage.dmgBonus ?? 0;
+      if (piercing > 0 && !has('piercing')) tags.push(`${piercing} piercing`);
+      if (damage.ignoreArmor && !has('ignores armor')) tags.push('ignores armor');
+      if (dmgBonus > 0 && !has('damage')) tags.push(`+${dmgBonus} damage`);
+      if (actor.type == 'npc' && templateData?.flavor) tags.push(templateData.flavor);
+    }
+    return JSON.stringify(tags.map(value => ({ value })));
+  }
+
+  /**
+   * Roll and post to chat.
+   *
+   * @param {{actor: Actor, item: Item|null}} context Who rolls, and what.
+   * @param {string|null} roll A formula, a stat ("str"), "bond" or "plain".
+   * @param {Object} dataset The move's roll settings (mod, rollType).
+   * @param {Object} templateData Data for the chat card.
+   * @param {number} [bond] A +bond roll's modifier.
+   * @return {Promise<{roll: Roll|null, result: string|null}|null|undefined>}
+   */
+  static async rollMoveExecute({ actor, item }, roll, dataset, templateData, bond = 0) {
     let forwardUsed = false;
     let rollModeUsed = false;
     // What was rolled and its result, for callers such as party moves.
     let outcome = null;
     let resultRangeNeeded = false;
-    let rollData = this.actor.getRollData();
+    const rollData = actor.getRollData();
+    const abilities = actor.system.abilities ?? {};
     // GM rolls.
-    let chatData = {
+    const chatData = {
       user: game.user.id,
-      speaker: ChatMessage.getSpeaker({ actor: this.actor })
+      speaker: ChatMessage.getSpeaker({ actor })
     };
     DwUtility.applyMessageMode(chatData);
-    // Define tags.
-    let baseTags = this.item?.system?.tags ?? this.actor?.system?.tags;
-    let tags = [];
-    let hasPiercingTag = false;
-    let hasDmgBonusTag = false;
-    let hasIgnoreArmorTag = false;
-    if (baseTags && baseTags.length > 0) {
-      tags = JSON.parse(baseTags);
-      if (baseTags.includes('piercing')) {
-        hasPiercingTag = true;
-      }
-      if (baseTags.includes('damage')) {
-        hasDmgBonusTag = true;
-      }
-      if (baseTags.includes('ignores armor')) {
-        hasIgnoreArmorTag = true;
-      }
-    }
-    // Add piercing and armor tags.
-    if (this.item?.system?.itemType == 'weapon' || templateData?.rollType == 'damage') {
-      let piercing = this.actor.system.attributes.damage?.piercing ?? 0;
-      let dmgBonus = this.actor.system.attributes.damage?.dmgBonus ?? 0;
-      let ignoreArmor = this.actor.system.attributes.damage?.ignoreArmor ?? false;
-      if (piercing > 0 && !hasPiercingTag) tags.push({value: `${piercing} piercing`});
-      if (ignoreArmor && !hasIgnoreArmorTag) tags.push({value: `ignores armor`});
-      if (dmgBonus > 0 && !hasDmgBonusTag) tags.push({value: `+${dmgBonus} damage`});
-      if (this.actor.type == 'npc' && templateData?.flavor) tags.push({value: templateData.flavor});
-    }
-    templateData.tags = JSON.stringify(tags);
+    templateData.tags = DwRolls.#cardTags(actor, item, templateData);
+
     // Handle dice rolls.
     if (!DwUtility.isEmpty(roll)) {
       // Test if the roll is a formula.
-      let validRoll = DwRolls.isValidFormula(roll.trim(), rollData);
+      const validRoll = DwRolls.isValidFormula(roll.trim(), rollData);
       // Roll can be either a formula like `2d6+3` or a raw stat like `str`.
       let formula = validRoll ? roll.trim() : '';
       // Just 2d6, with no stat or modifiers of any kind (Last Breath).
       if (!validRoll && roll.toLowerCase() == 'plain') {
-        formula = dice;
+        formula = DICE;
         resultRangeNeeded = true;
       }
-      // Handle bond (user input).
       else if (!validRoll || dataset?.rollType == 'formula') {
+        // Handle bond (user input).
         if (roll.toLowerCase() == 'bond') {
-          const bond = Number(form.bond?.value) || 0;
-          formula = bond ? `${dice}${bond < 0 ? bond : '+' + bond}` : dice;
-          if (dataset.value && dataset.value != 0) {
-            formula += `+${dataset.value}`;
-          }
+          formula = DwRolls.addTerm(DwRolls.addTerm(DICE, bond), dataset.mod);
         }
         else if (dataset?.rollType == 'formula') {
           formula = roll;
@@ -410,29 +389,26 @@ export class DwRolls {
         }
         // Handle moves.
         else {
-          // Determine if the stat toggle is in effect.
-          let toggleModifier = 0;
-          formula = `${dice}+${this.actorData.abilities[roll].mod}${toggleModifier ? '+' + toggleModifier : ''}`;
-          if (dataset.mod && dataset.mod != 0) {
-            formula += `+${dataset.mod}`;
+          if (!abilities[roll]) {
+            ui.notifications.warn(game.i18n.format('DW.Notifications.invalidRoll', { roll }));
+            return null;
           }
+          formula = DwRolls.addTerm(DwRolls.addTerm(DICE, abilities[roll].mod), dataset.mod);
         }
 
         // Handle formula overrides.
-        let formulaOverride = this.actor.system.attributes?.rollFormula?.value;
-        if (formulaOverride && formula.includes('2d6')) {
-          let overrideIsValid = DwRolls.isValidFormula(formulaOverride.trim(), rollData);
-
-          if (overrideIsValid) formula = formula.replace('2d6', formulaOverride);
+        const formulaOverride = actor.system.attributes?.rollFormula?.value;
+        if (formulaOverride && formula.includes(DICE)) {
+          if (DwRolls.isValidFormula(formulaOverride.trim(), rollData)) formula = formula.replace(DICE, formulaOverride);
         }
 
-        if (formula.includes('2d6') || formulaOverride && formula.includes(formulaOverride)) {
+        if (formula.includes(DICE) || formulaOverride && formula.includes(formulaOverride)) {
           resultRangeNeeded = true;
         }
 
         // Handle adv/dis.
-        let rollMode = this.actor.flags?.dungeonworld?.rollMode ?? 'def';
-        const debilityIsActive = this.actorData.abilities[roll] !== undefined ? this.actorData.abilities[roll].debility : false;
+        let rollMode = actor.flags?.dungeonworld?.rollMode ?? 'def';
+        const debilityIsActive = abilities[roll]?.debility ?? false;
         if (game.settings.get("dungeonworld", "disDebility") && debilityIsActive) {
           // If the roll had advantage, the debility disadvantage cancels it out,
           // otherwise the debility gives disadvantage
@@ -443,49 +419,29 @@ export class DwRolls {
             rollMode = "dis";
           }
         }
-        switch (rollMode) {
-          case 'adv':
-            rollModeUsed = true;
-            if (formula.includes('2d6')) {
-              formula = formula.replace('2d6', '3d6kh2');
-            }
-            else if (formula.includes('d6')) {
-              // Match the first d6 as (n)d6.
-              formula = formula.replace(/(\d*)(d6)/, (match, p1, p2, offset, string) => {
-                let keep = p1 ? Number(p1) : 1;
-                let count = keep + 1;
-                return `${count}d6kh${keep}`; // Ex: 2d6 -> 3d6kh2
-              });
-            }
-            break;
-
-          case 'dis':
-            rollModeUsed = true;
-            if (formula.includes('2d6')) {
-              formula = formula.replace('2d6', '3d6kl2');
-            }
-            else if (formula.includes('d6')) {
-              formula = formula.replace(/(\d*)(d6)/, (match, p1, p2, offset, string) => {
-                let keep = p1 ? Number(p1) : 1;
-                let count = keep + 1;
-                return `${count}d6kl${keep}`;
-              });
-            }
-            break;
+        if (rollMode == 'adv' || rollMode == 'dis') {
+          rollModeUsed = true;
+          const keep = rollMode == 'adv' ? 'kh' : 'kl';
+          // One more die, keeping the highest (or lowest): 2d6 -> 3d6kh2.
+          if (formula.includes(DICE)) {
+            formula = formula.replace(DICE, `3d6${keep}2`);
+          }
+          else if (formula.includes('d6')) {
+            formula = formula.replace(/(\d*)(d6)/, (match, count) => {
+              const dice = count ? Number(count) : 1;
+              return `${dice + 1}d6${keep}${dice}`;
+            });
+          }
         }
 
         // Append the modifiers.
-        let modifiers = DwRolls.getModifiers(this.actor);
-        formula = `${formula}${modifiers}`;
-        forwardUsed = Number(this.actor.system.attributes?.forward?.value) != 0;
+        formula = `${formula}${DwRolls.getModifiers(actor)}`;
+        forwardUsed = (Number(actor.system.attributes?.forward?.value) || 0) != 0;
 
         // Gear penalties apply to moves: clumsy items and a heavy load.
         if (resultRangeNeeded) {
-          const actor = this.actor;
           const penalties = await DwRolls.gearPenalties(actor);
           if (!penalties) return;
-          this.actor = actor;
-          this.actorData = actor.system;
           if (penalties.fail) {
             await DwRolls.#postAutomaticMiss(actor, templateData, chatData);
             return { roll: null, result: 'failure' };
@@ -493,124 +449,77 @@ export class DwRolls {
           formula += penalties.formula;
           // Casting after a 7-9 that disturbed the spell: -1 per time, until
           // the next Prepare Spells or Commune.
-          const castPenalty = DwSpells.isCastMove(this.item) ? DwSpells.castPenalty(actor) : 0;
+          const castPenalty = DwSpells.isCastMove(item) ? DwSpells.castPenalty(actor) : 0;
           if (castPenalty) formula += `-${castPenalty}[${game.i18n.localize('DW.Spellcasting.PenaltyTerm')}]`;
         }
       }
-      if (formula != null) {
-        // Do the roll.
-        let roll = new Roll(`${formula}`, rollData);
-        await (roll.evaluate());
-        let rollType = templateData.rollType ?? 'none';
-        // Add success notification.
-        if (resultRangeNeeded || rollType == 'move') {
-          // Retrieve the result ranges.
-          let resultRanges = CONFIG.DW.rollResults;
-          let resultType = null;
-          // Iterate through each result range until we find a match.
-          for (let [resultKey, resultRange] of Object.entries(resultRanges)) {
-            // Grab the start and end.
-            let start = resultRange.start;
-            let end = resultRange.end;
-            // If both are present, roll must be between them.
-            if (start && end) {
-              if (roll.total >= start && roll.total <= end) {
-                resultType = resultKey;
-                break;
-              }
-            }
-            // If start only, treat it as greater than or equal to.
-            else if (start) {
-              if (roll.total >= start) {
-                resultType = resultKey;
-                break;
-              }
-            }
-            // If end only, treat it as less than or equal to.
-            else if (end) {
-              if (roll.total <= end) {
-                resultType = resultKey;
-                break;
-              }
-            }
-          }
 
-          // Handle XP.
-          const token = canvas.tokens.controlled.find(t => t.actorId == this.actor.id);
-          // @todo determine if this should be the canvas ID or the actor ID.
-          templateData.tokenId = token ? `${canvas.scene.id}.${token.id}` : null;
-          templateData.xp = resultType == 'failure' ? true : false;
-          // On a 6- the GM makes a move; the GM gets a reminder of them.
-          templateData.gmMoves = resultType == 'failure';
-          // Whoever answers the Recruit call (even on a miss) can be hired.
-          templateData.recruit = this.item?.type == 'move' && this.item.name.trim().toLowerCase() == 'recruit';
-          // On a 7-9 or a miss, turning them away costs -1 forward to Recruit.
-          templateData.recruitTurnAway = templateData.recruit && resultType != 'success';
-          templateData.resource = DwRolls.resourceOffer(this.actor, this.item, resultType);
-          templateData.cast = DwSpells.castOffer(this.actor, this.item, resultType, this.actor.items.get(templateData.castSpell ?? ''));
+      // Do the roll.
+      const evaluated = await new Roll(formula, rollData).evaluate();
+      const rollType = templateData.rollType ?? 'none';
+      // Add success notification.
+      if (resultRangeNeeded || rollType == 'move') {
+        const resultType = DwRolls.resultFor(evaluated.total);
 
-          // Update the templateData.
-          templateData.resultLabel = resultRanges[resultType]?.label ?? resultType;
-          templateData.result = resultType;
-          templateData.resultDetails = null;
-          if (templateData?.moveResults && templateData.moveResults[resultType]?.value) {
-            templateData.resultDetails = templateData.moveResults[resultType].value;
-          }
-        }
-        outcome = { roll, result: templateData.result ?? null };
-        // Render it.
-        templateData.actor = this.actor;
-        roll.render().then(r => {
-          templateData.rollDw = r;
-          templateData.roll = roll;
-          renderTemplate(template, templateData).then(content => {
-            chatData.content = content;
-            if (game.dice3d) {
-              game.dice3d.showForRoll(roll, game.user, true, chatData.whisper, chatData.blind).then(displayed => ChatMessage.create(chatData));
-            }
-            else {
-              chatData.sound = CONFIG.sounds.dice;
-              ChatMessage.create(chatData);
-            }
-          });
-        });
+        // Handle XP.
+        const token = canvas.tokens.controlled.find(t => t.actor?.id == actor.id);
+        // @todo determine if this should be the canvas ID or the actor ID.
+        templateData.tokenId = token ? `${canvas.scene.id}.${token.id}` : null;
+        templateData.xp = resultType == 'failure';
+        // On a 6- the GM makes a move; the GM gets a reminder of them.
+        templateData.gmMoves = resultType == 'failure';
+        // Whoever answers the Recruit call (even on a miss) can be hired.
+        templateData.recruit = DwRecruit.isRecruit(item);
+        // On a 7-9 or a miss, turning them away costs -1 forward to Recruit.
+        templateData.recruitTurnAway = templateData.recruit && resultType != 'success';
+        // The move's effects, and the spell's when one is cast.
+        const sources = [item, actor.items.get(templateData.castSpell ?? '')].filter(Boolean);
+        templateData.actions = DwMoveActions.offers(actor, sources, resultType, templateData.actionTarget);
+        templateData.actionsChoose = DwMoveActions.choose(sources, templateData.actions);
+        templateData.cast = DwSpells.castOffer(actor, item, resultType, actor.items.get(templateData.castSpell ?? ''));
+
+        // Update the templateData.
+        templateData.resultLabel = CONFIG.DW.rollResults[resultType]?.label ?? resultType;
+        templateData.result = resultType;
+        templateData.resultDetails = templateData.moveResults?.[resultType]?.value || null;
       }
+      outcome = { roll: evaluated, result: templateData.result ?? null };
+      // Post it. Not awaited, so the dice animation doesn't hold up the rest.
+      templateData.actor = actor;
+      DwRolls.#postRoll(evaluated, templateData, chatData)
+        .catch(err => console.error('Dungeon World | Posting a roll failed', err));
     }
     else {
-      templateData.resource = DwRolls.resourceOffer(this.actor, this.item, null);
-      templateData.actor ??= this.actor;
-      renderTemplate(template, templateData).then(content => {
+      templateData.actions = DwMoveActions.offers(actor, [item].filter(Boolean), null, templateData.actionTarget);
+      templateData.actionsChoose = DwMoveActions.choose([item], templateData.actions);
+      templateData.actor ??= actor;
+      renderTemplate(TEMPLATE, templateData).then(content => {
         chatData.content = content;
-        ChatMessage.create(chatData);
-      });
+        return ChatMessage.create(chatData);
+      }).catch(err => console.error('Dungeon World | Posting a move failed', err));
     }
 
     // Update the combat flags.
-    if (game.combat && game.combat.combatants) {
-      let combatant = game.combat.combatants.find(c => c.actor.id == this.actor.id);
-      if (combatant) {
-        let moveCount = combatant.flags.dungeonworld ? combatant.flags.dungeonworld.moveCount : 0;
-        moveCount = moveCount ? Number(moveCount) + 1 : 1;
-        // Emit a socket for the GM client.
-        if (!game.user.isGM) {
-          game.socket.emit('system.dungeonworld', {
-            combatantUpdate: { _id: combatant.id, 'flags.dungeonworld.moveCount': moveCount }
-          });
-        }
-        else {
-          await game.combat.updateEmbeddedDocuments('Combatant', [{ _id: combatant.id, 'flags.dungeonworld.moveCount': moveCount }]);
-        }
+    const combatant = game.combat?.combatants.find(c => c.actor?.id == actor.id);
+    if (combatant) {
+      const moveCount = (Number(combatant.flags.dungeonworld?.moveCount) || 0) + 1;
+      // Ask the GM's client, which can update the combat.
+      if (!game.user.isGM) {
+        DwSocket.askGM('combatantUpdate', { combatant: combatant.id, moveCount });
+      }
+      else {
+        await combatant.update({ 'flags.dungeonworld.moveCount': moveCount });
       }
     }
 
     // Update forward.
     if (forwardUsed || rollModeUsed) {
-      let updates = {};
+      const updates = {};
       if (forwardUsed) updates['system.attributes.forward.value'] = 0;
       if (rollModeUsed && game.settings.get('dungeonworld', 'advForward')) {
         updates['flags.dungeonworld.rollMode'] = 'def';
       }
-      await this.actor.update(updates);
+      if (!foundry.utils.isEmpty(updates)) await actor.update(updates);
     }
     return outcome;
   }

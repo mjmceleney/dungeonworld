@@ -15,6 +15,24 @@ data:
   rollMod: 0
   requiresLevel: 0
   requiresMove: ''
+  actions:
+    - type: 'hold'
+      target: 'self'
+      amount: '1'
+      stat: ''
+      condition: ''
+      name: ''
+      when: 'always'
+      transfer: false
+    - type: 'hold'
+      target: 'self'
+      amount: '3'
+      stat: ''
+      condition: ''
+      name: ''
+      when: 'always'
+      transfer: false
+  actionsChoose: 1
   moveType: special
   moveGroup: ''
   moveResults:

@@ -7,7 +7,6 @@ system:
   name: ''
   description: |-
     <p>When you<strong> heal with Arcane Art</strong>, you heal +2d8 damage.</p>
-    <p>Healing roll: [[/roll 2d8]]</p>
   choices: ''
   moveType: advanced
   rollFormula: ''
@@ -23,6 +22,10 @@ system:
   rollMod: 0
   requiresLevel: 6
   requiresMove: Healing Song
+  healBonus:
+    amount: 2d8
+    target: any
+    moves: Arcane Art
   moveGroup: ''
 ownership:
   default: 0

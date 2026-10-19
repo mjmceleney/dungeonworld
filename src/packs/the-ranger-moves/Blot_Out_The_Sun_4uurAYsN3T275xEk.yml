@@ -25,10 +25,13 @@ system:
   requiresLevel: 2
   requiresMove: ''
   moveGroup: ''
-  resource:
-    name: ammo
-    amount: 1
-    when: always
+  actions:
+    - type: spend
+      target: self
+      amount: '1'
+      stat: ''
+      name: ammo
+      when: always
 ownership:
   default: 0
 effects: []

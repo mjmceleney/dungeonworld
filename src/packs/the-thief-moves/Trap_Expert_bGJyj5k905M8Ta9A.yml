@@ -27,6 +27,23 @@ system:
   rollMod: 0
   requiresLevel: 0
   requiresMove: ''
+  actions:
+    - type: 'hold'
+      target: 'self'
+      amount: '1'
+      stat: ''
+      condition: ''
+      name: ''
+      when: 'partial'
+      transfer: false
+    - type: 'hold'
+      target: 'self'
+      amount: '3'
+      stat: ''
+      condition: ''
+      name: ''
+      when: 'success'
+      transfer: false
   moveGroup: ''
 ownership:
   default: 0

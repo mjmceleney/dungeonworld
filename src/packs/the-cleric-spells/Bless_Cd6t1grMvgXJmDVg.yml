@@ -10,6 +10,15 @@ data:
     ongoing you take -1 to cast a spell.</p>
   spellLevel: 1
   rollFormula: ''
+  actions:
+    - type: 'ongoing'
+      target: 'ally'
+      amount: '1'
+      stat: ''
+      condition: ''
+      name: ''
+      when: 'hit'
+      transfer: false
   class: The Cleric
   prepared: false
 flags: {}

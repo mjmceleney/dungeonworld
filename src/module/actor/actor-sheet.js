@@ -647,8 +647,6 @@ export class DwActorSheet extends foundry.appv1.sheets.ActorSheet {
     let flavorText = null;
     let templateData = {};
 
-    let dice = DwUtility.getRollFormula('2d6');
-
     // Handle rolls coming directly from the ability score.
     if ($(a).hasClass('ability-rollable') && data.roll) {
       formula = data.roll;

@@ -11,6 +11,31 @@ data:
     effects are ended.</p>
   spellLevel: 9
   rollFormula: ''
+  actions:
+    - type: 'heal'
+      target: 'ally'
+      amount: ''
+      stat: ''
+      condition: ''
+      name: ''
+      when: 'hit'
+      transfer: false
+    - type: 'removeCondition'
+      target: 'ally'
+      amount: ''
+      stat: ''
+      condition: 'disease'
+      name: ''
+      when: 'hit'
+      transfer: false
+    - type: 'removeCondition'
+      target: 'ally'
+      amount: ''
+      stat: ''
+      condition: 'poison'
+      name: ''
+      when: 'hit'
+      transfer: false
   class: The Cleric
   prepared: false
 flags: {}

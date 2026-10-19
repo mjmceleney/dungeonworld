@@ -23,10 +23,19 @@ system:
     success:
       value: <p>The spell is countered and has no effect on you.</p>
   class: The Wizard
-  rollType: ''
+  rollType: INT
   rollMod: 0
   requiresLevel: 2
   requiresMove: ''
+  actions:
+    - type: 'loseSpell'
+      target: 'self'
+      amount: ''
+      stat: ''
+      condition: ''
+      name: ''
+      when: 'partial'
+      transfer: false
   moveGroup: ''
 ownership:
   default: 0

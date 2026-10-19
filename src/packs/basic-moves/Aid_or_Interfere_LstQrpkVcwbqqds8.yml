@@ -12,6 +12,24 @@ data:
   rollMod: 0
   requiresLevel: 0
   requiresMove: ''
+  actions:
+    - type: 'forward'
+      target: 'ally'
+      amount: '1'
+      stat: ''
+      condition: ''
+      name: ''
+      when: 'hit'
+      transfer: false
+    - type: 'forward'
+      target: 'ally'
+      amount: '-2'
+      stat: ''
+      condition: ''
+      name: ''
+      when: 'hit'
+      transfer: false
+  actionsChoose: 1
   moveType: basic
   moveGroup: ''
   moveResults:

@@ -36,6 +36,7 @@ system:
   requiresLevel: 0
   requiresMove: ''
   moveGroup: ''
+  automation: prepareSpells
 ownership:
   default: 0
 effects: []

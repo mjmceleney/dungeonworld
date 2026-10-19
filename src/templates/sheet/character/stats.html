@@ -54,7 +54,7 @@
       {{#each effects}}
       <span class="dw-effect" data-tooltip="{{tooltip}}">
         <strong>{{value}}</strong> {{label}} <em>({{scope}})</em>
-        {{#if clear}}{{#if ../editable}}<button type="button" class="dw-effect-clear" data-action="{{clear}}" aria-label="{{localize "DW.Effects.Clear"}}"><i class="fas fa-times" inert></i></button>{{/if}}{{/if}}
+        {{#if clear}}{{#if ../editable}}<button type="button" class="dw-effect-clear" data-action="{{clear}}" {{#if penalty}}data-penalty="{{penalty}}"{{/if}} aria-label="{{localize "DW.Effects.Clear"}}"><i class="fas fa-times" inert></i></button>{{/if}}{{/if}}
       </span>
       {{/each}}
     </div>

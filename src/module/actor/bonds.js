@@ -44,18 +44,19 @@ export class DwBonds {
    * @return {Actor[]}
    */
   static #candidates(actor) {
-    const isPlayers = (a) => game.users.some(u => !u.isGM && a.testUserPermission(u, 'OWNER'));
+    const players = game.users.filter(u => !u.isGM);
     return game.actors
       .filter(a => a.type == 'character' && a.id != actor.id)
-      .sort((a, b) => (isPlayers(b) - isPlayers(a)) || a.name.localeCompare(b.name));
+      .map(a => ({ actor: a, isPlayers: players.some(u => a.testUserPermission(u, 'OWNER')) }))
+      .sort((a, b) => (b.isPlayers - a.isPlayers) || a.actor.name.localeCompare(b.actor.name))
+      .map(c => c.actor);
   }
 
   /** The markup for one blank: a character to choose, or a name to type. */
   static #blankHtml(characterOptions) {
-    const escape = (value) => Handlebars.escapeExpression(String(value ?? ''));
     return `<span class="dw-bond-blank">
-        <select data-blank-actor aria-label="${escape(game.i18n.localize('DW.BondFill.Character'))}">${characterOptions}</select>
-        <input type="text" data-blank-text placeholder="${escape(game.i18n.localize('DW.BondFill.OrName'))}">
+        <select data-blank-actor aria-label="${DwUtility.escape(game.i18n.localize('DW.BondFill.Character'))}">${characterOptions}</select>
+        <input type="text" data-blank-text placeholder="${DwUtility.escape(game.i18n.localize('DW.BondFill.OrName'))}">
       </span>`;
   }
 
@@ -82,36 +83,35 @@ export class DwBonds {
    * @return {Promise<number>} How many bonds were added.
    */
   static async choose(actor, templates = []) {
-    const escape = (value) => Handlebars.escapeExpression(String(value ?? ''));
     const characterOptions = '<option value=""></option>'
-      + DwBonds.#candidates(actor).map(a => `<option value="${a.id}">${escape(a.name)}</option>`).join('');
-    const sourceOptions = `<option value="">${escape(game.i18n.localize('DW.BondChoose.Pick'))}</option>`
-      + templates.map((text, i) => `<option value="${i}">${escape(text)}</option>`).join('')
-      + `<option value="own">${escape(game.i18n.localize('DW.BondChoose.Own'))}</option>`;
+      + DwBonds.#candidates(actor).map(a => `<option value="${a.id}">${DwUtility.escape(a.name)}</option>`).join('');
+    const sourceOptions = `<option value="">${DwUtility.escape(game.i18n.localize('DW.BondChoose.Pick'))}</option>`
+      + templates.map((text, i) => `<option value="${i}">${DwUtility.escape(text)}</option>`).join('')
+      + `<option value="own">${DwUtility.escape(game.i18n.localize('DW.BondChoose.Own'))}</option>`;
 
     const content = document.createElement('div');
     content.innerHTML = `<p>${game.i18n.localize(templates.length ? 'DW.BondChoose.Intro' : 'DW.BondChoose.IntroNoClass')}</p>
       <ol class="dw-bond-rows"></ol>
-      <button type="button" class="dw-bond-add"><i class="fa-solid fa-plus" inert></i> ${escape(game.i18n.localize('DW.BondChoose.Add'))}</button>`;
+      <button type="button" class="dw-bond-add"><i class="fa-solid fa-plus" inert></i> ${DwUtility.escape(game.i18n.localize('DW.BondChoose.Add'))}</button>`;
 
     // A row: which bond, then that bond's text to fill in or write.
     const addRow = (list) => {
       const row = document.createElement('li');
       row.className = 'dw-bond-row';
       row.innerHTML = `<div class="dw-bond-row-head">
-          <select class="dw-bond-source" aria-label="${escape(game.i18n.localize('DW.BondChoose.Which'))}">${sourceOptions}</select>
-          <button type="button" class="dw-bond-remove" data-tooltip="${escape(game.i18n.localize('DW.BondChoose.Remove'))}" aria-label="${escape(game.i18n.localize('DW.BondChoose.Remove'))}"><i class="fa-solid fa-trash" inert></i></button>
+          <select class="dw-bond-source" aria-label="${DwUtility.escape(game.i18n.localize('DW.BondChoose.Which'))}">${sourceOptions}</select>
+          <button type="button" class="dw-bond-remove" data-tooltip="${DwUtility.escape(game.i18n.localize('DW.BondChoose.Remove'))}" aria-label="${DwUtility.escape(game.i18n.localize('DW.BondChoose.Remove'))}"><i class="fa-solid fa-trash" inert></i></button>
         </div>
         <div class="dw-bond-body"></div>`;
       const source = row.querySelector('.dw-bond-source');
       const body = row.querySelector('.dw-bond-body');
       source.addEventListener('change', () => {
         if (source.value == 'own') {
-          body.innerHTML = `<input type="text" class="dw-bond-own-text" placeholder="${escape(game.i18n.localize('DW.BondFill.OwnPlaceholder'))}">`;
+          body.innerHTML = `<input type="text" class="dw-bond-own-text" placeholder="${DwUtility.escape(game.i18n.localize('DW.BondFill.OwnPlaceholder'))}">`;
           body.querySelector('input').focus();
         }
         else if (source.value !== '') {
-          const parts = escape(templates[Number(source.value)]).split(BLANK);
+          const parts = DwUtility.escape(templates[Number(source.value)]).split(BLANK);
           body.innerHTML = `<p class="dw-bond-fill">${parts.map((text, i) => i == 0 ? text : DwBonds.#blankHtml(characterOptions) + text).join('')}</p>`;
         }
         else body.innerHTML = '';
@@ -161,32 +161,27 @@ export class DwBonds {
       ui.notifications.info(game.i18n.localize('DW.BondFill.None'));
       return false;
     }
-    const escape = (value) => Handlebars.escapeExpression(String(value ?? ''));
     const characterOptions = '<option value=""></option>'
-      + DwBonds.#candidates(actor).map(a => `<option value="${a.id}">${escape(a.name)}</option>`).join('');
+      + DwBonds.#candidates(actor).map(a => `<option value="${a.id}">${DwUtility.escape(a.name)}</option>`).join('');
 
     const content = document.createElement('div');
     content.innerHTML = `<p>${game.i18n.localize('DW.BondFill.Intro')}</p>`
       + bonds.map(bond => {
-        const parts = escape(bond.name).split(BLANK);
+        const parts = DwUtility.escape(bond.name).split(BLANK);
         const html = parts.map((text, i) => i == 0 ? text : DwBonds.#blankHtml(characterOptions) + text).join('');
         return `<p class="dw-bond-fill" data-bond-id="${bond.id}">${html}</p>`;
       }).join('');
 
-    const result = await DialogV2.wait({
+    const result = await DwUtility.ask({
       classes: ['dw-bond-fill-dialog'],
       window: { title: game.i18n.localize('DW.BondFill.Title'), icon: 'fa-solid fa-link' },
       position: { width: 560 },
       content,
-      buttons: [
-        { action: 'save', label: 'DW.Sheet.Save', icon: 'fa-solid fa-check', default: true,
-          callback: (event, button) => bonds.map(bond => {
-            const element = button.form.querySelector(`[data-bond-id="${bond.id}"]`);
-            return { _id: bond.id, name: DwBonds.#fillFrom(bond.name, element) };
-          }).filter((update, i) => update.name != bonds[i].name) },
-        { action: 'cancel', label: 'DW.Cancel', icon: 'fa-solid fa-xmark', callback: () => null },
-      ],
-      rejectClose: false,
+      ok: { label: 'DW.Sheet.Save',
+        callback: (event, button) => bonds.map(bond => {
+          const element = button.form.querySelector(`[data-bond-id="${bond.id}"]`);
+          return { _id: bond.id, name: DwBonds.#fillFrom(bond.name, element) };
+        }).filter((update, i) => update.name != bonds[i].name) },
     });
     if (!Array.isArray(result) || !result.length) return false;
     await actor.updateEmbeddedDocuments('Item', result);

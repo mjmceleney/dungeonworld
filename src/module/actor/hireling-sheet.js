@@ -2,9 +2,6 @@ import { DwCharacterSheet } from "./character-sheet.js";
 import { DwRolls } from "../rolls.js";
 import { DwUtility } from "../utility.js";
 
-const { TextEditor } = foundry.applications.ux;
-const { renderTemplate } = foundry.applications.handlebars;
-
 const HIRELING_TEMPLATES = "systems/dungeonworld/templates/sheet/hireling";
 const CHARACTER_TEMPLATES = "systems/dungeonworld/templates/sheet/character";
 
@@ -72,14 +69,8 @@ export class DwHirelingSheet extends DwCharacterSheet {
     const actor = this.actor;
     const system = actor.system;
 
-    const biography = await TextEditor.implementation.enrichHTML(system.details?.biography ?? '', {
-      secrets: actor.isOwner,
-      rollData: actor.getRollData(),
-      relativeTo: actor,
-    });
+    const biography = await this._enrich(system.details?.biography);
 
-    const hp = Number(system.attributes.hp.value ?? 0);
-    const hpMax = Number(system.attributes.hp.max ?? 0);
     const loyalty = Number(system.attributes.loyalty?.value) || 0;
 
     const skills = HIRELING_SKILLS.map(key => {
@@ -102,23 +93,11 @@ export class DwHirelingSheet extends DwCharacterSheet {
     const employer = game.actors.get(system.details?.employer);
 
     return Object.assign(context, {
-      actor,
-      system,
-      editable: this.isEditable,
-      owner: actor.isOwner,
-      tabs: this._prepareSheetTabs(),
-      bannerImg: actor.img && actor.img !== CONST.DEFAULT_TOKEN ? actor.img : null,
-
-      hp,
-      hpMax,
-      hpPct: hpMax > 0 ? Math.max(0, Math.min(100, Math.round(100 * hp / hpMax))) : 0,
-      hpState: hpMax > 0 && hp / hpMax <= 0.25 ? 'low' : (hpMax > 0 && hp / hpMax <= 0.5 ? 'mid' : 'high'),
-
       loyalty,
-      loyaltyText: DwHirelingSheet.#signed(loyalty),
+      loyaltyText: DwUtility.signed(loyalty),
       forward: Number(system.attributes.loyalty?.forward) || 0,
       unpaid: !!system.details?.unpaid,
-      orderModifier: DwHirelingSheet.#signed(DwHirelingSheet.orderModifier(actor)),
+      orderModifier: DwUtility.signed(DwHirelingSheet.orderModifier(actor)),
 
       employers: Object.fromEntries(game.actors.filter(a => a.type == 'character').map(a => [a.id, a.name])),
       employerName: employer?.name ?? '',
@@ -188,7 +167,7 @@ export class DwHirelingSheet extends DwCharacterSheet {
     await DwRolls.rollMove({
       actor,
       data: null,
-      formula: `2d6${modifier < 0 ? modifier : '+' + modifier}`,
+      formula: DwRolls.addTerm('2d6', modifier),
       templateData: {
         title: game.i18n.localize('DW.Hireling.Order'),
         details: `<p>${game.i18n.localize('DW.Hireling.OrderText')}</p>`,
@@ -229,17 +208,11 @@ export class DwHirelingSheet extends DwCharacterSheet {
     const rank = Number(this.actor.system.skills?.[key]) || 0;
     const move = DwHirelingSheet.skillMoves(key, rank).find(m => m.index === index);
     if (!move) return;
-    const chatData = {
-      speaker: ChatMessage.getSpeaker({ actor: this.actor }),
-      content: await renderTemplate('systems/dungeonworld/templates/chat/chat-move.html', {
-        actor: this.actor,
-        image: this.actor.img,
-        title: `${move.name} (${game.i18n.localize(`DW.Hireling.Skill.${key}`)} ${rank})`,
-        details: `<p>${move.text}</p>`,
-      }),
-    };
-    DwUtility.applyMessageMode(chatData);
-    await ChatMessage.create(chatData);
+    await DwUtility.postCard(this.actor, {
+      image: this.actor.img,
+      title: `${move.name} (${game.i18n.localize(`DW.Hireling.Skill.${key}`)} ${rank})`,
+      details: `<p>${move.text}</p>`,
+    });
   }
 
   /* -------------------------------------------- */
@@ -265,10 +238,5 @@ export class DwHirelingSheet extends DwCharacterSheet {
     });
     actor?.sheet.render(true);
     return actor;
-  }
-
-  static #signed(value) {
-    const n = Number(value ?? 0) || 0;
-    return n < 0 ? `−${Math.abs(n)}` : `+${n}`;
   }
 }

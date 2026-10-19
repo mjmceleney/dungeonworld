@@ -17,6 +17,7 @@ data:
   requiresMove: ''
   moveType: special
   moveGroup: ''
+  automation: lastBreath
   moveResults:
     failure:
       value: >-

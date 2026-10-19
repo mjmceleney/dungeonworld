@@ -24,6 +24,23 @@ system:
   rollMod: 0
   requiresLevel: 6
   requiresMove: Seeing Red
+  actions:
+    - type: 'hold'
+      target: 'self'
+      amount: '1'
+      stat: ''
+      condition: ''
+      name: ''
+      when: 'partial'
+      transfer: false
+    - type: 'hold'
+      target: 'self'
+      amount: '2'
+      stat: ''
+      condition: ''
+      name: ''
+      when: 'success'
+      transfer: false
   moveGroup: ''
 ownership:
   default: 0

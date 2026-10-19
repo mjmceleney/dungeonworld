@@ -333,10 +333,8 @@
   }
 }
 
-// Recover and Prepare Spells.
-.application.dialog.dw-recover-dialog,
+// Prepare Spells.
 .application.dialog.dw-prepare-dialog {
-  .dw-recover-option,
   .dw-prepare-spell {
     display: flex;
     align-items: center;
@@ -346,12 +344,6 @@
     &.is-disabled {
       opacity: 0.5;
     }
-  }
-
-  .dw-recover-debilities .hint {
-    margin: 0 0 4px;
-    font-size: 12px;
-    opacity: 0.85;
   }
 
   .dw-prepare-name {
@@ -429,6 +421,27 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+  }
+
+  // Moves like Prodigy: the spell each one lowers.
+  .dw-prepare-lower {
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    border: 1px solid rgba(127, 127, 127, 0.4);
+    border-radius: 6px;
+  }
+
+  .dw-prepare-lower-move {
+    margin: 4px 0;
+
+    select {
+      width: 100%;
+      margin: 2px 0;
+    }
+  }
+
+  .dw-prepare-lower-hint {
+    margin: 0 0 2px;
   }
 
   .dw-prepare-group {

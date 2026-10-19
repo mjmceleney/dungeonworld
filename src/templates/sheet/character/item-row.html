@@ -29,13 +29,13 @@
       {{#if quantity}}<button type="button" class="dw-counter" data-action="adjustCounter" data-field="quantity" data-tooltip="DW.Qty">{{localize "DW.Qty"}} {{quantity}}</button>{{/if}}
       {{#if weight}}<span class="dw-stat">{{localize "DW.Wt"}} {{weight}}</span>{{/if}}
       {{#if canUse}}{{#if editable}}<button type="button" class="dw-toggle dw-use" data-action="useItem" data-tooltip="DW.Use.Button">{{localize "DW.Use.Button"}}</button>{{/if}}{{/if}}
-      <button type="button" class="dw-toggle {{#if equipped}}on{{/if}}" data-action="toggleEquipped" aria-pressed="{{#if equipped}}true{{else}}false{{/if}}">{{localize "DW.Equipped"}}</button>
+      <button type="button" class="dw-toggle {{#if equipped}}on{{/if}}" data-action="toggleItemField" data-field="equipped" aria-pressed="{{#if equipped}}true{{else}}false{{/if}}">{{localize "DW.Equipped"}}</button>
     </span>
     {{/if}}
 
     {{#if isSpell}}
     {{#if canCast}}{{#if editable}}<button type="button" class="dw-toggle dw-cast" data-action="castSpell" data-tooltip="DW.Spellcasting.CastHint"><i class="fas fa-wand-sparkles" inert></i> {{localize "DW.Spellcasting.Cast"}}</button>{{/if}}{{/if}}
-    <button type="button" class="dw-toggle {{#if prepared}}on{{/if}}" data-action="togglePrepared" aria-pressed="{{#if prepared}}true{{else}}false{{/if}}">
+    <button type="button" class="dw-toggle {{#if prepared}}on{{/if}}" data-action="toggleItemField" data-field="prepared" aria-pressed="{{#if prepared}}true{{else}}false{{/if}}">
       {{#if prepared}}{{localize "DW.Prepared"}}{{else}}{{localize "DW.Unprepared"}}{{/if}}
     </button>
     {{/if}}

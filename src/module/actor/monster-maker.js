@@ -123,12 +123,8 @@ export class DwMonsterMaker extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /** @inheritdoc */
   _initializeApplicationOptions(options) {
-    options = super._initializeApplicationOptions(options);
-    let dark = DwUtility.nightmode;
-    if (options.classes.includes('theme-dark')) dark = true;
-    else if (options.classes.includes('theme-light')) dark = false;
-    if (dark) options.classes.push('dw-dark');
-    return options;
+    // Match core's light or dark theme choice.
+    return DwUtility.applyThemeClass(super._initializeApplicationOptions(options));
   }
 
   /* -------------------------------------------- */
@@ -351,9 +347,9 @@ export class DwMonsterMaker extends HandlebarsApplicationMixin(ApplicationV2) {
       'flags.dungeonworld.monsterMaker': answers,
     });
 
-    const existing = new Set(actor.items.filter(i => i.type == 'npcMove').map(i => i.name.trim().toLowerCase()));
+    const existing = new Set(actor.items.filter(i => i.type == 'npcMove').map(i => DwUtility.nameKey(i.name)));
     const moves = stats.moves
-      .filter(name => !existing.has(name.toLowerCase()))
+      .filter(name => !existing.has(DwUtility.nameKey(name)))
       .map(name => ({ name, type: 'npcMove', system: { moveType: 'basic' } }));
     if (moves.length) await actor.createEmbeddedDocuments('Item', moves);
   }

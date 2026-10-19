@@ -1,0 +1,71 @@
+{{!-- A move's or spell's effects, each a button on the chat card for the
+     results it's offered on: a heal, a debility removed, ammo spent... A
+     spell's are on the Cast a Spell card. --}}
+<section class="tab dw-panel {{tabs.effects.cssClass}}" data-group="primary" data-tab="effects">
+  <p class="dw-move-actions-hint">{{#if (eq item.type "spell")}}{{localize "DW.MoveActions.SpellHint"}}{{else}}{{localize "DW.MoveActions.Hint"}}{{/if}}</p>
+
+  {{#if moveActions.length}}
+  <div class="dw-move-actions">
+    <div class="dw-move-actions-head">
+      <span>{{localize "DW.MoveActions.Type"}}</span>
+      <span>{{localize "DW.MoveActions.Target"}}</span>
+      <span>{{localize "DW.MoveActions.Details"}}</span>
+      <span>{{localize "DW.MoveActions.When"}}</span>
+      <span></span>
+    </div>
+    {{#each moveActions as |line i|}}
+    <div class="dw-move-action">
+      <select name="system.actions.{{i}}.type" aria-label="{{localize 'DW.MoveActions.Type'}}">
+        {{selectOptions ../selects.moveActionTypes selected=line.type localize=true}}
+      </select>
+      <div class="dw-move-action-cell">
+        {{#if line.fields.target}}
+        <select name="system.actions.{{i}}.target" aria-label="{{localize 'DW.MoveActions.Target'}}">
+          {{selectOptions ../selects.moveActionTargets selected=line.target localize=true}}
+        </select>
+        {{#if line.canTransfer}}
+        <label class="checkbox dw-move-action-transfer" data-tooltip="{{localize 'DW.MoveActions.TransferHint'}}">
+          <input type="checkbox" name="system.actions.{{i}}.transfer" {{checked line.transfer}}/>
+          {{localize "DW.MoveActions.Transfer"}}
+        </label>
+        {{/if}}
+        {{else}}
+        <span class="dw-move-action-fixed">{{localize "DW.MoveActions.TargetSelf"}}</span>
+        {{/if}}
+      </div>
+      <div class="dw-move-action-cell">
+        {{#if line.fields.stat}}
+        <select name="system.actions.{{i}}.stat" aria-label="{{localize 'DW.MoveActions.Stat'}}">
+          {{selectOptions ../selects.moveActionStats selected=line.stat blank=(localize "DW.MoveActions.StatChoose") localize=true}}
+        </select>
+        {{/if}}
+        {{#if line.fields.condition}}
+        <select name="system.actions.{{i}}.condition" aria-label="{{localize 'DW.MoveActions.Condition'}}">
+          {{selectOptions ../selects.moveActionConditions selected=line.condition blank=(localize "DW.MoveActions.StatChoose")}}
+        </select>
+        {{/if}}
+        {{#if line.fields.name}}
+        <input type="text" name="system.actions.{{i}}.name" value="{{line.name}}" placeholder="{{localize 'DW.MoveActions.NameHint'}}" aria-label="{{localize 'DW.MoveActions.Name'}}"/>
+        {{/if}}
+        {{#if line.fields.amount}}
+        <input type="text" name="system.actions.{{i}}.amount" value="{{line.amount}}" placeholder="{{localize line.amountHint}}" data-tooltip="{{localize line.amountHint}}" aria-label="{{localize 'DW.MoveActions.Amount'}}"/>
+        {{/if}}
+      </div>
+      <select name="system.actions.{{i}}.when" aria-label="{{localize 'DW.MoveActions.When'}}">
+        {{selectOptions ../selects.actionWhen selected=line.when localize=true}}
+      </select>
+      <button type="button" class="dw-move-action-remove" data-action="removeMoveAction" data-index="{{i}}" data-tooltip="{{localize 'DW.MoveActions.Remove'}}" aria-label="{{localize 'DW.MoveActions.Remove'}}"><i class="fa-solid fa-trash" inert></i></button>
+    </div>
+    {{/each}}
+  </div>
+  {{/if}}
+  <button type="button" class="dw-move-action-add" data-action="addMoveAction"><i class="fa-solid fa-plus" inert></i> {{localize "DW.MoveActions.Add"}}</button>
+
+  {{#if (gt moveActions.length 1)}}
+  <div class="dw-fields dw-move-actions-choose">
+    <span class="dw-label">{{localize "DW.MoveActions.Choose"}}</span>
+    <input type="number" name="system.actionsChoose" value="{{system.actionsChoose}}" min="0" step="1"/>
+    <span class="dw-fields-hint">{{localize "DW.MoveActions.ChooseHint"}}</span>
+  </div>
+  {{/if}}
+</section>

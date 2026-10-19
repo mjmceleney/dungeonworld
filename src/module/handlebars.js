@@ -1,3 +1,5 @@
+import { DwUtility } from "./utility.js";
+
 export class DwRegisterHelpers {
   static init() {
     Handlebars.registerHelper('concat', function() {
@@ -10,24 +12,9 @@ export class DwRegisterHelpers {
       return outStr;
     });
 
-    Handlebars.registerHelper('toLowerCase', function(str) {
-      return str.toLowerCase();
-    });
-
     Handlebars.registerHelper('dwTags', function(tagsInput) {
-      const tags = JSON.parse(tagsInput);
-      let output = '<div class="tags">';
-      for (let tag of tags) {
-        output += `<div class="tag">${tag.value}</div>`;
-      }
-      output += '</div>';
-      return output;
-    });
-
-    Handlebars.registerHelper('includes', function(haystack, needle, options) {
-      if (haystack.includes(needle)) {
-        return options.fn(this);
-      }
+      const tags = DwUtility.parseTags(tagsInput).map(tag => `<div class="tag">${DwUtility.escape(tag)}</div>`);
+      return `<div class="tags">${tags.join('')}</div>`;
     });
 
     Handlebars.registerHelper('ifEquals', function(arg1, arg2, options) {
@@ -55,14 +42,9 @@ export class DwRegisterHelpers {
     });
 
     Handlebars.registerHelper('localizeOverride', function(i18nKey, settingKey = false) {
-      let result = settingKey ? game.settings.get('dungeonworld', settingKey) : '';
-      if (typeof result === 'string' && result.length > 0) {
-        return result;
-      }
-      else {
-        return game.i18n.localize(i18nKey) ?? '';
-      }
-      return '';
+      const result = settingKey ? game.settings.get('dungeonworld', settingKey) : '';
+      if (typeof result === 'string' && result.length > 0) return result;
+      return game.i18n.localize(i18nKey) ?? '';
     });
   }
 }

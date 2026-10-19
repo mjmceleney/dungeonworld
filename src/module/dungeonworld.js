@@ -23,11 +23,14 @@ import { CombatSidebarDw } from "./combat/combat.js";
 import { MigrateDw } from "./migrate/migrate.js";
 import { DwJournal } from "./journal.js";
 import { DwLastBreath } from "./last-breath.js";
+import { DwZeroHp } from "./zero-hp.js";
+import { DwSocket } from "./socket.js";
 import { DwPartyMoves } from "./party-moves.js";
 import { DwTreasure } from "./treasure.js";
-import { DwResources } from "./resources.js";
+import { DwMoveActions } from "./move-actions.js";
 import { DwInlineRolls } from "./inline-rolls.js";
 import { DwBeyondTen } from "./actor/beyond-ten.js";
+import { DwFronts } from "./fronts.js";
 
 import * as chat from "./chat.js";
 import { BUILD_ID } from "./build-info.js";
@@ -55,6 +58,7 @@ Hooks.once("init", async function() {
     DwLastBreath,
     DwPartyMoves,
     DwTreasure,
+    DwFronts,
   };
 
   // TODO: Extend the combat class.
@@ -116,284 +120,79 @@ Hooks.once("init", async function() {
     default: 0
   });
 
-  // Configurable system settings.
-  game.settings.register("dungeonworld", "xpFormula", {
-    name: game.i18n.localize("DW.Settings.xpFormula.name"),
-    hint: game.i18n.localize("DW.Settings.xpFormula.hint"),
-    scope: "world",
-    config: true,
-    type: String,
-    default: "@attributes.level.value + 7"
-  });
-
-  game.settings.register("dungeonworld", "advForward", {
-    name: game.i18n.localize("DW.Settings.advForward.name"),
-    hint: game.i18n.localize("DW.Settings.advForward.hint"),
-    scope: 'world',
-    config: true,
-    type: Boolean,
-    default: false
-  });
-
-  game.settings.register("dungeonworld", "disDebility", {
-    name: game.i18n.localize("DW.Settings.disDebility.name"),
-    hint: game.i18n.localize("DW.Settings.disDebility.hint"),
-    scope: "world",
-    config: true,
-    type: Boolean,
-    default: false,
-    onChange: () => window.location.reload(),
-  })
-
-  game.settings.register("dungeonworld", "coinWeight", {
-    name: game.i18n.localize("DW.Settings.coinWeight.name"),
-    hint: game.i18n.localize("DW.Settings.coinWeight.hint"),
-    scope: "world",
-    config: true,
-    type: Number,
-    default: 100
-  });
-
-  // TODO: Remove this setting.
-  game.settings.register("dungeonworld", "itemIcons", {
-    name: game.i18n.localize("DW.Settings.itemIcons.name"),
-    hint: game.i18n.localize("DW.Settings.itemIcons.hint"),
-    scope: 'client',
-    config: false,
-    type: Boolean,
-    default: true
-  });
-
-  game.settings.register("dungeonworld", "enableDamageButtons", {
-    name: game.i18n.localize("DW.Settings.enableDamageButtons.name"),
-    hint: game.i18n.localize("DW.Settings.enableDamageButtons.hint"),
-    scope: 'world',
-    config: true,
-    type: Boolean,
-    default: true
-  });
-
-  game.settings.register("dungeonworld", "automateGear", {
-    name: game.i18n.localize("DW.Settings.automateGear.name"),
-    hint: game.i18n.localize("DW.Settings.automateGear.hint"),
-    scope: 'world',
-    config: true,
-    type: Boolean,
-    default: true,
-    onChange: () => {
-      for (const actor of game.actors) actor.reset();
-      for (const app of foundry.applications.instances.values()) {
-        if (app.document?.documentName == 'Actor') app.render();
-      }
+  // Configurable system settings, in the order the settings window lists
+  // them. Each one's name and hint come from DW.Settings.<key>.
+  const reload = () => window.location.reload();
+  const settings = {
+    xpFormula: { type: String, default: "@attributes.level.value + 7" },
+    advForward: { type: Boolean, default: false },
+    disDebility: { type: Boolean, default: false, onChange: reload },
+    coinWeight: { type: Number, default: 100 },
+    // TODO: Remove this setting.
+    itemIcons: { scope: 'client', config: false, type: Boolean, default: true },
+    enableDamageButtons: { type: Boolean, default: true },
+    automateGear: {
+      type: Boolean,
+      default: true,
+      onChange: () => {
+        for (const actor of game.actors) actor.reset();
+        for (const app of foundry.applications.instances.values()) {
+          if (app.document?.documentName == 'Actor') app.render();
+        }
+      },
     },
-  });
-
-  game.settings.register("dungeonworld", "lastBreathPrompt", {
-    name: game.i18n.localize("DW.Settings.lastBreathPrompt.name"),
-    hint: game.i18n.localize("DW.Settings.lastBreathPrompt.hint"),
-    scope: 'world',
-    config: true,
-    type: Boolean,
-    default: true
-  });
-
-  game.settings.register("dungeonworld", "allowMulticlass", {
-    name: game.i18n.localize("DW.Settings.allowMulticlass.name"),
-    hint: game.i18n.localize("DW.Settings.allowMulticlass.hint"),
-    scope: 'world',
-    config: true,
-    type: Boolean,
-    default: false
-  });
-
-  game.settings.register("dungeonworld", "alignmentSingle", {
-    name: game.i18n.localize("DW.Settings.alignmentSingle.name"),
-    hint: game.i18n.localize("DW.Settings.alignmentSingle.hint"),
-    scope: 'world',
-    config: true,
-    type: String,
-    default: ''
-  });
-
-  game.settings.register("dungeonworld", "alignmentPlural", {
-    name: game.i18n.localize("DW.Settings.alignmentPlural.name"),
-    hint: game.i18n.localize("DW.Settings.alignmentPlural.hint"),
-    scope: 'world',
-    config: true,
-    type: String,
-    default: ''
-  });
-
-  game.settings.register("dungeonworld", "raceSingle", {
-    name: game.i18n.localize("DW.Settings.raceSingle.name"),
-    hint: game.i18n.localize("DW.Settings.raceSingle.hint"),
-    scope: 'world',
-    config: true,
-    type: String,
-    default: ''
-  });
-
-  game.settings.register("dungeonworld", "racePlural", {
-    name: game.i18n.localize("DW.Settings.racePlural.name"),
-    hint: game.i18n.localize("DW.Settings.racePlural.hint"),
-    scope: 'world',
-    config: true,
-    type: String,
-    default: ''
-  });
-
-  game.settings.register("dungeonworld", "bondSingle", {
-    name: game.i18n.localize("DW.Settings.bondSingle.name"),
-    hint: game.i18n.localize("DW.Settings.bondSingle.hint"),
-    scope: 'world',
-    config: true,
-    type: String,
-    default: ''
-  });
-
-  game.settings.register("dungeonworld", "bondPlural", {
-    name: game.i18n.localize("DW.Settings.bondPlural.name"),
-    hint: game.i18n.localize("DW.Settings.bondPlural.hint"),
-    scope: 'world',
-    config: true,
-    type: String,
-    default: ''
-  });
-
-  game.settings.register("dungeonworld", "noCompendiumAutoData", {
-    name: game.i18n.localize("DW.Settings.noCompendiumAutoData.name"),
-    hint: game.i18n.localize("DW.Settings.noCompendiumAutoData.hint"),
-    scope: 'world',
-    config: true,
-    type: Boolean,
-    default: false,
-    onChange: () => window.location.reload()
-  });
-
-  game.settings.register("dungeonworld", "compendiumPrefix", {
-    name: game.i18n.localize("DW.Settings.compendiumPrefix.name"),
-    hint: game.i18n.localize("DW.Settings.compendiumPrefix.hint"),
-    scope: 'world',
-    config: true,
-    type: String,
-    default: '',
-    onChange: () => window.location.reload()
-  });
-
-  game.settings.register("dungeonworld", "noAbilityScores", {
-    name: game.i18n.localize("DW.Settings.noAbilityScores.name"),
-    hint: game.i18n.localize("DW.Settings.noAbilityScores.hint"),
-    scope: 'world',
-    config: true,
-    type: Boolean,
-    default: false,
-    onChange: () => window.location.reload()
-  });
-
-  game.settings.register("dungeonworld", "noAbilityIncrease", {
-    name: game.i18n.localize("DW.Settings.noAbilityIncrease.name"),
-    hint: game.i18n.localize("DW.Settings.noAbilityIncrease.hint"),
-    scope: 'world',
-    config: true,
-    type: Boolean,
-    default: false
-  });
-
-  game.settings.register("dungeonworld", "noConstitutionToHP", {
-    name: game.i18n.localize("DW.Settings.noConstitutionToHP.name"),
-    hint: game.i18n.localize("DW.Settings.noConstitutionToHP.hint"),
-    scope: 'world',
-    config: true,
-    type: Boolean,
-    default: false
-  });
-
-  game.settings.register("dungeonworld", "noSTRToMaxLoad", {
-    name: game.i18n.localize("DW.Settings.noSTRToMaxLoad.name"),
-    hint: game.i18n.localize("DW.Settings.noSTRToMaxLoad.hint"),
-    scope: 'world',
-    config: true,
-    type: Boolean,
-    default: false
-  });
-
-  game.settings.register("dungeonworld", "debilityLabelSTR", {
-    name: game.i18n.localize("DW.Settings.debilityLabelSTR.name"),
-    hint: game.i18n.localize("DW.Settings.debilityLabelSTR.hint"),
-    scope: 'world',
-    config: true,
-    type: String,
-    default: "DW.DebilityStr"
-  });
-
-  game.settings.register("dungeonworld", "debilityLabelDEX", {
-    name: game.i18n.localize("DW.Settings.debilityLabelDEX.name"),
-    hint: game.i18n.localize("DW.Settings.debilityLabelDEX.hint"),
-    scope: 'world',
-    config: true,
-    type: String,
-    default: "DW.DebilityDex"
-  });
-
-  game.settings.register("dungeonworld", "debilityLabelCON", {
-    name: game.i18n.localize("DW.Settings.debilityLabelCON.name"),
-    hint: game.i18n.localize("DW.Settings.debilityLabelCON.hint"),
-    scope: 'world',
-    config: true,
-    type: String,
-    default: "DW.DebilityCon"
-  });
-
-  game.settings.register("dungeonworld", "debilityLabelINT", {
-    name: game.i18n.localize("DW.Settings.debilityLabelINT.name"),
-    hint: game.i18n.localize("DW.Settings.debilityLabelINT.hint"),
-    scope: 'world',
-    config: true,
-    type: String,
-    default: "DW.DebilityInt"
-  });
-
-  game.settings.register("dungeonworld", "debilityLabelWIS", {
-    name: game.i18n.localize("DW.Settings.debilityLabelWIS.name"),
-    hint: game.i18n.localize("DW.Settings.debilityLabelWIS.hint"),
-    scope: 'world',
-    config: true,
-    type: String,
-    default: "DW.DebilityWis"
-  });
-
-  game.settings.register("dungeonworld", "debilityLabelCHA", {
-    name: game.i18n.localize("DW.Settings.debilityLabelCHA.name"),
-    hint: game.i18n.localize("DW.Settings.debilityLabelCHA.hint"),
-    scope: 'world',
-    config: true,
-    type: String,
-    default: "DW.DebilityCha"
-  });
-
-  game.settings.register("dungeonworld", "journalStyle", {
-    name: game.i18n.localize("DW.Settings.journalStyle.name"),
-    hint: game.i18n.localize("DW.Settings.journalStyle.hint"),
-    scope: 'world',
-    config: true,
-    type: String,
-    choices: {
-      system: game.i18n.localize("DW.Settings.journalStyle.system"),
-      all: game.i18n.localize("DW.Settings.journalStyle.all"),
-      none: game.i18n.localize("DW.Settings.journalStyle.none")
+    lastBreathPrompt: { type: Boolean, default: true },
+    zeroHpMarkers: { type: Boolean, default: true },
+    allowMulticlass: { type: Boolean, default: false },
+    alignmentSingle: { type: String, default: '' },
+    alignmentPlural: { type: String, default: '' },
+    raceSingle: { type: String, default: '' },
+    racePlural: { type: String, default: '' },
+    bondSingle: { type: String, default: '' },
+    bondPlural: { type: String, default: '' },
+    noCompendiumAutoData: { type: Boolean, default: false, onChange: reload },
+    compendiumPrefix: { type: String, default: '', onChange: reload },
+    noAbilityScores: { type: Boolean, default: false, onChange: reload },
+    noAbilityIncrease: { type: Boolean, default: false },
+    noConstitutionToHP: { type: Boolean, default: false },
+    noSTRToMaxLoad: { type: Boolean, default: false },
+    debilityLabelSTR: { type: String, default: "DW.DebilityStr" },
+    debilityLabelDEX: { type: String, default: "DW.DebilityDex" },
+    debilityLabelCON: { type: String, default: "DW.DebilityCon" },
+    debilityLabelINT: { type: String, default: "DW.DebilityInt" },
+    debilityLabelWIS: { type: String, default: "DW.DebilityWis" },
+    debilityLabelCHA: { type: String, default: "DW.DebilityCha" },
+    journalStyle: {
+      type: String,
+      choices: {
+        system: game.i18n.localize("DW.Settings.journalStyle.system"),
+        all: game.i18n.localize("DW.Settings.journalStyle.all"),
+        none: game.i18n.localize("DW.Settings.journalStyle.none")
+      },
+      default: "system",
+      onChange: () => DwJournal.restyleAll()
     },
-    default: "system",
-    onChange: () => DwJournal.restyleAll()
-  });
+  };
+  for (const [key, setting] of Object.entries(settings)) {
+    game.settings.register("dungeonworld", key, {
+      name: game.i18n.localize(`DW.Settings.${key}.name`),
+      hint: game.i18n.localize(`DW.Settings.${key}.hint`),
+      scope: 'world',
+      config: true,
+      ...setting,
+    });
+  }
   DwJournal.init();
   DwLastBreath.init();
+  DwZeroHp.init();
   DwPartyMoves.init();
   DwInlineRolls.init();
   DwBeyondTen.init();
+  DwFronts.init();
 
   // Preload template partials.
   preloadHandlebarsTemplates();
-  chat.preloadDamageButtons();
+  chat.getDamageButtons();
 });
 
 Hooks.once("ready", async function() {
@@ -424,43 +223,19 @@ Hooks.once("ready", async function() {
     CONFIG.DW.rollResults[k].label = game.i18n.localize(v.label);
   }
 
-  // Handle sockets.
-  game.socket.on('system.dungeonworld', (data) => {
-    if (!game.user.isGM) {
-      return;
-    }
-
-    // A new character (an apprentice) a player asked for.
-    if (data?.createCharacter) {
-      DwBeyondTen.createRemote(data.createCharacter);
-      return;
-    }
-
-    // A player healing someone else's character with an item.
-    if (data?.resourceChange) {
-      DwResources.applyRemote(data.resourceChange);
-      return;
-    }
-
-    // A player's change to a party move card.
-    if (data?.partyUpdate) {
-      DwPartyMoves.applyRemote(data.partyUpdate);
-      return;
-    }
-
-    // Update chat cards.
-    if (data?.message && data?.content) {
-      let message = game.messages.get(data.message);
-      message.update({'content': data.content});
-    }
-
-    // Update the move counter if a player made a move. Requires a GM account
-    // to be logged in currently for the socket to work. If GM account is the
-    // one that made the move, that happens directly in the actor update.
-    if (data?.combatantUpdate) {
-      game.combat.updateEmbeddedDocuments('Combatant', Array.isArray(data.combatantUpdate) ? data.combatantUpdate : [data.combatantUpdate]);
-    }
-  });
+  // Changes players ask the active GM to make for them (see DwSocket).
+  // A new character (an apprentice) a player asked for.
+  DwSocket.register('createCharacter', data => DwBeyondTen.createRemote(data));
+  // A player's move effect or item use (a heal, a debility removed) on
+  // someone else's character.
+  DwSocket.register('moveAction', data => DwMoveActions.applyRemote(data));
+  // A player's change to a party move card.
+  DwSocket.register('partyUpdate', data => DwPartyMoves.applyRemote(data));
+  // A player's choice on a chat card, such as marking XP.
+  DwSocket.register('cardEdit', data => chat.applyRemoteCardEdit(data));
+  // The move counter, when a player made a move in combat.
+  DwSocket.register('combatantUpdate', data => CombatSidebarDw.applyRemoteMoveCount(data));
+  DwSocket.init();
 });
 
 Hooks.on('renderChatMessageHTML', (app, html, data) => {
@@ -524,15 +299,14 @@ Hooks.on('createActor', async (actor, options, userId) => {
 
   // Get the item moves as the priority, then the compendium moves, skipping
   // any the actor already has.
-  const actorMoveNames = actor.items.filter(i => i.type == 'move').map(i => i.name);
   const moves = [];
-  const moves_list = [...actorMoveNames];
+  const names = new Set(actor.items.filter(i => i.type == 'move').map(i => i.name));
   const worldMoves = game.items.filter(i => i.type == 'move' && (i.system.moveType == 'basic' || i.system.moveType == 'special'));
   const compendium = await DwUtility.loadCompendia('basic-moves');
   for (let move of [...worldMoves, ...compendium]) {
-    if (!moves_list.includes(move.name)) {
+    if (!names.has(move.name)) {
       moves.push(move);
-      moves_list.push(move.name);
+      names.add(move.name);
     }
   }
 
@@ -552,10 +326,12 @@ Hooks.on('createActor', async (actor, options, userId) => {
   }
 });
 
-// Clear cached item lists when the underlying items change. Items embedded on
-// actors are never part of these lists, so ignore them.
+// Clear cached item lists when the underlying items change, in the world or
+// in a compendium. Items embedded on actors are never part of these lists, so
+// ignore them.
 const invalidateItemCaches = (item) => {
   if (item.parent) return;
+  if (item.pack) DwUtility.clearPackCache(item.pack);
   if (item.type == 'equipment') {
     game.dungeonworld.equipment = null;
   }
@@ -568,13 +344,14 @@ Hooks.on('updateItem', invalidateItemCaches);
 Hooks.on('deleteItem', invalidateItemCaches);
 
 Hooks.on('preUpdateActor', (actor, updateData, options, id) => {
-  if (actor.type == 'character') {
-    // Allow the character to levelup up when their level changes.
-    if (updateData.system && updateData.system.attributes && updateData.system.attributes.level) {
-      if (updateData.system.attributes.level.value > actor.system.attributes.level.value) {
-        actor.setFlag('dungeonworld', 'levelup', true);
-      }
-    }
+  if (actor.type != 'character') return;
+  // Allow the character to level up when their level goes up, as part of the
+  // same update.
+  // The level up itself clears it in the same update.
+  if (foundry.utils.hasProperty(updateData, 'flags.dungeonworld.levelup')) return;
+  const level = foundry.utils.getProperty(updateData, 'system.attributes.level.value');
+  if (level !== undefined && Number(level) > Number(actor.system.attributes.level.value)) {
+    foundry.utils.setProperty(updateData, 'flags.dungeonworld.levelup', true);
   }
 });
 

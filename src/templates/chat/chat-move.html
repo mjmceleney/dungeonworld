@@ -34,12 +34,17 @@
     {{#if cast}}
       <div class="row cast-choices">
         <button class="button cast-button" type="button" data-action="castPenalty">{{localize "DW.Spellcasting.TakePenalty" penalty=cast.penalty}}</button>
-        {{#if cast.spellId}}<button class="button cast-button" type="button" data-action="forgetSpell" data-spell-id="{{cast.spellId}}">{{cast.forget}}</button>{{/if}}
+        {{#if cast.spellId}}<button class="button cast-button" type="button" data-action="forgetSpell" data-spell-id="{{cast.spellId}}">{{cast.lose}}</button>{{/if}}
       </div>
     {{/if}}
-    {{!-- A resource the move can spend, such as Volley's ammo. --}}
-    {{#if resource}}
-      <div class="row resource"><button class="button resource-button" type="button" data-action="spendResource" data-resource="{{resource.name}}" data-amount="{{resource.amount}}" {{#unless resource.left}}disabled{{/unless}}>{{localize "DW.Resource.Spend" amount=resource.amount name=resource.name left=resource.left}}</button></div>
+    {{!-- The move's effects for this result, such as a heal or Volley's ammo. --}}
+    {{#if actions.length}}
+      <div class="row move-actions" data-choose="{{actionsChoose}}">
+        {{#if actionsChoose}}<div class="move-actions-choose">{{localize "DW.MoveActions.ChooseCount" count=actionsChoose}}</div>{{/if}}
+        {{#each actions}}
+        <button class="button move-action-button" type="button" data-action="moveAction" data-index="{{index}}" data-type="{{type}}" data-target="{{target}}" data-amount="{{amount}}" data-stat="{{stat}}" data-condition="{{condition}}" data-name="{{name}}" data-transfer="{{transfer}}">{{label}}</button>
+        {{/each}}
+      </div>
     {{/if}}
     {{!-- On a 6-, a reminder of the GM's moves (GM only). --}}
     {{#if gmMoves}}

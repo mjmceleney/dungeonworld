@@ -1,8 +1,7 @@
 import { DwCharacterSheet } from "./character-sheet.js";
 import { DwMonsterMaker } from "./monster-maker.js";
 import { DwTreasure } from "../treasure.js";
-
-const { TextEditor } = foundry.applications.ux;
+import { DwUtility } from "../utility.js";
 
 const NPC_TEMPLATES = "systems/dungeonworld/templates/sheet/npc";
 const CHARACTER_TEMPLATES = "systems/dungeonworld/templates/sheet/character";
@@ -87,19 +86,11 @@ export class DwNpcSheet extends DwCharacterSheet {
     const context = await this._prepareDocumentContext(options);
     const actor = this.actor;
     const system = actor.system;
-    const isEditable = this.isEditable;
 
     const [items, biography] = await Promise.all([
       this._prepareItems(),
-      TextEditor.implementation.enrichHTML(system.details?.biography ?? '', {
-        secrets: actor.isOwner,
-        rollData: actor.getRollData(),
-        relativeTo: actor,
-      }),
+      this._enrich(system.details?.biography),
     ]);
-
-    const hp = Number(system.attributes.hp.value ?? 0);
-    const hpMax = Number(system.attributes.hp.max ?? 0);
 
     // Compendium monsters keep their instinct and moves in the description.
     const listed = DwNpcSheet.parseDescription(system.details?.biography);
@@ -108,19 +99,6 @@ export class DwNpcSheet extends DwCharacterSheet {
     return Object.assign(context, {
       instinct: system.details?.instinct || listed.instinct,
       listedMoves: hasMoves ? null : (listed.moves.length ? listed.moves : null),
-      actor: actor,
-      system: system,
-      editable: isEditable,
-      owner: actor.isOwner,
-      cssClass: isEditable ? 'editable' : 'locked',
-      tabs: this._prepareSheetTabs(),
-      bannerImg: actor.img && actor.img !== CONST.DEFAULT_TOKEN ? actor.img : null,
-
-      hp: hp,
-      hpMax: hpMax,
-      hpPct: hpMax > 0 ? Math.max(0, Math.min(100, Math.round(100 * hp / hpMax))) : 0,
-      hpState: hpMax > 0 && hp / hpMax <= 0.25 ? 'low' : (hpMax > 0 && hp / hpMax <= 0.5 ? 'mid' : 'high'),
-
       moveSections: this._prepareNpcMoveSections(items.moves),
       moveItemType: 'npcMove',
       biography: biography,
@@ -134,19 +112,12 @@ export class DwNpcSheet extends DwCharacterSheet {
    * @return {Object[]}
    */
   _prepareNpcMoveSections(moves) {
-    const collapsed = this._getCollapsedState();
     const groups = { basic: [], special: [], other: [] };
     for (let move of moves) {
       (groups[move.moveType] ?? groups.other).push(move);
     }
 
-    const section = (id, title, rows, createType) => ({
-      id: id,
-      title: title,
-      rows: rows,
-      count: rows.length,
-      collapsed: collapsed[id] ?? this._isCollapsedByDefault(id),
-      canCreate: createType !== null,
+    const section = (id, title, rows, createType) => this._moveSection(id, title, rows, {
       createType: createType,
       emptyText: game.i18n.localize('DW.Sheet.NoMoves'),
     });
@@ -203,52 +174,17 @@ export class DwNpcSheet extends DwCharacterSheet {
   /** @inheritdoc */
   async _onRender(context, options) {
     await super._onRender(context, options);
-    this._activateTagging();
+    // Turn the tags field into a Tagify widget, which saves the sheet through
+    // the field's change event. The previous one belongs to replaced markup.
+    this.tagify?.destroy();
+    const input = this.element.querySelector('.tags-input-source');
+    this.tagify = input ? DwUtility.tagify(input, this.isEditable) : null;
   }
 
   /** @inheritdoc */
   _onClose(options) {
     super._onClose(options);
-    this._destroyTagify();
-  }
-
-  _destroyTagify() {
-    if (this.tagify) {
-      this.tagify.destroy();
-      this.tagify = null;
-    }
-  }
-
-  /**
-   * Turn the tags field into a Tagify widget, suggesting tag items from the
-   * world and the Tags compendium. Tagify writes the tags back into the field
-   * and fires its change event, which saves the sheet.
-   */
-  _activateTagging() {
-    // The previous instance belongs to markup that has been replaced.
-    this._destroyTagify();
-
-    const input = this.element.querySelector('.tags-input-source');
-    if (!input) return;
-
-    let tags = game.items.filter(item => item.type == 'tag').map(item => item.name);
-    for (let pack of game.packs) {
-      if (pack.metadata.type == 'Item' && pack.metadata.name == 'tags') {
-        tags = tags.concat(pack.index?.map(entry => entry.name) ?? []);
-      }
-    }
-    const tagNames = [...new Set(tags.map(tag => tag.toLowerCase()))].sort();
-
-    if (!this.isEditable) input.readOnly = true;
-    this.tagify = new Tagify(input, {
-      whitelist: tagNames,
-      maxTags: 'Infinity',
-      dropdown: {
-        maxItems: 20,
-        classname: "tags-look",
-        enabled: 0,
-        closeOnSelect: false,
-      },
-    });
+    this.tagify?.destroy();
+    this.tagify = null;
   }
 }

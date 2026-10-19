@@ -4,6 +4,7 @@
   <nav class="dw-tabs tabs">
     <button type="button" class="dw-tab {{tabs.description.cssClass}}" data-action="tab" data-group="primary" data-tab="description">{{localize "DW.Common.Description"}}</button>
     <button type="button" class="dw-tab {{tabs.details.cssClass}}" data-action="tab" data-group="primary" data-tab="details">{{localize "DW.Common.Details"}}</button>
+    <button type="button" class="dw-tab {{tabs.effects.cssClass}}" data-action="tab" data-group="primary" data-tab="effects">{{localize "DW.MoveActions.Label"}}{{#if moveActions.length}} ({{moveActions.length}}){{/if}}</button>
   </nav>
 
   <section class="tab dw-panel {{tabs.description.cssClass}}" data-group="primary" data-tab="description">
@@ -30,4 +31,6 @@
       <input type="text" name="system.rollFormula" value="{{system.rollFormula}}" placeholder="e.g. 1d4+3"/>
     </div>
   </section>
+
+  {{> "systems/dungeonworld/templates/items/parts/item-effects.html"}}
 </div>

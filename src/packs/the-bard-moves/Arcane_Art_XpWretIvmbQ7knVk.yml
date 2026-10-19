@@ -9,7 +9,7 @@ system:
     <p>When you <strong>weave a performance into a basic spell</strong>, choose
     an ally and an effect:</p>
   choices: >-
-    <ul> <li>Heal [[1d8]] damage</li> <li>+ [[1d4]] forward to damage</li>
+    <ul> <li>Heal 1d8 damage</li> <li>+1d4 forward to damage</li>
     <li>Their mind is shaken clear of one enchantment</li> <li>The next time
     someone successfully assists the target with aid, they get +2 instead of
     +1</li> </ul>
@@ -29,6 +29,15 @@ system:
   rollMod: 0
   requiresLevel: 0
   requiresMove: ''
+  actions:
+    - type: heal
+      target: 'ally'
+      amount: '1d8'
+      stat: ''
+      condition: ''
+      name: ''
+      when: hit
+      transfer: false
   moveGroup: ''
 ownership:
   default: 0

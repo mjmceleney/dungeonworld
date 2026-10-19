@@ -19,6 +19,7 @@ data:
   requiresMove: ''
   moveType: special
   moveGroup: ''
+  automation: recruit
   moveResults:
     failure:
       value: >-

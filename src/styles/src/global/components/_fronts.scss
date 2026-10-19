@@ -1,0 +1,376 @@
+// The Fronts window (fronts.js): a list of fronts, and one front in full.
+// The palette, cards, labels, inputs and clocks come from .dw-v2
+// (_sheets-v2.scss, _trackers.scss).
+
+.dw-v2.dw-fronts {
+  .window-content {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    background: var(--dw-ground);
+    color: var(--dw-ink);
+  }
+
+  .dw-fronts-root {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  h2, h3, h4, p, ul {
+    margin: 0;
+  }
+
+  // Toolbar: filters (or Back) on the left, the main button on the right.
+  .dw-fronts-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--dw-line);
+  }
+
+  .dw-fronts-filters {
+    display: flex;
+    gap: 4px;
+  }
+
+  .dw-fronts-filter,
+  .dw-fronts-back,
+  .dw-fronts-primary,
+  .dw-front-add,
+  .dw-front-delete {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border: 1px solid var(--dw-line);
+    border-radius: 6px;
+    background: var(--dw-sunken);
+
+    &:hover {
+      background: var(--dw-chip-hover);
+    }
+  }
+
+  .dw-fronts-filter.on,
+  .dw-fronts-primary {
+    background: var(--dw-navy);
+    border-color: var(--dw-navy);
+    color: var(--dw-on-navy);
+
+    &:hover {
+      background: var(--dw-navy);
+      opacity: 0.9;
+    }
+
+    .dw-count {
+      background: transparent;
+      color: inherit;
+    }
+  }
+
+  .dw-fronts-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 14px;
+  }
+
+  .dw-fronts-empty {
+    margin: 30px auto;
+    max-width: 480px;
+    text-align: center;
+  }
+
+  .dw-clock-wedge {
+    // Portents are marked in their list; the clock only shows the count.
+    cursor: default;
+    pointer-events: none;
+  }
+
+  .dw-clock.full .dw-clock-face {
+    fill: var(--dw-navy);
+  }
+
+  .dw-front-title {
+    padding: 0;
+    border: 0;
+    font-family: $font-stack-secondary;
+    font-size: 22px;
+    font-weight: normal;
+    line-height: 1.15;
+    color: var(--dw-navy);
+  }
+
+  .dw-front-text {
+    white-space: pre-line;
+  }
+
+  .dw-front-doom {
+    color: var(--dw-bad);
+  }
+
+  .dw-label {
+    margin-right: 6px;
+  }
+
+  // The list: one card per front, with a line per danger.
+  .dw-front-list {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dw-front-summary {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    width: 100%;
+    padding: 10px 14px;
+    text-align: left;
+
+    &:hover {
+      border-color: var(--dw-navy);
+    }
+  }
+
+  .dw-front-summary-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dw-front-open-icon {
+    margin-left: auto;
+    color: var(--dw-muted);
+  }
+
+  // A danger's line: clock, name, next portent (or the doom), count.
+  .dw-front-summary-danger {
+    display: grid;
+    grid-template-columns: 30px minmax(120px, max-content) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding-top: 6px;
+    border-top: 1px solid var(--dw-line);
+
+    .dw-clock {
+      width: 30px;
+      height: 30px;
+    }
+
+    .dw-danger-name {
+      font-size: 15px;
+    }
+  }
+
+  .dw-front-summary-clock {
+    display: flex;
+  }
+
+  .dw-front-summary-line {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  // One front in full.
+  .dw-front-full {
+    max-width: 920px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .dw-front-titlebar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    .dw-front-title {
+      font-size: 28px;
+    }
+
+    input.dw-front-name {
+      flex: 1;
+      min-width: 0;
+      height: 38px;
+      font-size: 20px;
+    }
+
+    select {
+      flex: 0 0 160px;
+    }
+  }
+
+  .dw-section-title {
+    padding: 0;
+    border: 0;
+  }
+
+  // Grim portents: a checklist under the danger's clock.
+  .dw-portents {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .dw-portent {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    width: 100%;
+    padding: 5px 6px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    text-align: left;
+
+    &:hover {
+      background: var(--dw-chip-hover);
+    }
+
+    &.done span {
+      text-decoration: line-through;
+      color: var(--dw-muted);
+    }
+  }
+
+  // Dangers: cards, as many columns as fit.
+  .dw-dangers {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 10px;
+  }
+
+  .dw-danger {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+
+    &.doomed {
+      border-color: var(--dw-bad);
+    }
+  }
+
+  .dw-danger-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    .dw-danger-title {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .dw-clock {
+      flex: 0 0 44px;
+      width: 44px;
+      height: 44px;
+    }
+
+    input {
+      flex: 1;
+      min-width: 0;
+      font-weight: 700;
+    }
+  }
+
+  .dw-danger-title {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+  }
+
+  .dw-danger-name {
+    font-size: 17px;
+    font-weight: 700;
+  }
+
+  // Stakes and cast side by side.
+  .dw-front-columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 14px 20px;
+  }
+
+  .dw-front-bullets {
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  a.dw-front-actor {
+    color: var(--dw-accent);
+    cursor: pointer;
+  }
+
+  // Edit mode.
+  .dw-front-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .dw-front-pair {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    gap: 10px;
+  }
+
+  .dw-front-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    input,
+    select {
+      flex: 1;
+      min-width: 0;
+    }
+
+    select.dw-doom-select {
+      flex: 0 0 180px;
+    }
+  }
+
+  textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--dw-line);
+    border-radius: 6px;
+    background: var(--dw-sunken);
+    color: var(--dw-ink);
+    font-family: $font-stack-base;
+    font-size: 15px;
+    resize: vertical;
+
+    &:focus {
+      outline: 2px solid var(--dw-focus);
+      outline-offset: 0;
+      border-color: transparent;
+    }
+  }
+
+  .dw-front-add {
+    align-self: flex-start;
+    font-size: 14px;
+  }
+
+  .dw-front-delete {
+    align-self: flex-end;
+    color: var(--dw-bad);
+  }
+}

@@ -18,6 +18,7 @@ data:
   requiresMove: ''
   moveType: special
   moveGroup: ''
+  automation: journey
   moveResults:
     failure:
       value: ''

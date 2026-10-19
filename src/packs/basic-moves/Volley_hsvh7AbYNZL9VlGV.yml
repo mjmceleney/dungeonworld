@@ -15,10 +15,13 @@ data:
   requiresMove: ''
   moveType: basic
   moveGroup: ''
-  resource:
-    name: ammo
-    amount: 1
-    when: partial
+  actions:
+    - type: spend
+      target: self
+      amount: '1'
+      stat: ''
+      name: ammo
+      when: partial
   moveResults:
     failure:
       value: ''

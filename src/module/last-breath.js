@@ -1,5 +1,6 @@
 import { DwRolls } from "./rolls.js";
 import { DwUtility } from "./utility.js";
+import { DwMoves } from "./moves.js";
 
 const { DialogV2 } = foundry.applications.api;
 const { TextEditor } = foundry.applications.ux;
@@ -12,9 +13,6 @@ const { TextEditor } = foundry.applications.ux;
  * none of its owners is online) is asked.
  */
 export class DwLastBreath {
-
-  /** The move's name, as in the basic moves compendium. */
-  static MOVE_NAME = 'Last Breath';
 
   static init() {
     Hooks.on('preUpdateActor', (actor, changes, options) => {
@@ -49,12 +47,8 @@ export class DwLastBreath {
    * @param {Actor} actor
    * @return {Promise<Item|null>}
    */
-  static async findMove(actor) {
-    const isLastBreath = (item) => item.type == 'move' && item.name.trim().toLowerCase() == DwLastBreath.MOVE_NAME.toLowerCase();
-    const own = actor.items.find(isLastBreath) ?? game.items.find(isLastBreath);
-    if (own) return own;
-    const compendium = await DwUtility.loadCompendia('basic-moves');
-    return compendium.find(isLastBreath) ?? null;
+  static findMove(actor) {
+    return DwMoves.find(actor, 'lastBreath');
   }
 
   /**
@@ -64,13 +58,12 @@ export class DwLastBreath {
    */
   static async prompt(actor) {
     const move = await DwLastBreath.findMove(actor);
-    const escape = (value) => Handlebars.escapeExpression(String(value ?? ''));
     const description = move
       ? await TextEditor.implementation.enrichHTML(move.system.description ?? '', { relativeTo: move })
       : '';
 
     const content = document.createElement('div');
-    content.innerHTML = `<p><strong>${game.i18n.format('DW.LastBreath.Dying', { name: escape(actor.name) })}</strong></p>`
+    content.innerHTML = `<p><strong>${game.i18n.format('DW.LastBreath.Dying', { name: DwUtility.escape(actor.name) })}</strong></p>`
       + `<div class="dw-last-breath-text">${description}</div>`;
 
     const roll = await DialogV2.wait({

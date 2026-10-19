@@ -142,7 +142,30 @@
       flex-direction: row;
     }
 
+    // A move's effects: full width, wrapping between words.
+    .move-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin: 5px 0;
+
+      .button {
+        width: 100%;
+        margin: 0;
+        padding: 3px 8px;
+        line-height: 1.35;
+        word-break: normal;
+        overflow-wrap: break-word;
+      }
+    }
+
+    .move-actions-choose {
+      text-align: center;
+      font-weight: bold;
+    }
+
     .xp-button,
+    .move-actions .button,
     .chat-damage-buttons .button {
       flex: 1;
       background: $c-navy;

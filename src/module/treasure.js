@@ -1,4 +1,4 @@
-const { DialogV2 } = foundry.applications.api;
+import { DwUtility } from "./utility.js";
 const { FormDataExtended } = foundry.applications.ux;
 
 /**
@@ -44,11 +44,11 @@ export class DwTreasure {
    */
   static async findTable() {
     const name = 'treasure';
-    const world = game.tables.find(t => t.name.trim().toLowerCase() == name);
+    const world = game.tables.find(t => DwUtility.sameName(t.name, name));
     if (world) return world;
     for (const id of ['dungeonworld.tables', 'dungeonworld.rollable-tables']) {
       const pack = game.packs.get(id);
-      const entry = pack?.index.find(e => e.name.trim().toLowerCase() == name);
+      const entry = pack?.index.find(e => DwUtility.sameName(e.name, name));
       if (entry) return pack.getDocument(entry._id);
     }
     return null;
@@ -61,14 +61,13 @@ export class DwTreasure {
    */
   static async prompt(actor) {
     const tags = DwTreasure.#tags(actor);
-    const escape = (value) => Handlebars.escapeExpression(String(value ?? ''));
     const die = DwTreasure.damageDie(actor.system.attributes?.damage?.value);
 
     const content = document.createElement('div');
-    content.innerHTML = `<p>${game.i18n.format('DW.Treasure.Intro', { name: escape(actor.name) })}</p>
+    content.innerHTML = `<p>${game.i18n.format('DW.Treasure.Intro', { name: DwUtility.escape(actor.name) })}</p>
       <div class="form-group">
         <label>${game.i18n.localize('DW.Treasure.Die')}</label>
-        <input type="text" name="die" value="${escape(die)}">
+        <input type="text" name="die" value="${DwUtility.escape(die)}">
       </div>
       <fieldset class="dw-treasure-modifiers">
         <legend>${game.i18n.localize('DW.Treasure.Modifiers')}</legend>
@@ -79,19 +78,14 @@ export class DwTreasure {
         </label>`).join('')}
       </fieldset>`;
 
-    const choices = await DialogV2.wait({
+    const choices = await DwUtility.ask({
       classes: ['dw-treasure-dialog'],
       window: { title: game.i18n.localize('DW.Treasure.Title'), icon: 'fa-solid fa-gem' },
       position: { width: 460 },
       content,
-      buttons: [
-        { action: 'roll', label: 'DW.Treasure.Roll', icon: 'fa-solid fa-dice', default: true,
-          callback: (event, button) => new FormDataExtended(button.form).object },
-        { action: 'cancel', label: 'DW.Cancel', icon: 'fa-solid fa-xmark', callback: () => null },
-      ],
-      rejectClose: false,
+      ok: { label: 'DW.Treasure.Roll', icon: 'fa-solid fa-dice', callback: (event, button) => new FormDataExtended(button.form).object },
     });
-    if (choices && typeof choices == 'object') await DwTreasure.roll(actor, choices);
+    if (choices) await DwTreasure.roll(actor, choices);
   }
 
   /**
@@ -118,7 +112,7 @@ export class DwTreasure {
     const notes = DwTreasure.MODIFIERS
       .filter(m => m.note && choices[m.key])
       .map(m => `<li>${game.i18n.localize(`DW.Treasure.${m.key}Note`)}</li>`);
-    const flavor = `<strong>${game.i18n.format('DW.Treasure.Flavor', { name: Handlebars.escapeExpression(actor.name) })}</strong>`
+    const flavor = `<strong>${game.i18n.format('DW.Treasure.Flavor', { name: DwUtility.escape(actor.name) })}</strong>`
       + (notes.length ? `<ul class="dw-treasure-notes">${notes.join('')}</ul>` : '');
 
     const table = await DwTreasure.findTable();
@@ -137,12 +131,6 @@ export class DwTreasure {
 
   /** The monster's tags, lower case. */
   static #tags(actor) {
-    let tags = [];
-    try {
-      tags = actor.system.tags ? JSON.parse(actor.system.tags) : [];
-    } catch (e) {
-      tags = [];
-    }
-    return new Set((Array.isArray(tags) ? tags : []).map(t => String(t?.value ?? t).trim().toLowerCase()));
+    return new Set(DwUtility.parseTags(actor.system.tags).map(tag => tag.toLowerCase()));
   }
 }

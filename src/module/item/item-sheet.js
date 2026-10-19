@@ -1,5 +1,7 @@
 import { DwClassList } from "../config.js";
 import { DwUtility } from "../utility.js";
+import { DwMoves } from "../moves.js";
+import { DwMoveActions } from "../move-actions.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ItemSheetV2 } = foundry.applications.sheets;
@@ -34,6 +36,10 @@ export class DwItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     form: {
       submitOnChange: true,
     },
+    actions: {
+      addMoveAction: DwItemSheet.#onAddMoveAction,
+      removeMoveAction: DwItemSheet.#onRemoveMoveAction,
+    },
   };
 
   /** @override */
@@ -41,7 +47,10 @@ export class DwItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     sheet: {
       // Replaced with the item type's template in _configureRenderParts().
       template: "systems/dungeonworld/templates/items/move-sheet.html",
-      templates: ["systems/dungeonworld/templates/items/parts/item-header.html"],
+      templates: [
+        "systems/dungeonworld/templates/items/parts/item-header.html",
+        "systems/dungeonworld/templates/items/parts/item-effects.html",
+      ],
       scrollable: [".dw-panel"],
     },
   };
@@ -50,16 +59,8 @@ export class DwItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
 
   /** @inheritdoc */
   _initializeApplicationOptions(options) {
-    options = super._initializeApplicationOptions(options);
-
-    // Core applies its light or dark theme to V2 windows, either from the
-    // sheet's own theme setting or from the global color scheme. Use the same
-    // choice for the system's dark styles so text and backgrounds match.
-    let dark = DwUtility.nightmode;
-    if (options.classes.includes('theme-dark')) dark = true;
-    else if (options.classes.includes('theme-light')) dark = false;
-    if (dark) options.classes.push('dw-dark');
-    return options;
+    // Match core's light or dark theme choice.
+    return DwUtility.applyThemeClass(super._initializeApplicationOptions(options));
   }
 
   /** @override */
@@ -114,15 +115,7 @@ export class DwItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     if (item.type == 'equipment') {
       // If there are tags, convert it into a string.
       if (system.tags != undefined && system.tags != '') {
-        let tagArray = [];
-        try {
-          tagArray = JSON.parse(system.tags);
-        } catch (e) {
-          tagArray = [system.tags];
-        }
-        system.tagsString = tagArray.map((tag) => {
-          return tag.value;
-        }).join(', ');
+        system.tagsString = DwUtility.parseTags(system.tags).join(', ');
       }
       // Otherwise, set tags equal to the string.
       else {
@@ -130,7 +123,27 @@ export class DwItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       }
     }
 
+    // A move's effect lines, each with the settings its kind uses.
+    const amountHints = {
+      formula: 'DW.MoveActions.AmountFormula',
+      dice: 'DW.MoveActions.AmountDice',
+      count: 'DW.MoveActions.AmountCount',
+      number: 'DW.MoveActions.AmountNumber',
+    };
+    const moveActions = ['move', 'spell'].includes(item.type) ? DwMoveActions.lines(item).map(line => {
+      const config = DwMoveActions.TYPES[line.type];
+      return {
+        ...line,
+        fields: config,
+        amountHint: amountHints[config.amount] ?? '',
+        // Lay on Hands' 7-9: what's healed or removed passes to the character.
+        canTransfer: config.transfer && line.target != 'self',
+      };
+    }) : [];
+
+    const selects = this._prepareSelects(system);
     return Object.assign(context, {
+      moveActions,
       item: item,
       system: system,
       nameEnriched: nameEnriched,
@@ -138,9 +151,9 @@ export class DwItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       editable: isEditable,
       owner: item.isOwner,
       limited: item.limited,
-      selects: this._prepareSelects(system),
+      selects: selects,
       tabs: this._prepareSheetTabs(),
-      typeLabel: this._prepareTypeLabel(system),
+      typeLabel: this._prepareTypeLabel(system, selects),
     });
   }
 
@@ -149,17 +162,18 @@ export class DwItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
    * or "Spell · Level 3".
    *
    * @param {Object} system The item's prepared system data.
+   * @param {Object} selects From _prepareSelects().
    *
    * @return {string}
    */
-  _prepareTypeLabel(system) {
+  _prepareTypeLabel(system, selects) {
     const type = this.item.type;
     const parts = [game.i18n.localize(CONFIG.Item.typeLabels?.[type] ?? type)];
     const detail = {
       move: { basic: 'DW.MoveBasic', starting: 'DW.MoveStarting', advanced: 'DW.MoveAdvanced', special: 'DW.MoveSpecial' }[system.moveType],
       npcMove: { basic: 'DW.MoveBasic', special: 'DW.MoveSpecial' }[system.moveType],
       spell: system.spellLevel !== undefined && system.spellLevel !== null ? `DW.Spells${system.spellLevel}` : null,
-      equipment: this._prepareSelects(system).itemTypes?.[system.itemType],
+      equipment: selects.itemTypes?.[system.itemType],
     }[type];
     if (detail) parts.push(game.i18n.localize(detail));
     if ((type == 'move' || type == 'spell') && system.class) parts.push(system.class);
@@ -174,7 +188,7 @@ export class DwItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
   _prepareSheetTabs() {
     const activeTab = this.tabGroups.primary;
     const tabs = {};
-    for (let id of ['description', 'details', 'equipment']) {
+    for (let id of ['description', 'details', 'equipment', 'effects']) {
       tabs[id] = {
         active: activeTab == id,
         cssClass: activeTab == id ? 'active' : '',
@@ -245,21 +259,36 @@ export class DwItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
         PLAIN: 'DW.PLAIN',
       };
 
+      selects.automations = DwMoves.choices(system.automation);
+
       selects.ignoreClumsy = {
         armor: 'DW.IgnoreClumsy.Armor',
         all: 'DW.IgnoreClumsy.All',
       };
 
-      selects.resourceWhen = {
-        always: 'DW.Resource.Always',
-        hit: 'DW.Resource.Hit',
-        partial: 'DW.Resource.Partial',
-        success: 'DW.Resource.Success',
+      selects.healBonusTargets = {
+        any: 'DW.HealBonus.Anyone',
+        other: 'DW.HealBonus.Others',
       };
 
       selects.grantKinds = {
         move: 'DW.Grants.Move',
         spell: 'DW.Grants.Spell',
+      };
+    }
+    // Effects, on moves and spells.
+    if (type == 'move' || type == 'spell') {
+      selects.moveActionTypes = Object.fromEntries(Object.entries(DwMoveActions.TYPES).map(([key, { label }]) => [key, label]));
+      selects.moveActionTargets = DwMoveActions.TARGETS;
+      selects.moveActionConditions = Object.fromEntries(DwMoveActions.conditions().map(({ id, name }) => [id, name]));
+      selects.moveActionStats = {
+        str: 'DW.STR', dex: 'DW.DEX', con: 'DW.CON', int: 'DW.INT', wis: 'DW.WIS', cha: 'DW.CHA',
+      };
+      selects.actionWhen = {
+        always: 'DW.Resource.Always',
+        hit: 'DW.Resource.Hit',
+        partial: 'DW.Resource.Partial',
+        success: 'DW.Resource.Success',
       };
     }
     if (type == 'class') {
@@ -282,80 +311,47 @@ export class DwItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
   /* -------------------------------------------- */
 
   /** @inheritdoc */
+  _processFormData(event, form, formData) {
+    const data = super._processFormData(event, form, formData);
+    // Effect lines come in as {0: {...}, 1: {...}}; they're kept as a list.
+    const actions = data.system?.actions;
+    if (actions && !Array.isArray(actions)) {
+      data.system.actions = Object.keys(actions).sort((a, b) => a - b).map(key => actions[key]);
+    }
+    return data;
+  }
+
+  /** Add an effect line to a move or spell. A spell's works on a hit. */
+  static #onAddMoveAction() {
+    const actions = DwMoveActions.lines(this.item).map(line => ({ ...line }));
+    const when = this.item.type == 'spell' ? 'hit' : 'always';
+    actions.push({ type: 'heal', target: 'self', amount: '', stat: '', condition: '', name: '', when, transfer: false });
+    return this.item.update({ 'system.actions': actions });
+  }
+
+  /** Remove one of a move's effect lines. */
+  static #onRemoveMoveAction(event, target) {
+    const index = Number(target.dataset.index);
+    const actions = DwMoveActions.lines(this.item).filter((line, i) => i != index);
+    return this.item.update({ 'system.actions': actions });
+  }
+
+  /** @inheritdoc */
   async _onRender(context, options) {
     await super._onRender(context, options);
-    this._tagify(this.isEditable);
+    // Add the tagging widget. The previous one belongs to replaced markup.
+    this.tagify?.destroy();
+    const input = this.element.querySelector('.tags-input-source');
+    this.tagify = input ? DwUtility.tagify(input, this.isEditable) : null;
+    // TODO: Create tags that don't already exist on focus out. This is a
+    // nice-to-have, but it's high risk due to how easy it will make it to
+    // create extra tags unintentionally.
   }
 
   /** @inheritdoc */
   _onClose(options) {
     super._onClose(options);
-    this._destroyTagify();
-  }
-
-  /* -------------------------------------------- */
-
-  _destroyTagify() {
-    if (this.tagify) {
-      this.tagify.destroy();
-      this.tagify = null;
-    }
-  }
-
-  /**
-   * Add tagging widget.
-   */
-  _tagify(editable) {
-    // The previous instance belongs to markup that has been replaced.
-    this._destroyTagify();
-
-    const input = this.element.querySelector('.tags-input-source');
-    if (!input) return;
-
-    // Build the tags list.
-    let tags = game.items.filter(item => item.type == 'tag').map(item => item.name);
-    for (let c of game.packs) {
-      if (c.metadata.type && c.metadata.type == 'Item' && c.metadata.name == 'tags') {
-        let items = c?.index ? c.index.map(indexedItem => {
-          return indexedItem.name;
-        }) : [];
-        tags = tags.concat(items);
-      }
-    }
-    // Reduce duplicates.
-    let tagNames = [...new Set(tags.map(tag => tag.toLowerCase()))];
-
-    // Sort the tagnames list.
-    tagNames.sort((a, b) => {
-      const aSort = a.toLowerCase();
-      const bSort = b.toLowerCase();
-      if (aSort < bSort) {
-        return -1;
-      }
-      if (aSort > bSort) {
-        return 1;
-      }
-      return 0;
-    });
-
-    // Tagify!
-    if (!editable) {
-      input.readOnly = true;
-    }
-
-    this.tagify = new Tagify(input, {
-      whitelist: tagNames,
-      maxTags: 'Infinity',
-      dropdown: {
-        maxItems: 20,           // <- mixumum allowed rendered suggestions
-        classname: "tags-look", // <- custom classname for this dropdown, so it could be targeted
-        enabled: 0,             // <- show suggestions on focus
-        closeOnSelect: false    // <- do not hide the suggestions dropdown once an item has been selected
-      }
-    });
-
-    // TODO: Create tags that don't already exist on focus out. This is a
-    // nice-to-have, but it's high risk due to how easy it will make it to
-    // create extra tags unintentionally.
+    this.tagify?.destroy();
+    this.tagify = null;
   }
 }

@@ -16,16 +16,48 @@ system:
       value: ''
     partial:
       value: >-
-        <p>You heal [[1d8]] damage from them or remove one disease. However, the
+        <p>You heal 1d8 damage from them or remove one disease. However, the
         damage or disease is transferred to you.</p>
     success:
-      value: <p>You heal [[1d8]] damage from them or remove one disease.</p>
+      value: <p>You heal 1d8 damage from them or remove one disease.</p>
   class: The Paladin
   rollType: CHA
   rollMod: 0
   requiresLevel: 0
   requiresMove: ''
   moveGroup: ''
+  actions:
+    - type: heal
+      target: 'ally'
+      amount: '1d8'
+      stat: ''
+      name: ''
+      when: success
+      transfer: false
+    - type: removeCondition
+      target: 'ally'
+      amount: ''
+      stat: ''
+      condition: disease
+      name: ''
+      when: success
+      transfer: false
+    - type: heal
+      target: 'ally'
+      amount: '1d8'
+      stat: ''
+      name: ''
+      when: partial
+      transfer: true
+    - type: removeCondition
+      target: 'ally'
+      amount: ''
+      stat: ''
+      condition: disease
+      name: ''
+      when: partial
+      transfer: true
+  actionsChoose: 1
 ownership:
   default: 0
 effects: []

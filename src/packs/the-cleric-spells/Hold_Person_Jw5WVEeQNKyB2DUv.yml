@@ -10,6 +10,15 @@ data:
     the target takes damage from any source.</p>
   spellLevel: 3
   rollFormula: ''
+  actions:
+    - type: 'addCondition'
+      target: 'any'
+      amount: ''
+      stat: ''
+      condition: 'paralysis'
+      name: ''
+      when: 'hit'
+      transfer: false
   class: The Cleric
   prepared: false
 flags: {}

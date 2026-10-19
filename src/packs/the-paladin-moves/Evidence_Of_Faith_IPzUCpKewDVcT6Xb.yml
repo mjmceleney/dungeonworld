@@ -24,6 +24,15 @@ system:
   rollMod: 0
   requiresLevel: 6
   requiresMove: Divine Favor
+  actions:
+    - type: 'forward'
+      target: 'self'
+      amount: '1'
+      stat: ''
+      condition: ''
+      name: ''
+      when: 'always'
+      transfer: false
   moveGroup: ''
 ownership:
   default: 0

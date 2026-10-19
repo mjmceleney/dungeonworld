@@ -10,7 +10,6 @@ system:
     +1d4 damage (ignoring armor). If you do, take +1 forward to cast a
     spell.</p>
 
-    <p>Bonus damage roll: [[/roll 1d4]]</p>
   choices: ''
   moveType: advanced
   rollFormula: ''
@@ -26,6 +25,23 @@ system:
   rollMod: 0
   requiresLevel: 2
   requiresMove: ''
+  actions:
+    - type: 'damage'
+      target: 'self'
+      amount: '1d4'
+      stat: ''
+      condition: ''
+      name: ''
+      when: 'always'
+      transfer: false
+    - type: 'forward'
+      target: 'self'
+      amount: '1'
+      stat: ''
+      condition: ''
+      name: ''
+      when: 'always'
+      transfer: false
   moveGroup: ''
 ownership:
   default: 0

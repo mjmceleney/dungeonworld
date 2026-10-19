@@ -4,6 +4,7 @@
   <nav class="dw-tabs tabs">
     <button type="button" class="dw-tab {{tabs.description.cssClass}}" data-action="tab" data-group="primary" data-tab="description">{{localize "DW.Common.Description"}}</button>
     <button type="button" class="dw-tab {{tabs.details.cssClass}}" data-action="tab" data-group="primary" data-tab="details">{{localize "DW.Common.Details"}}</button>
+    <button type="button" class="dw-tab {{tabs.effects.cssClass}}" data-action="tab" data-group="primary" data-tab="effects">{{localize "DW.MoveActions.Label"}}{{#if moveActions.length}} ({{moveActions.length}}){{/if}}</button>
   </nav>
 
   <section class="tab dw-panel {{tabs.description.cssClass}}" data-group="primary" data-tab="description">
@@ -58,24 +59,45 @@
       <input type="text" name="system.moveGroup" value="{{system.moveGroup}}" placeholder="ex: barbarian-armor"/>
       <span class="dw-fields-hint">{{localize "DW.MoveGroupHelp"}}</span>
 
+      {{!-- A procedure the system runs for the move: choosing a spell to
+           cast, preparing spells. --}}
+      <span class="dw-label">{{localize "DW.Automation.Label"}}</span>
+      <select name="system.automation">
+        {{selectOptions selects.automations selected=system.automation blank=(localize "DW.Automation.None") localize=true}}
+      </select>
+      <span class="dw-fields-hint">{{localize "DW.Automation.Hint"}}</span>
+
       <span class="dw-label">{{localize "DW.IgnoreClumsy.Label"}}</span>
       <select name="system.ignoreClumsy">
         {{selectOptions selects.ignoreClumsy selected=system.ignoreClumsy blank=(localize "DW.IgnoreClumsy.None") localize=true}}
       </select>
 
-      {{!-- A resource the move spends, such as Volley's ammo. --}}
-      <span class="dw-label">{{localize "DW.Resource.Label"}}</span>
-      <input type="text" name="system.resource.name" value="{{system.resource.name}}" placeholder="ex: ammo"/>
-      <span class="dw-fields-hint">{{localize "DW.Resource.Hint"}}</span>
+      {{!-- Moves like Prodigy: spells prepared as if they were lower level. --}}
+      <span class="dw-label">{{localize "DW.LowerSpells.Count"}}</span>
+      <input type="number" name="system.lowerSpells.count" value="{{system.lowerSpells.count}}" min="0" step="1"/>
+      <span class="dw-fields-hint">{{localize "DW.LowerSpells.CountHint"}}</span>
 
-      {{#if system.resource.name}}
-      <span class="dw-label">{{localize "DW.Resource.Amount"}}</span>
-      <input type="number" name="system.resource.amount" value="{{system.resource.amount}}" min="1" step="1"/>
+      {{#if system.lowerSpells.count}}
+      <span class="dw-label">{{localize "DW.LowerSpells.Levels"}}</span>
+      <input type="number" name="system.lowerSpells.levels" value="{{system.lowerSpells.levels}}" min="1" step="1"/>
+      <span class="dw-fields-hint">{{localize "DW.LowerSpells.LevelsHint"}}</span>
+      {{/if}}
 
-      <span class="dw-label">{{localize "DW.Resource.When"}}</span>
-      <select name="system.resource.when">
-        {{selectOptions selects.resourceWhen selected=system.resource.when localize=true}}
+      {{!-- Moves like Hospitaller: heals from the character's moves heal
+           more. --}}
+      <span class="dw-label">{{localize "DW.HealBonus.Label"}}</span>
+      <input type="text" name="system.healBonus.amount" value="{{system.healBonus.amount}}" placeholder="ex: 1d8"/>
+      <span class="dw-fields-hint">{{localize "DW.HealBonus.Hint"}}</span>
+
+      {{#if system.healBonus.amount}}
+      <span class="dw-label">{{localize "DW.HealBonus.Target"}}</span>
+      <select name="system.healBonus.target">
+        {{selectOptions selects.healBonusTargets selected=system.healBonus.target localize=true}}
       </select>
+
+      <span class="dw-label">{{localize "DW.HealBonus.Moves"}}</span>
+      <input type="text" name="system.healBonus.moves" value="{{system.healBonus.moves}}" placeholder="ex: Arcane Art"/>
+      <span class="dw-fields-hint">{{localize "DW.HealBonus.MovesHint"}}</span>
       {{/if}}
 
       {{!-- Moves like Multiclass Dabbler: after the level up, pick a move (or
@@ -107,4 +129,6 @@
       <span class="dw-fields-hint">{{localize "DW.Grants.CastingHint"}}</span>
     </div>
   </section>
+
+  {{> "systems/dungeonworld/templates/items/parts/item-effects.html"}}
 </div>

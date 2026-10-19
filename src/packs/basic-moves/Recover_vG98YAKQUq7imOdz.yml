@@ -17,6 +17,20 @@ data:
   requiresMove: ''
   moveType: special
   moveGroup: ''
+  automation: ''
+  actions:
+    - type: heal
+      target: self
+      amount: ''
+      stat: ''
+      name: ''
+      when: always
+    - type: removeDebility
+      target: self
+      amount: ''
+      stat: ''
+      name: ''
+      when: always
   moveResults:
     failure:
       value: ''

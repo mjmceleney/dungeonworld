@@ -1,6 +1,5 @@
 import { DwUtility } from "../utility.js";
 
-const { DialogV2 } = foundry.applications.api;
 const { FormDataExtended } = foundry.applications.ux;
 
 /**
@@ -22,18 +21,17 @@ export class DwStartOver {
    * @return {Promise<boolean>} Whether the character was started over.
    */
   static async run(actor, { reclass = false } = {}) {
-    const escape = (value) => Handlebars.escapeExpression(String(value ?? ''));
     const items = actor.items;
     const count = (filter) => items.filter(filter).length;
     const classMoves = items.filter(i => i.type == 'move' && i.system.class);
     const option = (name, checked, label) => `<div class="form-group"><label class="checkbox">
-        <input type="checkbox" name="${name}" ${checked ? 'checked' : ''}> ${escape(label)}</label></div>`;
+        <input type="checkbox" name="${name}" ${checked ? 'checked' : ''}> ${DwUtility.escape(label)}</label></div>`;
 
     const content = document.createElement('div');
-    content.innerHTML = `<p>${escape(game.i18n.format(reclass ? 'DW.Reclass.Text' : 'DW.Sheet.StartOverText', { actor: actor.name }))}</p>`
+    content.innerHTML = `<p>${DwUtility.escape(game.i18n.format(reclass ? 'DW.Reclass.Text' : 'DW.Sheet.StartOverText', { actor: actor.name }))}</p>`
       + (reclass
         // Changing class: pick the moves that are core to who they are.
-        ? (classMoves.length ? `<fieldset class="dw-reclass-keep"><legend>${escape(game.i18n.localize('DW.Reclass.KeepMoves'))}</legend>`
+        ? (classMoves.length ? `<fieldset class="dw-reclass-keep"><legend>${DwUtility.escape(game.i18n.localize('DW.Reclass.KeepMoves'))}</legend>`
             + classMoves.map(m => option(`keep.${m.id}`, false, m.name)).join('') + '</fieldset>' : '')
           + option('keepHp', true, game.i18n.localize('DW.Reclass.KeepHp'))
         : option('moves', true, game.i18n.format('DW.Sheet.StartOverMoves', { count: classMoves.length })))
@@ -42,19 +40,15 @@ export class DwStartOver {
       + option('bonds', false, game.i18n.format('DW.Sheet.StartOverBonds', { count: count(i => i.type == 'bond') }))
       + (reclass ? '' : option('details', false, game.i18n.localize('DW.Sheet.StartOverDetails')));
 
-    const result = await DialogV2.wait({
+    const result = await DwUtility.ask({
       classes: ['dw-start-over-dialog'],
       window: { title: game.i18n.localize(reclass ? 'DW.Reclass.Title' : 'DW.Sheet.StartOverTitle') },
       position: { width: 460 },
       content,
-      buttons: [
-        { action: 'confirm', label: reclass ? 'DW.Reclass.Confirm' : 'DW.Sheet.StartOver', icon: 'fa-solid fa-check', default: true,
-          callback: (event, button) => foundry.utils.expandObject(new FormDataExtended(button.form).object) },
-        { action: 'cancel', label: 'DW.Cancel', icon: 'fa-solid fa-xmark', callback: () => null },
-      ],
-      rejectClose: false,
+      ok: { label: reclass ? 'DW.Reclass.Confirm' : 'DW.Sheet.StartOver',
+        callback: (event, button) => foundry.utils.expandObject(new FormDataExtended(button.form).object) },
     });
-    if (!result || typeof result != 'object') return false;
+    if (!result) return false;
 
     // Changing class removes every class move not kept; starting over removes
     // them all when asked.

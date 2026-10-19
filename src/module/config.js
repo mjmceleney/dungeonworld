@@ -2,6 +2,9 @@ import { DwUtility } from "./utility.js";
 
 export const DW = {};
 
+/** The ability keys, in sheet order. */
+export const STATS = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+
 /** Font Awesome icon for each ability (all in the free set, V6 and V7). */
 export const ABILITY_ICONS = {
   str: 'fa-hand-fist',
@@ -74,32 +77,20 @@ export class DwClassList {
   static async _loadClasses() {
     // First, retrieve any custom or overridden classes so that we can
     // prioritize those.
-    let classes = game.items.filter(item => item.type == 'class');
-
-    classes.push(...(await DwUtility.loadCompendia('classes')));
+    const all = [
+      ...game.items.filter(item => item.type == 'class'),
+      ...(await DwUtility.loadCompendia('classes')),
+    ];
 
     // Reduce duplicates. Because item classes happen first, this will prevent
     // duplicate compendium entries from overriding the items.
     const charClassNames = new Set();
-    classes = classes.filter(charClass => {
+    const classes = all.filter(charClass => {
       if (charClassNames.has(charClass.name)) return false;
       charClassNames.add(charClass.name);
       return true;
     });
 
-    // Sort the class objects list.
-    classes.sort((a, b) => {
-      const aSort = a.name.toLowerCase();
-      const bSort = b.name.toLowerCase();
-      if (aSort < bSort) {
-        return -1;
-      }
-      if (aSort > bSort) {
-        return 1;
-      }
-      return 0;
-    });
-
-    return classes;
+    return classes.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
   }
 }

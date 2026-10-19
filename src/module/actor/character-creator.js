@@ -65,12 +65,8 @@ export class DwCharacterCreator extends HandlebarsApplicationMixin(ApplicationV2
 
   /** @inheritdoc */
   _initializeApplicationOptions(options) {
-    options = super._initializeApplicationOptions(options);
-    let dark = DwUtility.nightmode;
-    if (options.classes.includes('theme-dark')) dark = true;
-    else if (options.classes.includes('theme-light')) dark = false;
-    if (dark) options.classes.push('dw-dark');
-    return options;
+    // Match core's light or dark theme choice.
+    return DwUtility.applyThemeClass(super._initializeApplicationOptions(options));
   }
 
   /**
@@ -86,6 +82,27 @@ export class DwCharacterCreator extends HandlebarsApplicationMixin(ApplicationV2
       .filter(group => group.length);
   }
 
+  /** Each class's blurb, by class name, worked out once per window. */
+  #blurbs = new Map();
+
+  /**
+   * A class's blurb: the first paragraph of its description, which is enough
+   * to choose by.
+   * @param {Item} classItem
+   * @return {Promise<string>}
+   */
+  #blurb(classItem) {
+    if (!this.#blurbs.has(classItem.name)) {
+      this.#blurbs.set(classItem.name, (async () => {
+        const html = await TextEditor.implementation.enrichHTML(classItem.system.description ?? '', { relativeTo: classItem });
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const first = [...doc.querySelectorAll('p')].map(p => p.textContent.trim()).find(Boolean) ?? '';
+        return first.length > 260 ? `${first.slice(0, 257).trim()}…` : first;
+      })());
+    }
+    return this.#blurbs.get(classItem.name);
+  }
+
   /** @override */
   async _prepareContext(options) {
     const all = await DwClassList.getClasses(false);
@@ -94,22 +111,16 @@ export class DwCharacterCreator extends HandlebarsApplicationMixin(ApplicationV2
     const classes = all.filter(c => !c.system.secret);
     const chosen = classes.find(c => c.name == this.choices.className) ?? null;
 
-    const summaries = await Promise.all(classes.map(async c => {
-      // The first paragraph of the class's description is enough to choose by.
-      const html = await TextEditor.implementation.enrichHTML(c.system.description ?? '', { relativeTo: c });
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const first = [...doc.querySelectorAll('p')].map(p => p.textContent.trim()).find(Boolean) ?? '';
-      return {
-        name: c.name,
-        label: c.name.replace(/^the\s+/i, ''),
-        img: c.img,
-        checked: c === chosen,
-        blurb: first.length > 260 ? `${first.slice(0, 257).trim()}…` : first,
-        hp: c.system.hp,
-        damage: c.system.damage,
-        load: c.system.load,
-      };
-    }));
+    const summaries = await Promise.all(classes.map(async c => ({
+      name: c.name,
+      label: DwUtility.shortClassName(c.name),
+      img: c.img,
+      checked: c === chosen,
+      blurb: await this.#blurb(c),
+      hp: c.system.hp,
+      damage: c.system.damage,
+      load: c.system.load,
+    })));
 
     const looks = chosen ? DwCharacterCreator.parseLooks(chosen.system.looks).map((options, index) => ({
       index,
@@ -119,7 +130,7 @@ export class DwCharacterCreator extends HandlebarsApplicationMixin(ApplicationV2
     return {
       choices: this.choices,
       classes: summaries,
-      chosen: chosen ? chosen.name.replace(/^the\s+/i, '') : '',
+      chosen: chosen ? DwUtility.shortClassName(chosen.name) : '',
       looks,
       noClasses: !classes.length,
     };
@@ -164,7 +175,7 @@ export class DwCharacterCreator extends HandlebarsApplicationMixin(ApplicationV2
       'system.details.class': className,
     };
     if (name.trim()) update.name = name.trim();
-    if (lookParts.length) update['system.details.look'] = `<p>${Handlebars.escapeExpression(lookParts.join(', '))}</p>`;
+    if (lookParts.length) update['system.details.look'] = `<p>${DwUtility.escape(lookParts.join(', '))}</p>`;
     await this.actor.update(update);
 
     // The builder needs the class's name exactly as the class list has it.

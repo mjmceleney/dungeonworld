@@ -1,5 +1,7 @@
 import { DwRolls } from "./rolls.js";
 import { DwUtility } from "./utility.js";
+import { DwMoves } from "./moves.js";
+import { DwSocket } from "./socket.js";
 import { DwResources } from "./resources.js";
 
 const { renderTemplate } = foundry.applications.handlebars;
@@ -27,20 +29,20 @@ export class DwPartyMoves {
   /** The party moves, and the move each one comes from. */
   static TYPES = {
     journey: {
-      move: 'undertake a perilous journey',
+      move: 'journey',
       icon: 'fa-solid fa-route',
       roles: ['trailblazer', 'scout', 'quartermaster'],
     },
     camp: {
-      move: 'make camp',
+      move: 'makeCamp',
       icon: 'fa-solid fa-campground',
     },
   };
 
-  /** The moves rolled from the card. */
+  /** The moves rolled from the card (automations). */
   static ROLLED_MOVES = {
-    journey: 'undertake a perilous journey',
-    watch: 'take watch',
+    journey: 'journey',
+    watch: 'takeWatch',
   };
 
   static init() {
@@ -56,9 +58,7 @@ export class DwPartyMoves {
    * @return {string|null} "journey" or "camp".
    */
   static typeFor(item) {
-    if (item?.type != 'move') return null;
-    const name = item.name.trim().toLowerCase();
-    return Object.entries(DwPartyMoves.TYPES).find(([, type]) => type.move == name)?.[0] ?? null;
+    return Object.entries(DwPartyMoves.TYPES).find(([, type]) => DwMoves.is(item, type.move))?.[0] ?? null;
   }
 
   /**
@@ -92,10 +92,15 @@ export class DwPartyMoves {
   static async join(message, actor) {
     const party = message.flags.dungeonworld.party;
     if (party.members?.[actor.id]) return;
-    const sorts = Object.values(party.members ?? {}).filter(Boolean).map(m => m.sort ?? 0);
     await DwPartyMoves.update(message, {
-      [`${FLAG}.members.${actor.id}`]: { sort: sorts.length ? Math.max(...sorts) + 1 : 0 },
+      [`${FLAG}.members.${actor.id}`]: { sort: DwPartyMoves.#nextSort(party) },
     });
+  }
+
+  /** Where a new member goes: after everyone already on the card. */
+  static #nextSort(party) {
+    const sorts = Object.values(party.members ?? {}).filter(Boolean).map(m => m.sort ?? 0);
+    return sorts.length ? Math.max(...sorts) + 1 : 0;
   }
 
   /**
@@ -107,10 +112,7 @@ export class DwPartyMoves {
    */
   static async update(message, changes) {
     if (message.canUserModify(game.user, 'update')) return message.update(changes);
-    if (!game.users.activeGM) {
-      return ui.notifications.warn(game.i18n.localize('DW.Party.NeedsGM'));
-    }
-    game.socket.emit('system.dungeonworld', { partyUpdate: { message: message.id, changes } });
+    DwSocket.askGM('partyUpdate', { message: message.id, changes });
   }
 
   /**
@@ -258,13 +260,12 @@ export class DwPartyMoves {
   static async #chooseActor(actors, title) {
     if (actors.length <= 1) return actors[0] ?? null;
     const DialogV2 = foundry.applications.api.DialogV2;
-    const escape = (value) => Handlebars.escapeExpression(String(value ?? ''));
     const content = document.createElement('div');
     content.innerHTML = `<div class="dw-pick-actors">${actors.map(a => `
       <button type="button" class="dw-pick-actor" data-action="${a.id}">
-        <img src="${escape(a.img)}" alt="" width="32" height="32">
-        <span>${escape(a.name)}</span>
-        <span class="dw-pick-type">${escape(game.i18n.localize(`TYPES.Actor.${a.type}`))}</span>
+        <img src="${DwUtility.escape(a.img)}" alt="" width="32" height="32">
+        <span>${DwUtility.escape(a.name)}</span>
+        <span class="dw-pick-type">${DwUtility.escape(game.i18n.localize(`TYPES.Actor.${a.type}`))}</span>
       </button>`).join('')}</div>`;
     // The characters are the buttons; the footer's copies are hidden.
     const id = await DialogV2.wait({
@@ -310,8 +311,7 @@ export class DwPartyMoves {
     }
     changes[`${FLAG}.rolls.${role}`] = null;
     if (!party.members?.[actor.id]) {
-      const sorts = Object.values(party.members ?? {}).filter(Boolean).map(m => m.sort ?? 0);
-      changes[`${FLAG}.members.${actor.id}`] = { sort: sorts.length ? Math.max(...sorts) + 1 : 0 };
+      changes[`${FLAG}.members.${actor.id}`] = { sort: DwPartyMoves.#nextSort(party) };
     }
     await DwPartyMoves.update(message, changes);
   }
@@ -422,17 +422,16 @@ export class DwPartyMoves {
    *
    * @return {Promise<{roll: Roll|null, result: string|null}|null>}
    */
-  static async #rollMove(actor, name, stat) {
-    const matches = (item) => item.type == 'move' && item.name.trim().toLowerCase() == name;
-    let move = actor.items.find(matches) ?? game.items.find(matches);
-    if (!move) move = (await DwUtility.loadCompendia('basic-moves')).find(matches);
+  static async #rollMove(actor, key, stat) {
+    const move = await DwMoves.find(actor, key);
     if (move) return DwRolls.rollMove({ actor, data: move });
-    return DwRolls.rollMove({ actor, data: null, formula: stat, templateData: { title: name } });
+    const title = game.i18n.localize(DwMoves.AUTOMATIONS[key].label);
+    return DwRolls.rollMove({ actor, data: null, formula: stat, templateData: { title } });
   }
 
   /** How many rations a character has left (items tagged or named "ration"). */
   static #rationCount(actor) {
-    return DwResources.find(actor, 'ration').reduce((sum, item) => sum + DwResources.remaining(item), 0);
+    return DwResources.count(actor, 'ration');
   }
 
   /**

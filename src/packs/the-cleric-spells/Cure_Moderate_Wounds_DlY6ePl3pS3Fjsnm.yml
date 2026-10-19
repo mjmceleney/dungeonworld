@@ -9,6 +9,15 @@ data:
     of 2d8 damage.</p>
   spellLevel: 3
   rollFormula: 2d8
+  actions:
+    - type: heal
+      target: 'ally'
+      amount: '2d8'
+      stat: ''
+      condition: ''
+      name: ''
+      when: hit
+      transfer: false
   class: The Cleric
   prepared: false
 flags: {}

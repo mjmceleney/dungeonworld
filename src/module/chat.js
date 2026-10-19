@@ -1,21 +1,19 @@
 import { DwHirelingSheet } from "./actor/hireling-sheet.js";
-import { DwResources } from "./resources.js";
+import { DwMoveActions } from "./move-actions.js";
 import { DwSpells } from "./spells.js";
 import { DwGmMoves } from "./gm-moves.js";
 import { DwRecruit } from "./recruit.js";
+import { DwUtility } from "./utility.js";
+import { DwSocket } from "./socket.js";
 
 const { renderTemplate } = foundry.applications.handlebars;
 
 // Damage button markup, rendered once and reused for every message.
 let damageButtonsHtml = null;
 
-const getDamageButtons = function() {
+export const getDamageButtons = function() {
   damageButtonsHtml ??= renderTemplate('systems/dungeonworld/templates/parts/chat-buttons.html', {});
   return damageButtonsHtml;
-}
-
-export const preloadDamageButtons = function() {
-  return getDamageButtons();
 }
 
 export const appendDamageButtons = async function(message, html) {
@@ -59,6 +57,14 @@ export const activateChatListeners = function(html) {
   html.on('click', 'button[data-action]', (event) => _onChatCardAction(event));
 }
 
+/** The damage buttons, and how each applies the roll. */
+const DAMAGE_OPS = {
+  'damage': 'full',
+  'half-damage': 'half',
+  'double-damage': 'double',
+  'heal': 'heal',
+};
+
 function _onChatCardAction(event) {
   event.preventDefault();
 
@@ -68,40 +74,23 @@ function _onChatCardAction(event) {
   const messageId = button.closest(".message").dataset.messageId;
   const message =  game.messages.get(messageId);
   const action = button.dataset.action;
+  const actor = card ? _getChatCardActor(card) : null;
 
-  // Perform the action.
-  if (action == 'xp') {
-    // Recover the actor for the chat card
-    const actor = card ? _getChatCardActor(card) : null;
-    if ( !actor ) return;
-
-    button.disabled = true;
-    _chatActionMarkXp(actor, message);
-  }
-
-  // Cast a Spell's 7-9 choices, for the caster's owner.
-  if (action == 'castPenalty' || action == 'forgetSpell') {
-    const actor = card ? _getChatCardActor(card) : null;
+  // Choices on a move's card, for the character's owner.
+  const ownerActions = {
+    xp: () => _chatActionMarkXp(actor, message),
+    // Cast a Spell's 7-9 choices.
+    castPenalty: () => _chatActionCastChoice(actor, message, action, button.dataset.spellId),
+    forgetSpell: () => _chatActionCastChoice(actor, message, action, button.dataset.spellId),
+    // Recruit: turning the applicants away.
+    turnAway: () => _chatActionTurnAway(actor, message),
+    // A move's effect (a heal, Volley's ammo).
+    moveAction: () => _chatActionMoveAction(actor, message, button),
+  };
+  if (Object.hasOwn(ownerActions, action)) {
     if (!actor?.isOwner) return;
-    _chatActionCastChoice(actor, message, action, button.dataset.spellId);
-    return;
-  }
-
-  // Recruit: turning the applicants away, for the recruiter's owner.
-  if (action == 'turnAway') {
-    const actor = card ? _getChatCardActor(card) : null;
-    if (!actor?.isOwner) return;
-    button.disabled = true;
-    _chatActionTurnAway(actor, message);
-    return;
-  }
-
-  // Spend a move's resource (Volley's ammo), for the character's owner.
-  if (action == 'spendResource') {
-    const actor = card ? _getChatCardActor(card) : null;
-    if (!actor?.isOwner) return;
-    button.disabled = true;
-    _chatActionSpendResource(actor, message, button);
+    if (['xp', 'turnAway', 'moveAction'].includes(action)) button.disabled = true;
+    ownerActions[action]();
     return;
   }
 
@@ -109,13 +98,13 @@ function _onChatCardAction(event) {
   if ( !( game.user.isGM ) ) return;
 
   // Chat damage.
-  if (action.includes('damage') || action == 'heal') _chatActionDamage(message, action);
+  if (Object.hasOwn(DAMAGE_OPS, action)) _chatActionDamage(message, DAMAGE_OPS[action]);
 
   // On a 6-: the GM's moves, as a reminder.
   if (action == 'gmMoves') DwGmMoves.show();
 
   // Recruit: make a hireling who works for the recruiter.
-  if (action == 'createHireling') DwHirelingSheet.createFor(card ? _getChatCardActor(card) : null, { found: button.dataset.found });
+  if (action == 'createHireling') DwHirelingSheet.createFor(actor, { found: button.dataset.found });
 }
 
 /**
@@ -130,12 +119,7 @@ function _getChatCardActor(card) {
   const tokenKey = card.dataset.tokenId;
   if (tokenKey) {
     const [sceneId, tokenId] = tokenKey.split(".");
-    const scene = game.scenes.get(sceneId);
-    if (!scene) return null;
-    const tokenData = scene.getEmbeddedDocument("Token", tokenId);
-    if (!tokenData) return null;
-    const token = new Token(tokenData);
-    return token.actor;
+    return game.scenes.get(sceneId)?.tokens.get(tokenId)?.actor ?? null;
   }
 
   // Case 2 - use Actor ID directory
@@ -143,34 +127,71 @@ function _getChatCardActor(card) {
   return game.actors.get(actorId) || null;
 }
 
-async function _chatActionMarkXp(actor, message) {
-  if (!actor.system || !actor.system.attributes.xp) return;
+/* -------------------------------------------- */
+/*  Card edits                                  */
+/* -------------------------------------------- */
 
-  let xp = actor.system.attributes.xp.value ?? 0;
-  let updates = {
-    'system.attributes.xp.value': Number(xp) + 1
-  };
+/** A disabled button saying what was chosen. */
+const doneButton = (text, classes = '') =>
+  `<span class="${classes} button button-disabled">${DwUtility.escape(text)} <i class="fas fa-check"></i></span>`;
 
-  // Update the actor.
-  await actor.update(updates);
+/**
+ * The changes a choice makes to a card: each replaces the buttons for that
+ * choice with what was chosen. Only these can be made through the GM.
+ */
+const CARD_EDITS = {
+  xp: ($content) => $content.find('.xp-button').replaceWith(doneButton(game.i18n.localize("DW.XpMarked"), 'xp-button')),
+  // One choice per cast: replace both buttons with what was chosen.
+  castChoice: ($content, text) => $content.find('.cast-choices').html(doneButton(text)),
+  turnAway: ($content, text) => $content.find('[data-action="turnAway"]').replaceWith(doneButton(text)),
+  // One effect applied. Once as many as the move says to choose are, the
+  // rest go.
+  moveAction: ($content, text, index) => {
+    const $button = $content.find(`.move-action-button[data-index="${String(index).replace(/[^\w-]/g, '')}"]`);
+    const $row = $button.closest('.move-actions');
+    $button.replaceWith(doneButton(text, 'move-action-done'));
+    const choose = Number($row.attr('data-choose')) || 0;
+    if (choose && $row.find('.move-action-done').length >= choose) $row.find('.move-action-button, .move-actions-choose').remove();
+    return $button;
+  },
+};
 
-  // Update the chat message.
-  let $content = $(message.content);
-  let $button = $content.find('.xp-button');
+/** A card's content with an edit made, or null if the card has nothing to edit. */
+function _editedContent(message, edit, text, index) {
+  const $content = $('<div>').html(message.content);
+  const edited = CARD_EDITS[edit]($content, text, index);
+  return edited.length ? $content.html() : null;
+}
 
-  // Replace the button.
-  let newButton = `<span class="xp-button button button-disabled">${game.i18n.localize("DW.XpMarked")} <i class="fas fa-check"></i></span>`;
-  $button.replaceWith($(newButton));
-
+/**
+ * Make an edit to a card. Only the message's author and GMs can change a
+ * message, so other players ask the active GM to.
+ */
+async function _editCard(message, edit, text = '', index = '') {
   if (message.isAuthor || game.user.isGM) {
-    await message.update({'content': $content[0].outerHTML});
+    const content = _editedContent(message, edit, text, index);
+    if (content !== null) await message.update({ content });
+    return;
   }
-  else {
-    game.socket.emit('system.dungeonworld', {
-      message: message.id,
-      content: $content[0].outerHTML
-    });
-  }
+  DwSocket.askGM('cardEdit', { message: message.id, edit, text, index });
+}
+
+/** A player's edit to a card, on the active GM's client. */
+export async function applyRemoteCardEdit(data) {
+  const message = game.messages.get(data?.message);
+  if (!message || !Object.hasOwn(CARD_EDITS, data.edit)) return;
+  const content = _editedContent(message, data.edit, String(data.text ?? ''), String(data.index ?? ''));
+  if (content !== null) await message.update({ content });
+}
+
+/* -------------------------------------------- */
+/*  Actions                                     */
+/* -------------------------------------------- */
+
+async function _chatActionMarkXp(actor, message) {
+  if (!actor.system?.attributes?.xp) return;
+  await actor.update({ 'system.attributes.xp.value': (Number(actor.system.attributes.xp.value) || 0) + 1 });
+  await _editCard(message, 'xp');
 }
 
 async function _chatActionCastChoice(actor, message, action, spellId) {
@@ -184,84 +205,37 @@ async function _chatActionCastChoice(actor, message, action, spellId) {
     if (!spell) return;
     text = game.i18n.format('DW.Spellcasting.Lost', { spell: spell.name });
   }
-  // One choice per cast: replace both buttons with what was chosen.
-  const $content = $('<div>').html(message.content);
-  $content.find('.cast-choices').html(`<span class="button button-disabled">${Handlebars.escapeExpression(text)} <i class="fas fa-check"></i></span>`);
-  const content = $content.html();
-  if (message.isAuthor || game.user.isGM) await message.update({ content });
-  else game.socket.emit('system.dungeonworld', { message: message.id, content });
+  await _editCard(message, 'castChoice', text);
 }
 
 async function _chatActionTurnAway(actor, message) {
   const penalty = await DwRecruit.turnAway(actor);
-  const $content = $('<div>').html(message.content);
-  $content.find('[data-action="turnAway"]').replaceWith(`<span class="button button-disabled">${game.i18n.format('DW.Recruit.TurnedAway', { penalty })} <i class="fas fa-check"></i></span>`);
-  const content = $content.html();
-  if (message.isAuthor || game.user.isGM) await message.update({ content });
-  else game.socket.emit('system.dungeonworld', { message: message.id, content });
+  await _editCard(message, 'turnAway', game.i18n.format('DW.Recruit.TurnedAway', { penalty }));
 }
 
-async function _chatActionSpendResource(actor, message, button) {
-  const name = button.dataset.resource;
-  const amount = Math.max(1, Number(button.dataset.amount) || 1);
-  const { spent, items } = await DwResources.spendResource(actor, name, amount);
-  if (!spent) {
+async function _chatActionMoveAction(actor, message, button) {
+  const text = await DwMoveActions.apply(actor, button.dataset);
+  // Nothing done (cancelled): it can be tried again.
+  if (!text) {
     button.disabled = false;
-    return ui.notifications.warn(game.i18n.format('DW.Resource.None', { name, actor: actor.name }));
+    return;
   }
-
-  // Mark the card, so it isn't spent twice.
-  const $content = $('<div>').html(message.content);
-  const left = DwResources.find(actor, name).reduce((sum, i) => sum + DwResources.remaining(i), 0);
-  $content.find('.resource-button').replaceWith(`<span class="button button-disabled">${game.i18n.format('DW.Resource.Spent', { amount: spent, name: items.join(', '), left })} <i class="fas fa-check"></i></span>`);
-  const content = $content.html();
-  if (message.isAuthor || game.user.isGM) await message.update({ content });
-  else game.socket.emit('system.dungeonworld', { message: message.id, content });
+  await _editCard(message, 'moveAction', text, button.dataset.index);
 }
 
-async function _chatActionDamage(message, action) {
-  let actors = canvas.tokens.controlled.map(t => t.document.actor);
-  if (!actors || actors.length < 1) return;
+async function _chatActionDamage(message, op) {
+  const actors = canvas.tokens.controlled.map(t => t.document.actor);
+  if (!actors.length) return;
 
   // Wrap the content so that plain-text content (such as a bare roll total)
   // isn't treated as a jQuery selector.
   const $message = $('<div>').html(message.content);
-  let $content = $message.text();
   // TODO: Localize this.
-  let piercing = $content.match(/(\d+)\s*piercing|piercing\s*(\d+)/) ?? [];
-  let dmgBonus = $content.match(/[+](\d+)\s*damage|damage\s*[+](\d+)/) ?? [];
-  let options = {
-    ignoreArmor: $content.toLowerCase().includes('ignores armor'),
-    piercing: (piercing[1] ?? piercing[2]) ?? 0,
-    dmgBonus: (dmgBonus[1] ?? dmgBonus[2]) ?? 0,
-  };
+  const options = { op, ...DwUtility.damageTags($message.text()) };
   const rollTotal = message.rolls?.[0]?.total ?? $message.find('.dice-total').text() ?? 0;
-  for (let actor of actors) {
-    if (!actor || !actor.system.attributes.hp) return;
-
-    switch (action) {
-      case 'damage':
-        options.op = 'full';
-        await actor.applyDamage(rollTotal, options);
-        break;
-
-      case 'half-damage':
-        options.op = 'half';
-        await actor.applyDamage(rollTotal, options);
-        break;
-
-      case 'double-damage':
-        options.op = 'double';
-        await actor.applyDamage(rollTotal, options);
-        break;
-
-      case 'heal':
-        options.op = 'heal';
-        await actor.applyDamage(rollTotal, options);
-        break;
-
-      default:
-        break;
-    }
+  for (const actor of actors) {
+    // Skip tokens without HP, such as objects, and carry on with the rest.
+    if (!actor?.system.attributes?.hp) continue;
+    await actor.applyDamage(rollTotal, options);
   }
 }

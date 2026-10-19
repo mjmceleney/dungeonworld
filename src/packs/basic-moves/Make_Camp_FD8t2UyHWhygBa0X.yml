@@ -17,6 +17,7 @@ data:
   requiresMove: ''
   moveType: special
   moveGroup: ''
+  automation: makeCamp
   moveResults:
     failure:
       value: ''

@@ -115,28 +115,40 @@ export class DwTrackers {
     if (type == 'clock') {
       const segments = clamp(tracker.segments || 4, 2, 24);
       const value = clamp(tracker.value, 0, segments);
-      // Wedges clockwise from twelve o'clock, on a 100x100 viewBox.
-      const point = (i, radius = 46) => {
-        const angle = (i / segments) * 2 * Math.PI - Math.PI / 2;
-        return `${(50 + radius * Math.cos(angle)).toFixed(2)},${(50 + radius * Math.sin(angle)).toFixed(2)}`;
-      };
-      const wedges = Array.from({ length: segments }, (_, i) => ({
-        value: i + 1,
-        on: i < value,
-        d: `M50,50 L${point(i)} A46,46 0 0 1 ${point(i + 1)} Z`,
-      }));
       // A notch across the rim where the mark's segment ends.
       const markValues = DwTrackers.#parseMarks(tracker.marks, segments);
       const marks = markValues.map(mark => ({
         value: mark,
         reached: value >= mark,
-        d: `M${point(mark, 36)} L${point(mark, 53)}`,
+        d: `M${DwTrackers.#clockPoint(mark, segments, 36)} L${DwTrackers.#clockPoint(mark, segments, 53)}`,
       }));
-      return { ...base, segments, top: segments, value, wedges, marks, markList: markValues.join(', ') };
+      return { ...base, segments, top: segments, value, wedges: DwTrackers.clockWedges(segments, value), marks, markList: markValues.join(', ') };
     }
 
     const max = Math.max(0, Number(tracker.max) || 0);
     return { ...base, value: Number(tracker.value) || 0, max, top: max > 0 ? max : Infinity };
+  }
+
+  /**
+   * A clock's wedges, clockwise from twelve o'clock, on a 100x100 viewBox:
+   * each with its value (1 up), whether it's filled, and its SVG path.
+   *
+   * @param {number} segments
+   * @param {number} value How many are filled.
+   * @return {{value: number, on: boolean, d: string}[]}
+   */
+  static clockWedges(segments, value) {
+    return Array.from({ length: segments }, (_, i) => ({
+      value: i + 1,
+      on: i < value,
+      d: `M50,50 L${DwTrackers.#clockPoint(i, segments)} A46,46 0 0 1 ${DwTrackers.#clockPoint(i + 1, segments)} Z`,
+    }));
+  }
+
+  /** The point on a clock's circle at the start of segment i. */
+  static #clockPoint(i, segments, radius = 46) {
+    const angle = (i / segments) * 2 * Math.PI - Math.PI / 2;
+    return `${(50 + radius * Math.cos(angle)).toFixed(2)},${(50 + radius * Math.sin(angle)).toFixed(2)}`;
   }
 
   /**
@@ -172,8 +184,7 @@ export class DwTrackers {
    *   "delete", or null if cancelled.
    */
   async #dialog(tracker = null) {
-    const escape = (value) => Handlebars.escapeExpression(String(value ?? ''));
-    const loc = (key) => escape(game.i18n.localize(key));
+    const loc = (key) => DwUtility.escape(game.i18n.localize(key));
     const type = tracker?.type ?? 'counter';
     const option = (value, label, selected) => `<option value="${value}" ${selected ? 'selected' : ''}>${loc(label)}</option>`;
     const field = (forTypes, label, input) => `
@@ -188,13 +199,13 @@ export class DwTrackers {
         ${option('clock', 'DW.Sheet.TrackerClock', type == 'clock')}
       </select>`),
       field(['counter', 'slider', 'clock'], 'DW.Sheet.TrackerName',
-        `<input type="text" name="label" value="${escape(tracker?.label ?? '')}" placeholder="${loc('DW.Sheet.NewTracker')}" autofocus>`),
+        `<input type="text" name="label" value="${DwUtility.escape(tracker?.label ?? '')}" placeholder="${loc('DW.Sheet.NewTracker')}" autofocus>`),
       field(['counter'], 'DW.Sheet.TrackerMax',
         `<input type="number" name="max" min="0" step="1" value="${tracker?.max ? tracker.max : ''}" placeholder="${loc('DW.Sheet.TrackerNoMax')}">`),
       field(['slider'], 'DW.Sheet.TrackerLeft',
-        `<input type="text" name="left" value="${escape(tracker?.left ?? '')}" placeholder="${loc('DW.Sheet.TrackerLeftHint')}">`),
+        `<input type="text" name="left" value="${DwUtility.escape(tracker?.left ?? '')}" placeholder="${loc('DW.Sheet.TrackerLeftHint')}">`),
       field(['slider'], 'DW.Sheet.TrackerRight',
-        `<input type="text" name="right" value="${escape(tracker?.right ?? '')}" placeholder="${loc('DW.Sheet.TrackerRightHint')}">`),
+        `<input type="text" name="right" value="${DwUtility.escape(tracker?.right ?? '')}" placeholder="${loc('DW.Sheet.TrackerRightHint')}">`),
       field(['slider'], 'DW.Sheet.TrackerOptions',
         `<input type="number" name="options" min="2" max="20" step="1" value="${tracker?.options ?? 3}">`),
       field(['scale'], 'DW.Sheet.TrackerDisplay', `<select name="display">
@@ -204,7 +215,7 @@ export class DwTrackers {
       field(['clock'], 'DW.Sheet.TrackerSegments',
         `<input type="number" name="segments" min="2" max="24" step="1" value="${tracker?.segments ?? 4}">`),
       field(['clock'], 'DW.Sheet.TrackerMarks',
-        `<input type="text" name="marks" value="${escape(tracker?.markList ?? '')}" placeholder="${loc('DW.Sheet.TrackerMarksHint')}">`),
+        `<input type="text" name="marks" value="${DwUtility.escape(tracker?.markList ?? '')}" placeholder="${loc('DW.Sheet.TrackerMarksHint')}">`),
       `<p class="hint dw-for-slider">${loc('DW.Sheet.TrackerSliderHint')}</p>`,
     ].join('');
 

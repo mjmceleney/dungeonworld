@@ -103,6 +103,74 @@
     }
   }
 
+  // A move's Effects tab: one row per effect, under column headings.
+  .dw-move-actions-hint {
+    margin: 0 0 10px;
+    font-size: 13px;
+    color: var(--dw-muted);
+  }
+
+  .dw-move-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .dw-move-actions-head,
+  .dw-move-action {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 6px;
+  }
+
+  .dw-move-actions-head {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--dw-muted);
+  }
+
+  .dw-move-action {
+    padding-top: 6px;
+    border-top: 1px solid var(--dw-line);
+
+    select,
+    input[type="text"] {
+      width: 100%;
+    }
+  }
+
+  .dw-move-action-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .dw-move-action-fixed {
+    padding: 4px 0;
+    color: var(--dw-muted);
+  }
+
+  .dw-move-action-transfer {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+  }
+
+  .dw-move-action-remove,
+  .dw-move-action-add {
+    width: auto;
+  }
+
+  .dw-move-actions-choose {
+    margin-top: 12px;
+  }
+
   .dw-fields-hint {
     grid-column: 2;
     margin-top: -4px;

@@ -1,3 +1,4 @@
+import { DwUtility } from "./utility.js";
 const { DialogV2 } = foundry.applications.api;
 
 /**
@@ -17,18 +18,17 @@ export class DwGmMoves {
     if (!game.user.isGM) return;
     if (DwGmMoves.#dialog?.rendered) return DwGmMoves.#dialog.bringToFront();
 
-    const escape = (value) => Handlebars.escapeExpression(String(value ?? ''));
     const list = (kind) => Array.from({ length: DwGmMoves.LISTS[kind] }, (_, i) => `DW.GmMoves.${kind}${i + 1}`)
       .filter(key => game.i18n.has(key))
-      .map(key => `<li>${escape(game.i18n.localize(key))}</li>`).join('');
+      .map(key => `<li>${DwUtility.escape(game.i18n.localize(key))}</li>`).join('');
 
     const content = document.createElement('div');
-    content.innerHTML = `<p class="dw-gm-moves-intro">${escape(game.i18n.localize('DW.GmMoves.Intro'))}</p>
-      <h3>${escape(game.i18n.localize('DW.GmMoves.GmTitle'))}</h3>
+    content.innerHTML = `<p class="dw-gm-moves-intro">${DwUtility.escape(game.i18n.localize('DW.GmMoves.Intro'))}</p>
+      <h3>${DwUtility.escape(game.i18n.localize('DW.GmMoves.GmTitle'))}</h3>
       <ul class="dw-gm-moves-list">${list('gm')}</ul>
-      <h3>${escape(game.i18n.localize('DW.GmMoves.DungeonTitle'))}</h3>
+      <h3>${DwUtility.escape(game.i18n.localize('DW.GmMoves.DungeonTitle'))}</h3>
       <ul class="dw-gm-moves-list">${list('dungeon')}</ul>
-      <p class="dw-gm-moves-hint">${escape(game.i18n.localize('DW.GmMoves.Hint'))}</p>`;
+      <p class="dw-gm-moves-hint">${DwUtility.escape(game.i18n.localize('DW.GmMoves.Hint'))}</p>`;
 
     DwGmMoves.#dialog = new DialogV2({
       classes: ['dw-gm-moves-dialog'],

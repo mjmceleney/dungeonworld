@@ -15,6 +15,7 @@ data:
   requiresMove: ''
   moveType: special
   moveGroup: ''
+  automation: takeWatch
   moveResults:
     failure:
       value: <p>Whatever lurks outside the campfire’s light has the drop on you.</p>

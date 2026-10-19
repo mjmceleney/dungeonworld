@@ -10,6 +10,15 @@ data:
     ongoing you can’t cast a spell. Ongoing.</p>
   spellLevel: 1
   rollFormula: ''
+  actions:
+    - type: 'addCondition'
+      target: 'ally'
+      amount: ''
+      stat: ''
+      condition: 'invisible'
+      name: ''
+      when: 'hit'
+      transfer: false
   class: The Wizard
   prepared: false
 flags: {}

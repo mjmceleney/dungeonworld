@@ -1,11 +1,11 @@
 import { DwClassList } from "../config.js";
 import { DwUtility } from "../utility.js";
+import { DwSocket } from "../socket.js";
 import { DwLevelUp, MAX_CLASS_LEVEL } from "./level-up.js";
 import { DwStartOver } from "./start-over.js";
 import { DwCharacterCreator } from "./character-creator.js";
 
 const { DialogV2 } = foundry.applications.api;
-const { renderTemplate } = foundry.applications.handlebars;
 
 /**
  * Beyond level 10. When a character with a class at level 10 has the XP for
@@ -68,17 +68,16 @@ export class DwBeyondTen {
    * @param {Actor} actor
    */
   static async show(actor) {
-    const escape = (value) => Handlebars.escapeExpression(String(value ?? ''));
     const choices = [];
     if (await DwBeyondTen.#canAdvance(actor)) choices.push('advance');
     choices.push('retire', 'apprentice', 'reclass');
 
     const content = document.createElement('div');
-    content.innerHTML = `<p>${escape(game.i18n.format('DW.Beyond.Intro', { name: actor.name }))}</p>
+    content.innerHTML = `<p>${DwUtility.escape(game.i18n.format('DW.Beyond.Intro', { name: actor.name }))}</p>
       <div class="dw-beyond-choices">${choices.map(choice => `
         <button type="button" class="dw-beyond-choice" data-action="${choice}">
-          <strong>${escape(game.i18n.localize(`DW.Beyond.${choice}`))}</strong>
-          <span>${escape(game.i18n.localize(`DW.Beyond.${choice}Hint`))}</span>
+          <strong>${DwUtility.escape(game.i18n.localize(`DW.Beyond.${choice}`))}</strong>
+          <span>${DwUtility.escape(game.i18n.localize(`DW.Beyond.${choice}Hint`))}</span>
         </button>`).join('')}</div>`;
 
     // The choices are the buttons; the footer's copies are hidden.
@@ -111,17 +110,13 @@ export class DwBeyondTen {
    * player's new character.
    */
   static async retire(actor) {
-    const confirm = await DialogV2.wait({
+    const confirm = await DwUtility.ask({
       window: { title: game.i18n.localize('DW.Beyond.retire'), icon: 'fa-solid fa-house-chimney' },
       position: { width: 420 },
-      content: `<p>${Handlebars.escapeExpression(game.i18n.format('DW.Beyond.RetireConfirm', { name: actor.name }))}</p>
-        <label class="checkbox"><input type="checkbox" name="newCharacter" checked> ${Handlebars.escapeExpression(game.i18n.localize('DW.Beyond.MakeNew'))}</label>`,
-      buttons: [
-        { action: 'retire', label: 'DW.Beyond.retire', icon: 'fa-solid fa-check', default: true,
-          callback: (event, button) => ({ newCharacter: button.form.elements.newCharacter.checked }) },
-        { action: 'cancel', label: 'DW.Cancel', icon: 'fa-solid fa-xmark', callback: () => null },
-      ],
-      rejectClose: false,
+      content: `<p>${DwUtility.escape(game.i18n.format('DW.Beyond.RetireConfirm', { name: actor.name }))}</p>
+        <label class="checkbox"><input type="checkbox" name="newCharacter" checked> ${DwUtility.escape(game.i18n.localize('DW.Beyond.MakeNew'))}</label>`,
+      ok: { label: 'DW.Beyond.retire',
+        callback: (event, button) => ({ newCharacter: button.form.elements.newCharacter.checked }) },
     });
     if (!confirm) return;
 
@@ -149,7 +144,7 @@ export class DwBeyondTen {
   static async apprentice(actor) {
     const yes = await DialogV2.confirm({
       window: { title: game.i18n.localize('DW.Beyond.apprentice'), icon: 'fa-solid fa-user-graduate' },
-      content: `<p>${Handlebars.escapeExpression(game.i18n.format('DW.Beyond.ApprenticeConfirm', { name: actor.name }))}</p>`,
+      content: `<p>${DwUtility.escape(game.i18n.format('DW.Beyond.ApprenticeConfirm', { name: actor.name }))}</p>`,
       rejectClose: false,
     });
     if (!yes) return;
@@ -180,38 +175,51 @@ export class DwBeyondTen {
    * @param {{apprenticeOf?: string}} [options]
    */
   static async createCharacter(source, name, { apprenticeOf = null } = {}) {
+    const createdFor = game.user.isGM ? null : game.user.id;
+    if (Actor.implementation.canUserCreate(game.user)) {
+      return Actor.implementation.create(DwBeyondTen.#characterData(source, name, { apprenticeOf, createdFor }));
+    }
+    DwSocket.askGM('createCharacter', { source: source.id, name, apprentice: apprenticeOf == source.id, createdFor });
+  }
+
+  /**
+   * The new character: owned by the source character's players, in the
+   * same folder, opening for the player it's made for.
+   */
+  static #characterData(source, name, { apprenticeOf = null, createdFor = null } = {}) {
     const players = game.users.filter(u => !u.isGM && source.testUserPermission(u, 'OWNER'));
     const ownership = { default: 0 };
     for (const user of players) ownership[user.id] = CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER;
-    const data = {
+    return {
       name,
       type: 'character',
       img: source.img,
       folder: source.folder?.id ?? null,
       ownership,
-      flags: { dungeonworld: { createdFor: game.user.isGM ? (players[0]?.id ?? game.user.id) : game.user.id, apprenticeOf } },
+      flags: { dungeonworld: { createdFor: createdFor ?? players[0]?.id ?? game.user.id, apprenticeOf } },
     };
-    if (Actor.implementation.canUserCreate(game.user)) return Actor.implementation.create(data);
-    if (!game.users.activeGM) return ui.notifications.warn(game.i18n.localize('DW.Party.NeedsGM'));
-    game.socket.emit('system.dungeonworld', { createCharacter: data });
   }
 
-  /** Make a character a player asked for, on the active GM's client. */
+  /**
+   * Make a character a player asked for, on the active GM's client. Only a
+   * player of the source character can ask, and the new character is set up
+   * here from the source, as it would be on their own client.
+   */
   static async createRemote(data) {
-    if (!game.users.activeGM?.isSelf || data?.type != 'character') return;
-    await Actor.implementation.create(data);
+    const source = game.actors.get(data?.source);
+    const player = game.users.get(data?.createdFor);
+    if (source?.type != 'character' || !player || !source.testUserPermission(player, 'OWNER')) return;
+    const name = String(data.name ?? '').trim().slice(0, 100) || game.i18n.localize('DW.Beyond.NewCharacterName');
+    await Actor.implementation.create(DwBeyondTen.#characterData(source, name, {
+      apprenticeOf: data.apprentice ? source.id : null,
+      createdFor: player.id,
+    }));
   }
 
   static async #post(actor, titleKey, text) {
-    const chatData = {
-      speaker: ChatMessage.getSpeaker({ actor }),
-      content: await renderTemplate('systems/dungeonworld/templates/chat/chat-move.html', {
-        actor,
-        title: game.i18n.localize(titleKey),
-        details: `<p>${Handlebars.escapeExpression(text)}</p>`,
-      }),
-    };
-    DwUtility.applyMessageMode(chatData);
-    await ChatMessage.create(chatData);
+    await DwUtility.postCard(actor, {
+      title: game.i18n.localize(titleKey),
+      details: `<p>${DwUtility.escape(text)}</p>`,
+    });
   }
 }

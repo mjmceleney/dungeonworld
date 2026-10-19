@@ -1,0 +1,239 @@
+{{!-- The Fronts window (fronts.js). The list shows every front, with a
+     line per danger: its grim portent clock and the next portent. A front
+     opens in full: its dangers, each with its grim portents (a clock and a
+     checklist) and impending doom, then its stakes and cast. Its edit mode
+     shows the same as form fields. --}}
+{{#*inline "portentClock"}}
+<svg class="dw-clock {{#if full}}full{{/if}}" viewBox="-4 -4 108 108" role="img" aria-label="{{name}}: {{done}} / {{total}}">
+  <circle class="dw-clock-face" cx="50" cy="50" r="46"/>
+  {{#each wedges}}<path class="dw-clock-wedge {{#if on}}on{{/if}}" d="{{d}}"/>{{/each}}
+</svg>
+{{/inline}}
+
+{{#*inline "doomLine"}}
+<span class="dw-label">{{localize "DW.Fronts.ImpendingDoom"}}</span> {{doomLabel}}{{#if (and doomLabel doomText)}}: {{/if}}{{doomText}}
+{{/inline}}
+
+{{#*inline "removeButton"}}
+<button type="button" class="dw-icon-btn" data-action="{{action}}" aria-label="{{localize label}}" data-tooltip="{{label}}"><i class="fas fa-times" inert></i></button>
+{{/inline}}
+
+{{#*inline "addButton"}}
+<button type="button" class="dw-front-add" data-action="{{action}}"><i class="fas fa-plus" inert></i> {{localize label}}</button>
+{{/inline}}
+
+<div class="dw-fronts-root">
+{{#if front}}
+{{#with front}}
+  {{!-- One front, in full. --}}
+  <header class="dw-fronts-toolbar" data-front="{{id}}">
+    <button type="button" class="dw-fronts-back" data-action="back"><i class="fas fa-arrow-left" inert></i> {{localize "DW.Fronts.AllFronts"}}</button>
+    {{#if editing}}
+    <button type="button" class="dw-fronts-primary" data-action="toggleEdit"><i class="fas fa-check" inert></i> {{localize "DW.Fronts.Done"}}</button>
+    {{else}}
+    <button type="button" class="dw-fronts-primary" data-action="toggleEdit"><i class="fas fa-edit" inert></i> {{localize "DW.Fronts.Edit"}}</button>
+    {{/if}}
+  </header>
+
+  <div class="dw-fronts-scroll">
+  <article class="dw-front-full" data-front="{{id}}">
+    {{#if editing}}
+    {{!-- Edit mode. --}}
+    <div class="dw-front-titlebar">
+      <input type="text" class="dw-front-name" name="fronts.{{id}}.name" value="{{name}}" aria-label="{{localize "DW.Fronts.Name"}}">
+      <select name="fronts.{{id}}.kind" aria-label="{{localize "DW.Fronts.KindLabel"}}">
+        {{#each kinds}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{localize label}}</option>{{/each}}
+      </select>
+    </div>
+    <textarea name="fronts.{{id}}.description" rows="3" placeholder="{{localize "DW.Fronts.Description"}}" aria-label="{{localize "DW.Fronts.Description"}}">{{description}}</textarea>
+
+    <div class="dw-front-columns">
+      <section class="dw-front-field" data-list="stakes">
+        <h3 class="dw-section-title">{{localize "DW.Fronts.Stakes"}}</h3>
+        {{#each stakes}}
+        <div class="dw-front-row" data-entry="{{id}}">
+          <input type="text" name="fronts.{{../id}}.stakes.{{id}}.text" value="{{text}}" placeholder="{{localize "DW.Fronts.StakePlaceholder"}}" aria-label="{{localize "DW.Fronts.Stakes"}}">
+          {{> removeButton action="removeEntry" label="DW.Fronts.RemoveStake"}}
+        </div>
+        {{/each}}
+        {{> addButton action="addEntry" label="DW.Fronts.AddStake"}}
+      </section>
+      <section class="dw-front-field" data-list="cast">
+        <h3 class="dw-section-title">{{localize "DW.Fronts.Cast"}}</h3>
+        {{#each cast}}
+        <div class="dw-front-row" data-entry="{{id}}">
+          <input type="text" name="fronts.{{../id}}.cast.{{id}}.name" value="{{name}}" placeholder="{{localize "DW.Fronts.Name"}}" aria-label="{{localize "DW.Fronts.Name"}}">
+          <select name="fronts.{{../id}}.cast.{{id}}.actor" aria-label="{{localize "DW.Fronts.CastActor"}}">
+            <option value="">{{localize "DW.Fronts.NoActor"}}</option>
+            {{#each actors}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+          </select>
+          {{> removeButton action="removeEntry" label="DW.Fronts.RemoveCast"}}
+        </div>
+        {{/each}}
+        {{> addButton action="addEntry" label="DW.Fronts.AddCast"}}
+      </section>
+    </div>
+
+    <h3 class="dw-section-title">{{localize "DW.Fronts.Dangers"}}</h3>
+    <div class="dw-dangers">
+      {{#each dangers}}
+      <section class="dw-card dw-danger" data-danger="{{id}}">
+        <div class="dw-danger-head">
+          <input type="text" class="dw-danger-name-input" name="fronts.{{../id}}.dangers.{{id}}.name" value="{{name}}" aria-label="{{localize "DW.Fronts.Name"}}">
+          {{> removeButton action="removeDanger" label="DW.Fronts.RemoveDanger"}}
+        </div>
+        <div class="dw-front-pair">
+          <label class="dw-front-field">
+            <span class="dw-label">{{localize "DW.Fronts.DangerType"}}</span>
+            <select name="fronts.{{../id}}.dangers.{{id}}.type">
+              <option value="">{{localize "DW.Fronts.CustomType"}}</option>
+              {{#each typeGroups}}
+              <optgroup label="{{localize label}}">
+                {{#each options}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{localize label}}</option>{{/each}}
+              </optgroup>
+              {{/each}}
+            </select>
+          </label>
+          <label class="dw-front-field">
+            <span class="dw-label">{{localize "DW.Fronts.ImpulseLabel"}}</span>
+            <input type="text" name="fronts.{{../id}}.dangers.{{id}}.impulse" value="{{impulse}}">
+          </label>
+        </div>
+        <textarea name="fronts.{{../id}}.dangers.{{id}}.description" rows="2" placeholder="{{localize "DW.Fronts.Description"}}" aria-label="{{localize "DW.Fronts.Description"}}">{{description}}</textarea>
+        <div class="dw-front-field" data-list="portents">
+          <span class="dw-label">{{localize "DW.Fronts.GrimPortents"}}</span>
+          {{#each portents}}
+          <div class="dw-front-row" data-entry="{{id}}">
+            <input type="text" name="fronts.{{../../id}}.dangers.{{../id}}.portents.{{id}}.text" value="{{text}}" placeholder="{{localize "DW.Fronts.PortentPlaceholder"}}" aria-label="{{localize "DW.Fronts.GrimPortents"}}">
+            {{> removeButton action="removeEntry" label="DW.Fronts.RemovePortent"}}
+          </div>
+          {{/each}}
+          {{> addButton action="addEntry" label="DW.Fronts.AddPortent"}}
+        </div>
+        <div class="dw-front-field">
+          <span class="dw-label">{{localize "DW.Fronts.ImpendingDoom"}}</span>
+          <div class="dw-front-row">
+            <select class="dw-doom-select" name="fronts.{{../id}}.dangers.{{id}}.doom" aria-label="{{localize "DW.Fronts.ImpendingDoom"}}">
+              <option value=""></option>
+              {{#each dooms}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{localize label}}</option>{{/each}}
+            </select>
+            <input type="text" name="fronts.{{../id}}.dangers.{{id}}.doomText" value="{{doomText}}" placeholder="{{localize "DW.Fronts.DoomText"}}" aria-label="{{localize "DW.Fronts.DoomText"}}">
+          </div>
+        </div>
+      </section>
+      {{/each}}
+    </div>
+    {{> addButton action="addDanger" label="DW.Fronts.AddDanger"}}
+
+    <button type="button" class="dw-front-delete" data-action="deleteFront"><i class="fas fa-trash" inert></i> {{localize "DW.Fronts.Delete"}}</button>
+
+    {{else}}
+    {{!-- View mode. --}}
+    <div class="dw-front-titlebar">
+      <h2 class="dw-front-title">{{name}}</h2>
+      <span class="dw-pill">{{localize kindLabel}}</span>
+    </div>
+    {{#if description}}<p class="dw-front-text">{{description}}</p>{{/if}}
+
+    {{#if (or stakes.length cast.length)}}
+    <div class="dw-front-columns">
+      {{#if stakes.length}}
+      <section>
+        <h3 class="dw-section-title">{{localize "DW.Fronts.Stakes"}}</h3>
+        <ul class="dw-front-bullets">{{#each stakes}}<li>{{text}}</li>{{/each}}</ul>
+      </section>
+      {{/if}}
+      {{#if cast.length}}
+      <section>
+        <h3 class="dw-section-title">{{localize "DW.Fronts.Cast"}}</h3>
+        <ul class="dw-front-bullets">
+          {{#each cast}}
+          <li>
+            {{#if actorName}}
+            <a class="dw-front-actor" data-action="openActor" data-actor="{{actor}}">{{#if name}}{{name}}{{else}}{{actorName}}{{/if}}</a>
+            {{else}}{{name}}{{/if}}
+          </li>
+          {{/each}}
+        </ul>
+      </section>
+      {{/if}}
+    </div>
+    {{/if}}
+
+    <div class="dw-dangers">
+      {{#each dangers}}
+      <section class="dw-card dw-danger {{#if full}}doomed{{/if}}" data-danger="{{id}}">
+        <div class="dw-danger-head">
+          {{#if total}}{{> portentClock}}{{/if}}
+          <div class="dw-danger-title">
+            <h3 class="dw-danger-name">{{name}}</h3>
+            {{#if typeLabel}}<span class="dw-hint">{{typeLabel}}</span>{{/if}}
+          </div>
+          {{#if total}}<span class="dw-clock-count">{{done}}<span class="dw-of">/{{total}}</span></span>{{/if}}
+        </div>
+        {{#if impulse}}<p class="dw-danger-line"><span class="dw-label">{{localize "DW.Fronts.ImpulseLabel"}}</span> {{impulse}}</p>{{/if}}
+        {{#if description}}<p class="dw-front-text">{{description}}</p>{{/if}}
+        {{#if total}}
+        <ul class="dw-portents" data-list="portents">
+          {{#each portents}}
+          <li data-entry="{{id}}">
+            <button type="button" class="dw-portent {{#if done}}done{{/if}}" data-action="togglePortent" aria-pressed="{{#if done}}true{{else}}false{{/if}}">
+              <i class="far {{#if done}}fa-check-square{{else}}fa-square{{/if}}" inert></i>
+              <span>{{text}}</span>
+            </button>
+          </li>
+          {{/each}}
+        </ul>
+        {{else}}
+        <p class="dw-hint">{{localize "DW.Fronts.NoPortents"}}</p>
+        {{/if}}
+        {{#if (or doomLabel doomText)}}<p class="dw-danger-line dw-front-doom">{{> doomLine}}</p>{{/if}}
+      </section>
+      {{/each}}
+    </div>
+    {{/if}}
+  </article>
+  </div>
+{{/with}}
+
+{{else}}
+  {{!-- Every front, with a line per danger. --}}
+  <header class="dw-fronts-toolbar">
+    <div class="dw-fronts-filters" role="group">
+      {{#each filters}}
+      <button type="button" class="dw-fronts-filter {{#if active}}on{{/if}}" data-action="filter" data-filter="{{key}}" aria-pressed="{{#if active}}true{{else}}false{{/if}}">
+        {{localize label}} <span class="dw-count">{{count}}</span>
+      </button>
+      {{/each}}
+    </div>
+    <button type="button" class="dw-fronts-primary" data-action="addFront"><i class="fas fa-plus" inert></i> {{localize "DW.Fronts.New"}}</button>
+  </header>
+
+  <div class="dw-fronts-scroll">
+    {{#if empty}}<p class="dw-hint dw-fronts-empty">{{localize "DW.Fronts.Empty"}}</p>{{/if}}
+    <ul class="dw-front-list">
+      {{#each fronts}}
+      <li data-front="{{id}}">
+        <button type="button" class="dw-card dw-front-summary" data-action="openFront">
+          <span class="dw-front-summary-head">
+            <span class="dw-front-title">{{name}}</span>
+            <span class="dw-pill">{{localize kindLabel}}</span>
+            <i class="fas fa-chevron-right dw-front-open-icon" inert></i>
+          </span>
+          {{#each dangers}}
+          <span class="dw-front-summary-danger {{#if full}}doomed{{/if}}">
+            <span class="dw-front-summary-clock">{{#if total}}{{> portentClock}}{{/if}}</span>
+            <span class="dw-danger-name">{{name}}</span>
+            <span class="dw-front-summary-line {{#if full}}dw-front-doom{{/if}}">
+              {{#if full}}{{> doomLine}}{{else if next}}<span class="dw-label">{{localize "DW.Fronts.NextPortent"}}</span> {{next}}{{/if}}
+            </span>
+            {{#if total}}<span class="dw-of">{{done}}/{{total}}</span>{{/if}}
+          </span>
+          {{/each}}
+        </button>
+      </li>
+      {{/each}}
+    </ul>
+  </div>
+{{/if}}
+</div>

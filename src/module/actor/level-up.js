@@ -1,5 +1,6 @@
 import { DwClassList, ABILITY_ICONS } from "../config.js";
 import { DwUtility } from "../utility.js";
+import { DwSpells } from "../spells.js";
 import { DwBonds } from "./bonds.js";
 import { DwClassGear } from "../item/class-gear.js";
 
@@ -79,13 +80,8 @@ class DwLevelUpWindow extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /** @inheritdoc */
   _initializeApplicationOptions(options) {
-    options = super._initializeApplicationOptions(options);
-    // Match core's light or dark theme choice, as the sheets do.
-    let dark = DwUtility.nightmode;
-    if (options.classes.includes('theme-dark')) dark = true;
-    else if (options.classes.includes('theme-light')) dark = false;
-    if (dark) options.classes.push('dw-dark');
-    return options;
+    // Match core's light or dark theme choice.
+    return DwUtility.applyThemeClass(super._initializeApplicationOptions(options));
   }
 
   /** @override */
@@ -236,17 +232,6 @@ export class DwLevelUp {
     return { name: shown, lookup, slug: DwUtility.cleanClass(lookup), item: item?.system ? item : null };
   }
 
-  /** A class's name for use inside a sentence: "Cleric", not "The Cleric". */
-  static #shortName(name) {
-    return (name ?? '').replace(/^the\s+/i, '');
-  }
-
-  /** Whether two class names are the same class ("The Thief" and "Thief"). */
-  static #sameClass(a, b) {
-    const clean = name => DwUtility.cleanClass(name ?? '').replace(/^the-/, '');
-    return clean(a) === clean(b);
-  }
-
   /**
    * Every move of a class: the world's move items first, then compendium moves
    * they don't override, by required level.
@@ -266,10 +251,11 @@ export class DwLevelUp {
 
   /** The moves the character could take at a level: not taken, requirements met. */
   #availableMoves(moves, level) {
-    const owned = this.actor.items.filter(i => i.type == 'move').map(i => i.name);
+    const owned = new Set(this.actor.items.filter(i => i.type == 'move').map(i => i.name));
+    const ownedKeys = new Set([...owned].map(name => DwUtility.nameKey(name)));
     return moves.filter(m => m.system.requiresLevel <= level
-      && !owned.includes(m.name)
-      && (!m.system.requiresMove || owned.includes(m.system.requiresMove)));
+      && !owned.has(m.name)
+      && (!m.system.requiresMove || ownedKeys.has(DwUtility.nameKey(m.system.requiresMove))));
   }
 
   /** Starting moves by move group; moves outside a group come last. */
@@ -283,19 +269,34 @@ export class DwLevelUp {
     }, {});
   }
 
+  /** A class's advanced moves, for levels 2-5 and 6-10 (null when none). */
+  static #advancedMoves(moves) {
+    const advanced2 = moves.filter(m => m.system.requiresLevel >= 2 && m.system.requiresLevel < 6);
+    const advanced6 = moves.filter(m => m.system.requiresLevel >= 6);
+    return { advanced2: advanced2.length ? advanced2 : null, advanced6: advanced6.length ? advanced6 : null };
+  }
+
+  /** A class's races or alignments, as a list. */
+  static #entries(list) {
+    return (typeof list == 'object' && list)
+      ? Object.entries(list).map(([key, entry]) => ({ key, label: entry.label, description: entry.description }))
+      : [];
+  }
+
   /**
    * A class's spells up to a level that the character doesn't have yet, by
    * spell level, with how the class prepares them. Null if it has none.
+   * With all, every spell of the class (for the class viewer).
    */
-  async #classSpells(cls, level) {
-    const owned = this.actor.items.filter(i => i.type == 'spell').map(i => i.name);
+  async #classSpells(cls, level, { all = false } = {}) {
+    const owned = new Set(all ? [] : this.actor.items.filter(i => i.type == 'spell').map(i => i.name));
     const spells = game.items.filter(i => i.type == 'spell' && i.system.class
-      && DwLevelUp.#sameClass(i.system.class, cls.lookup));
+      && DwUtility.sameClass(i.system.class, cls.lookup));
     const names = new Set(spells.map(s => s.name));
     for (const spell of await DwUtility.loadCompendia(`${cls.slug}-spells`)) {
       if (!names.has(spell.name)) spells.push(spell);
     }
-    const available = spells.filter(s => (s.system.spellLevel ?? 0) <= level && !owned.includes(s.name));
+    const available = spells.filter(s => (all || (s.system.spellLevel ?? 0) <= level) && !owned.has(s.name));
     if (!available.length) return null;
 
     available.sort((a, b) => a.system.spellLevel - b.system.spellLevel);
@@ -362,12 +363,9 @@ export class DwLevelUp {
     const blurb = class_item?.system.description ?? null;
 
     // Get races and alignments, if the character doesn't have them yet.
-    const entries = list => (typeof list == 'object' && list)
-      ? Object.entries(list).map(([key, entry]) => ({ key, label: entry.label, description: entry.description }))
-      : [];
     const details = this.actor.system.details;
-    const races = class_item && (!details.race.value || !details.race.description) ? entries(class_item.system.races) : [];
-    const alignments = class_item && (!details.alignment.value || !details.alignment.description) ? entries(class_item.system.alignments) : [];
+    const races = class_item && (!details.race.value || !details.race.description) ? DwLevelUp.#entries(class_item.system.races) : [];
+    const alignments = class_item && (!details.alignment.value || !details.alignment.description) ? DwLevelUp.#entries(class_item.system.alignments) : [];
 
     // Starting gear: each group says what to take from it.
     const equipment = isNewCharacter ? await DwClassGear.prepare(class_item) : [];
@@ -410,10 +408,10 @@ export class DwLevelUp {
     }
     else {
       // Spells come with the class that gains this level (in the advancement
-      // below). Moves like Divine Favor grow every level, at their own
-      // casting level.
-      for (const caster of await this.#grantedCasters(own, level, classes)) spells.push(caster);
+      // below), along with moves like Divine Favor from that class. Such
+      // moves from a class the character doesn't have grow every level.
       const classLevels = DwUtility.classLevels(actor);
+      for (const caster of await this.#grantedCasters(classes, level, classLevels)) spells.push(caster);
 
       // This level's advancement: an advanced move from a class they have, or
       // (with the Allow Multiclassing setting) a new class's starting moves.
@@ -442,7 +440,7 @@ export class DwLevelUp {
 
     // Name each class's spells when there's more than one.
     if (spells.length > 1) {
-      for (const caster of spells) caster.heading ??= game.i18n.format('DW.LevelUp.ClassSpells', { class: DwLevelUp.#shortName(caster.className) });
+      for (const caster of spells) caster.heading ??= game.i18n.format('DW.LevelUp.ClassSpells', { class: DwUtility.shortClassName(caster.className) });
     }
     DwLevelUp.#remember(pool, DwLevelUp.#spellDocs(spells));
     templateData.cast_spells = spells.length > 0;
@@ -477,7 +475,7 @@ export class DwLevelUp {
   async #advancementContext(mode, className, classLevels, classes, pool) {
     if (!className) return { multiclass: mode == 'multiclass' };
     const cls = this.#resolveClass(className, classes);
-    const short = DwLevelUp.#shortName(cls.name);
+    const short = DwUtility.shortClassName(cls.name);
     const from = mode == 'multiclass' ? 0 : (classLevels.find(c => DwUtility.sameClass(c.name, cls.name))?.level ?? 0);
     const reach = from + 1;
     const moves = this.#availableMoves(await this.#classMoves(cls), reach);
@@ -485,7 +483,12 @@ export class DwLevelUp {
 
     const caster = await this.#classSpells(cls, reach);
     if (caster) caster.heading = game.i18n.format('DW.LevelUp.ClassSpells', { class: short });
-    DwLevelUp.#remember(pool, DwLevelUp.#spellDocs(caster ? [caster] : []));
+    // Moves like Divine Favor from this class grow with it.
+    const reached = classLevels.map(c => DwUtility.sameClass(c.name, cls.name) ? { ...c, level: reach } : c);
+    const granted = mode == 'multiclass' ? []
+      : await this.#grantedCasters(classes, Number(this.actor.system.attributes.level.value) + 1, reached, cls.name);
+    const spells = [caster, ...granted].filter(Boolean);
+    DwLevelUp.#remember(pool, DwLevelUp.#spellDocs(spells));
     const level_hint = from
       ? game.i18n.format('DW.LevelUp.ClassLevelTo', { class: short, from, to: reach })
       : game.i18n.format('DW.LevelUp.ClassLevelNew', { class: short });
@@ -495,18 +498,17 @@ export class DwLevelUp {
         multiclass: true,
         level_hint,
         starting_move_groups: DwLevelUp.#startingGroups(moves),
-        spells: caster ? [caster] : null,
+        spells: spells.length ? spells : null,
       };
     }
 
-    const advanced_2 = moves.filter(m => m.system.requiresLevel >= 2 && m.system.requiresLevel < 6);
-    const advanced_6 = moves.filter(m => m.system.requiresLevel >= 6);
+    const { advanced2, advanced6 } = DwLevelUp.#advancedMoves(moves);
     return {
       multiclass: false,
       level_hint,
-      advanced_moves_2: advanced_2.length ? advanced_2 : null,
-      advanced_moves_6: advanced_6.length ? advanced_6 : null,
-      spells: caster ? [caster] : null,
+      advanced_moves_2: advanced2,
+      advanced_moves_6: advanced6,
+      spells: spells.length ? spells : null,
     };
   }
 
@@ -526,10 +528,6 @@ export class DwLevelUp {
   }
 
   /**
-   * Import moves.
-   * @param {HTMLFormElement} form The level up window's form.
-   */
-  /**
    * A race or alignment the player wrote themselves. Throws, with a message
    * for the player, if it has no name.
    *
@@ -541,8 +539,7 @@ export class DwLevelUp {
     const label = String(form.querySelector(`[name="own-${kind}-name"]`)?.value ?? '').trim();
     const description = String(form.querySelector(`[name="own-${kind}-description"]`)?.value ?? '').trim();
     if (!label) throw new Error(game.i18n.localize(`DW.LevelUp.Own${kind.capitalize()}Missing`));
-    const escape = (text) => Handlebars.escapeExpression(text);
-    return { label, description: description ? `<p>${escape(description)}</p>` : '' };
+    return { label, description: description ? `<p>${DwUtility.escape(description)}</p>` : '' };
   }
 
   async _onLevelUpSave(form, actor, itemData) {
@@ -558,7 +555,8 @@ export class DwLevelUp {
     const gear = itemData.gear?.length ? DwClassGear.chosen(form, itemData.gear) : null;
 
     let item_ids = [];
-    let abilities = [];
+    // Ability changes, as system updates ("abilities.str.value").
+    const abilities = {};
     let race = null;
     let alignment = null;
     for (let input of selected) {
@@ -589,11 +587,15 @@ export class DwLevelUp {
 
     // Add the selected moves and spells.
     const new_moves = item_ids.map(id => itemData.pool.get(id)).filter(Boolean).map(doc => foundry.utils.duplicate(doc));
-    // A move that grants spellcasting remembers the level it was taken at, so
-    // its casting level can grow from there.
+    // A move that grants spellcasting remembers the level it was taken at,
+    // overall and in its own class, so its casting level can grow from there.
+    const advancing = form.querySelector('[name="dw-advance-class"]')?.value;
     for (const move of new_moves) {
       if (move.type == 'move' && move.system.grants?.casting) {
+        const cls = DwUtility.classLevels(actor).find(c => DwUtility.sameClass(c.name, move.system.class));
+        const raised = !!advancing && DwUtility.sameClass(advancing, move.system.class);
         foundry.utils.setProperty(move, 'flags.dungeonworld.takenAtLevel', itemData.level);
+        foundry.utils.setProperty(move, 'flags.dungeonworld.takenAtClassLevel', ((cls?.level ?? 0) + (raised ? 1 : 0)) || 1);
       }
     }
 
@@ -613,11 +615,12 @@ export class DwLevelUp {
         description: alignment.description
       }
     }
-    if (abilities != []) {
-      for (let [key, update] of Object.entries(abilities)) {
-        system[key] = update;
-      }
-    }
+    Object.assign(system, abilities);
+
+    // A new character (no XP yet) is building level 1. They choose their
+    // bonds after the level up: the class's bonds are offered, alongside
+    // bonds of their own.
+    const isNewCharacter = Number(actor.system.attributes.xp.value) == 0;
 
     // Adjust level.
     if (Number(actor.system.attributes.xp.value) > 0) {
@@ -626,10 +629,6 @@ export class DwLevelUp {
       system['attributes.xp.value'] = xp > -1 ? xp : 0;
       system['attributes.level.value'] = Number(actor.system.attributes.level.value) + 1;
     }
-
-    // A new character chooses their bonds after the level up: the class's
-    // bonds are offered, alongside bonds of their own.
-    const isNewCharacter = Number(actor.system.attributes.xp.value) == 0;
 
     // HP, load and damage come from the character's own class, when it's known.
     const class_item = itemData.class_item;
@@ -646,7 +645,6 @@ export class DwLevelUp {
       const newCon = noConstitutionToHP ? 0 : Number(system['abilities.con.value'] ?? currentCon);
       const baseHp = Number(class_item.system.hp);
       const currentMax = Number(actor.system.attributes.hp.max);
-      const isNewCharacter = Number(actor.system.attributes.xp.value) == 0;
 
       if (isNewCharacter || currentMax === baseHp + currentCon) {
         system['attributes.hp.max'] = baseHp + newCon;
@@ -664,10 +662,7 @@ export class DwLevelUp {
       if (noSTRToMaxLoad) {
         system['attributes.weight.max'] = Number(class_item.system.load)
       } else {
-        let strength = actor.system.abilities.str.value;
-        if (system['abilities.str.value']) {
-          strength = system['abilities.str.value'];
-        }
+        const strength = system['abilities.str.value'] ?? actor.system.abilities.str.value;
         system['attributes.weight.max'] = Number(class_item.system.load) + Number(DwUtility.getAbilityMod(strength));
       }
     }
@@ -677,7 +672,6 @@ export class DwLevelUp {
     const update = { system: system, 'flags.dungeonworld.levelup': false };
     if (keepHp) Object.assign(update, DwUtility.deletionUpdate('flags.dungeonworld.keepHp'));
     const mode = form.querySelector('[name="dw-advance-mode"]:checked')?.value;
-    const advancing = form.querySelector('[name="dw-advance-class"]')?.value;
     const multiclasses = mode == 'multiclass' && advancing && !this.#multiclasses.includes(advancing)
       ? [...this.#multiclasses, advancing]
       : this.#multiclasses;
@@ -757,16 +751,17 @@ export class DwLevelUp {
     // secret class is only offered when the move names it.
     const listed = allowed.split(',').map(n => n.trim()).filter(Boolean);
     const candidates = listed.length
-      ? classes.filter(c => listed.some(n => DwLevelUp.#sameClass(n, c.name)))
-      : classes.filter(c => !c.system.secret && !DwLevelUp.#sameClass(c.name, own) && !DwLevelUp.#sameClass(c.name, move.system.class));
+      ? classes.filter(c => listed.some(n => DwUtility.sameClass(n, c.name)))
+      : classes.filter(c => !c.system.secret && !DwUtility.sameClass(c.name, own) && !DwUtility.sameClass(c.name, move.system.class));
 
     // Only offer classes that have something left to pick.
     const pool = new Map();
     const sections = new Map();
-    for (const candidate of candidates) {
-      const section = await this.#grantContext(kind, this.#resolveClass(candidate.name, classes), pickLevel, pool);
-      if (section.groups || section.spells) sections.set(candidate.name, section);
-    }
+    const contexts = await Promise.all(candidates.map(candidate =>
+      this.#grantContext(kind, this.#resolveClass(candidate.name, classes), pickLevel, pool)));
+    candidates.forEach((candidate, i) => {
+      if (contexts[i].groups || contexts[i].spells) sections.set(candidate.name, contexts[i]);
+    });
     if (!sections.size) {
       ui.notifications.info(game.i18n.format('DW.LevelUp.NothingToPick', { move: move.name }));
       return;
@@ -817,28 +812,35 @@ export class DwLevelUp {
   /** The class a move's granted moves and spells come from: the first listed. */
   #grantSource(move, classes) {
     const name = (move.system.grants?.classes ?? '').split(',').map(n => n.trim()).find(Boolean);
-    const item = name && classes.find(c => DwLevelUp.#sameClass(c.name, name));
+    const item = name && classes.find(c => DwUtility.sameClass(c.name, name));
     return item ? this.#resolveClass(item.name, classes) : null;
   }
 
   /**
    * Spells from the character's moves that grant casting (Divine Favor), at
-   * each one's casting level: 1 at the level it was taken, +1 per level since.
-   * Classes the character already casts as are skipped.
+   * each one's casting level after this level up (see
+   * DwSpells.grantedCasterLevel). Classes the character already casts as are
+   * skipped.
+   *
+   * @param {Item[]} classes
+   * @param {number} level  The character's level after this level up.
+   * @param {{name: string, level: number}[]} classLevels  Their class levels after it.
+   * @param {string|null} [from]  Only moves from this class; without it, only
+   *   moves from classes the character doesn't have, which grow every level.
    */
-  async #grantedCasters(own, level, classes) {
+  async #grantedCasters(classes, level, classLevels, from = null) {
     const casters = [];
-    const moves = this.actor.items.filter(i => i.type == 'move' && i.system.grants?.casting);
+    const hasClass = (name) => classLevels.some(c => DwUtility.sameClass(c.name, name));
+    const moves = this.actor.items.filter(i => i.type == 'move' && i.system.grants?.casting
+      && (from ? DwUtility.sameClass(i.system.class, from) : !hasClass(i.system.class)));
     for (const move of moves) {
       const cls = this.#grantSource(move, classes);
-      if (!cls || own.some(o => DwLevelUp.#sameClass(o.name, cls.name))) continue;
-      if (casters.some(c => DwLevelUp.#sameClass(c.className, cls.name))) continue;
-      // Taken before the level was recorded: count from the current level.
-      const takenAt = Number(move.flags?.dungeonworld?.takenAtLevel ?? this.actor.system.attributes.level.value);
-      const castLevel = Math.max(1, level - takenAt + 1);
+      if (!cls || hasClass(cls.name)) continue;
+      if (casters.some(c => DwUtility.sameClass(c.className, cls.name))) continue;
+      const castLevel = DwSpells.grantedCasterLevel(this.actor, move, { overall: level, classLevels });
       const caster = await this.#classSpells(cls, castLevel);
       if (!caster) continue;
-      caster.heading = game.i18n.format('DW.LevelUp.GrantedSpells', { class: DwLevelUp.#shortName(cls.name), move: move.name, level: castLevel });
+      caster.heading = game.i18n.format('DW.LevelUp.GrantedSpells', { class: DwUtility.shortClassName(cls.name), move: move.name, level: castLevel });
       casters.push(caster);
     }
     return casters;
@@ -849,10 +851,10 @@ export class DwLevelUp {
     const classes = await DwClassList.getClasses(false);
     const cls = this.#grantSource(move, classes);
     if (!cls) return;
-    const wanted = move.system.grants.moves.split(',').map(n => n.trim().toLowerCase()).filter(Boolean);
-    const owned = this.actor.items.filter(i => i.type == 'move').map(i => i.name.toLowerCase());
+    const wanted = move.system.grants.moves.split(',').map(DwUtility.nameKey).filter(Boolean);
+    const owned = this.actor.items.filter(i => i.type == 'move').map(i => DwUtility.nameKey(i.name));
     const moves = (await this.#classMoves(cls))
-      .filter(m => wanted.includes(m.name.toLowerCase()) && !owned.includes(m.name.toLowerCase()));
+      .filter(m => wanted.includes(DwUtility.nameKey(m.name)) && !owned.includes(DwUtility.nameKey(m.name)));
     if (moves.length) await this.actor.createEmbeddedDocuments('Item', moves.map(m => foundry.utils.duplicate(m)));
   }
 
@@ -871,8 +873,8 @@ export class DwLevelUp {
     const context = {
       move_name: move.name,
       move_description: move.system.description,
-      title: game.i18n.format('DW.LevelUp.PickGrantedSpells', { class: DwLevelUp.#shortName(cls.name) }),
-      level_label: game.i18n.format('DW.LevelUp.CastingLevel', { level: castLevel, class: DwLevelUp.#shortName(cls.name) }),
+      title: game.i18n.format('DW.LevelUp.PickGrantedSpells', { class: DwUtility.shortClassName(cls.name) }),
+      level_label: game.i18n.format('DW.LevelUp.CastingLevel', { level: castLevel, class: DwUtility.shortClassName(cls.name) }),
       // The title names the class already.
       classes: [],
       className: null,
@@ -912,259 +914,64 @@ export class DwLevelUp {
     const moves = this.#availableMoves(await this.#classMoves(cls), level)
       .filter(m => !m.system.grants?.kind);
     DwLevelUp.#remember(pool, moves);
+    const { advanced2, advanced6 } = DwLevelUp.#advancedMoves(moves);
     const groups = [
       { title: game.i18n.localize('DW.LevelUp.Starting'), moves: moves.filter(m => m.system.requiresLevel < 2) },
-      { title: game.i18n.localize('DW.LevelUp.Levels2'), moves: moves.filter(m => m.system.requiresLevel >= 2 && m.system.requiresLevel < 6) },
-      { title: game.i18n.localize('DW.LevelUp.Levels6'), moves: moves.filter(m => m.system.requiresLevel >= 6) },
+      { title: game.i18n.localize('DW.LevelUp.Levels2'), moves: advanced2 ?? [] },
+      { title: game.i18n.localize('DW.LevelUp.Levels6'), moves: advanced6 ?? [] },
     ].filter(g => g.moves.length);
     return { pick: 'dw-grant-pick', groups: groups.length ? groups : null };
   }
 
-  // @todo abstract the logic in this method so that we can combine it with onLevelUp as much as possible.
+  /**
+   * Show the character's class: its races, alignments, gear, and every move
+   * and spell.
+   */
   async _onClassView(event) {
     event.preventDefault();
 
     const actor = this.actor;
-    const actorData = this.actor.system;
-    let orig_class_name = actorData.details.class;
-    let char_class_name = orig_class_name.trim();
-    let class_list_items = await DwClassList.getClasses(false);
-    let class_list = class_list_items.map(c => c.name);
-
-    let char_class = DwUtility.cleanClass(char_class_name);
-
-    // Get the original class name if this was a translation.
-    if (game.babele) {
-      let babele_classes = game.babele.translations.find(p => p.collection == 'dungeonworld.classes');
-      if (babele_classes) {
-        let babele_pack = babele_classes.entries.find(p => p.name == char_class_name);
-        if (babele_pack) {
-          char_class_name = babele_pack.id;
-          char_class = DwUtility.cleanClass(babele_pack.id);
-        }
-      }
-    }
-
-    if (!class_list.includes(orig_class_name) && !class_list.includes(char_class_name)) {
+    const className = actor.system.details.class ?? '';
+    const classes = await DwClassList.getClasses(false);
+    const cls = this.#resolveClass(className, classes);
+    const classItem = cls.item;
+    if (!classItem) {
       ui.notifications.warn(game.i18n.localize('DW.Notifications.noClassWarning'));
       return;
     }
 
-    const compendium = await DwUtility.loadCompendia(`${char_class}-moves`)
+    const [moves, equipment, caster] = await Promise.all([
+      this.#classMoves(cls),
+      DwClassGear.prepare(classItem),
+      this.#classSpells(cls, Infinity, { all: true }),
+    ]);
+    const races = DwLevelUp.#entries(classItem.system.races);
+    const alignments = DwLevelUp.#entries(classItem.system.alignments);
+    const startingGroups = DwLevelUp.#startingGroups(moves);
+    const { advanced2, advanced6 } = DwLevelUp.#advancedMoves(moves);
+    const blurb = classItem.system.description;
 
-    let class_item = class_list_items.find(i => i.name == orig_class_name);
-    if (!class_item?.system) {
-      ui.notifications.warn(game.i18n.localize('DW.Notifications.noClassWarning'));
-      return;
-    }
-    let blurb = class_item ? class_item.system.description : null;
-
-    // Get races.
-    let races = [];
-      races = class_item.system.races;
-      if (typeof races == 'object') {
-        races = Object.entries(races).map(r => {
-          return {
-            key: r[0],
-            label: r[1]['label'],
-            description: r[1]['description']
-          };
-        });
-      }
-
-    // Get alignments.
-    let alignments = [];
-      alignments = class_item.system.alignments;
-      if (typeof alignments == 'object') {
-        alignments = Object.entries(alignments).map(a => {
-          return {
-            key: a[0],
-            label: a[1]['label'],
-            description: a[1]['description']
-          };
-        });
-      }
-
-    // Starting gear.
-    const equipment = await DwClassGear.prepare(class_item);
-
-    // Get ability scores.
-    const noAbilityScores = game.settings.get('dungeonworld', 'noAbilityScores');
-    let ability_scores = [16, 15, 13, 12, 9, 8];
-    if (noAbilityScores) {
-      ability_scores = [2, 1, 1, 0, 0, -1];
-    }
-    let ability_labels = this.#abilityLabels();
-
-    // Retrieve the actor's current moves so that we can hide them.
-    const actorMoves = this.actor.items.filter(i => i.type == 'move');
-
-    // Get the item moves as the priority.
-    let moves = game.items.filter(m => m.type == 'move' && m.system.class == char_class_name);
-    // Get the compendium moves next.
-    let moves_compendium = compendium.filter(m => {
-      return true;
-    });
-
-    // Append compendium moves to the item moves.
-    let moves_list = moves.map(m => {
-      return m.name;
-    })
-    for (let move of moves_compendium) {
-      if (!moves_list.includes(move.name)) {
-        moves.push(move);
-      }
-    }
-
-    // Sort the moves and build our groups.
-    moves.sort((a, b) => {
-      return a.system.requiresLevel - b.system.requiresLevel;
-    });
-
-    let starting_moves = [];
-    let starting_move_groups = [];
-      starting_moves = moves.filter(m => {
-        return m.system.requiresLevel < 2;
-      });
-
-      starting_move_groups = starting_moves.reduce((groups, move) => {
-        // Assign the undefined group to all Z's so that it's last.
-        let group = move.system.moveGroup ? move.system.moveGroup : 'ZZZZZZZ';
-        if (!groups[group]) {
-          groups[group] = [];
-        }
-
-        groups[group].push(move);
-        return groups;
-      }, {});
-
-    let advanced_moves_2 = moves.filter(m => {
-      return m.system.requiresLevel >= 2 && m.system.requiresLevel < 6;
-    });
-
-    let advanced_moves_6 = moves.filter(m => {
-      return m.system.requiresLevel >= 6;
-    });
-
-    // Determine if spells can be cast.
-    let cast_spells = [];
-    let spells = null;
-    if (char_class == 'the-wizard') {
-      cast_spells.push('wizard');
-    }
-    else if (char_class == 'the-cleric') {
-      cast_spells.push('cleric');
-    }
-    else {
-      cast_spells.push(char_class);
-    }
-
-    if (cast_spells.length > 0) {
-      // Retrieve the actor's current moves so that we can hide them.
-      let spell_preparation_type = null;
-      spells = [];
-      for (let caster_class of cast_spells) {
-        // Get the item spells as the priority.
-        let spells_items = game.items.filter(i => {
-          // Return true for custom spell items that have a class.
-          return i.type == 'spell'
-            && i.system.class
-          // Check if this spell has either `classname` or `the classname` as its class.
-            && [caster_class, `the ${caster_class}`].includes(DwUtility.cleanClass(i.system.class));
-        });
-        const spells_compendium = await DwUtility.loadCompendia(`${char_class}-spells`);
-
-        // Get the compendium spells next.
-        let spells_compendium_items = spells_compendium;
-
-        // Append compendium spells to the item spells.
-        let spells_list = spells.map(s => {
-          return s.name;
-        })
-        // Add to the array, and also add to a sorted by level array.
-        for (let spell of spells_compendium_items) {
-          if (!spells_list.includes(spell.name)) {
-            spells_items.push(spell);
-          }
-        }
-
-        // Skip this class if there were no spells in it.
-        if (spells_items.length < 1) {
-          continue;
-        }
-
-        // Sort the spells and build our groups.
-        spells_items.sort((a, b) => {
-          return a.system.spellLevel - b.system.spellLevel;
-        });
-
-        let spell_groups = spells_items.reduce((groups, spell) => {
-          // Default to rotes.
-          let group = spell.system.spellLevel ? spell.system.spellLevel : 0;
-          if (!groups[group]) {
-            groups[group] = [];
-          }
-
-          groups[group].push(spell);
-          return groups;
-        }, {});
-
-        // Get the description for how to prepare spells for this class.
-        if (caster_class == 'wizard') {
-          let move = moves.filter(m => m.name == 'Spellbook');
-          if (move && move.length > 0) {
-            spell_preparation_type = move[0].system.description;
-          }
-          else {
-            move = actorMoves.filter(m => m.name == 'Spellbook');
-            if (move && move.length > 0) {
-              // @todo: v10 test this.
-              spell_preparation_type = move[0].system.description;
-            }
-          }
-        }
-        else if (caster_class == 'cleric') {
-          let move = moves.filter(m => m.name == 'Commune');
-          if (move && move.length > 0) {
-            spell_preparation_type = move[0].system.description;
-          }
-          else {
-            move = actorMoves.filter(m => m.name == 'Commune');
-            if (move && move.length > 0) {
-              // @todo: v10 test this.
-              spell_preparation_type = move[0].system.description;
-            }
-          }
-        }
-
-        spells.push({
-          description: spell_preparation_type,
-          spells: spell_groups
-        });
-      }
-    }
-
-    // Build the content. The viewer only lists the class: no ability scores
-    // to choose, and every race, alignment, move and spell.
+    // The viewer only lists the class: no ability scores to choose, and
+    // every race, alignment, move and spell.
     const templateData = {
       viewer: true,
-      char_class: char_class,
-      char_class_name: orig_class_name,
+      char_class: cls.slug,
+      char_class_name: className,
       blurb: blurb?.length > 0 ? blurb : null,
       races: races.length > 0 ? races : null,
       alignments: alignments.length > 0 ? alignments : null,
       equipment: equipment.length ? equipment : null,
-      starting_moves: starting_moves.length > 0 ? starting_moves : null,
-      starting_move_groups: starting_move_groups,
-      advanced_moves_2: advanced_moves_2.length > 0 ? advanced_moves_2 : null,
-      advanced_moves_6: advanced_moves_6.length > 0 ? advanced_moves_6 : null,
-      cast_spells: cast_spells.length > 0 && spells.length > 0 ? true : false,
-      spells: spells.length > 0 ? spells : null,
+      starting_moves: startingGroups ? true : null,
+      starting_move_groups: startingGroups,
+      advanced_moves_2: advanced2,
+      advanced_moves_6: advanced6,
+      cast_spells: !!caster,
+      spells: caster ? [caster] : null,
     };
 
     await DwLevelUp.#open(
       `dw-class-viewer-${actor.id}`,
-      `${game.i18n.localize('DW.ClassViewer')}: ${orig_class_name}`,
+      `${game.i18n.localize('DW.ClassViewer')}: ${className}`,
       templateData
     );
   }

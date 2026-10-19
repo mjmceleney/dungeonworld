@@ -14,7 +14,7 @@
     {{#if spellcasting.penalty}}
     <div class="dw-summary-item dw-summary-item--warn">
       <span class="dw-hint">{{localize "DW.Spellcasting.PenaltyActive" penalty=spellcasting.penalty}}</span>
-      {{#if editable}}<button type="button" class="dw-icon-btn" data-action="clearCastPenalty" data-tooltip="DW.Spellcasting.ClearPenalty" aria-label="{{localize "DW.Spellcasting.ClearPenalty"}}"><i class="fas fa-times" inert></i></button>{{/if}}
+      {{#if editable}}<button type="button" class="dw-icon-btn" data-action="clearPenalty" data-penalty="cast" data-tooltip="DW.Spellcasting.ClearPenalty" aria-label="{{localize "DW.Spellcasting.ClearPenalty"}}"><i class="fas fa-times" inert></i></button>{{/if}}
     </div>
     {{/if}}
   </div>

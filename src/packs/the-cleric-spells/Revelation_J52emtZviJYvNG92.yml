@@ -10,6 +10,15 @@ data:
     information, you take +1 forward.</p>
   spellLevel: 5
   rollFormula: ''
+  actions:
+    - type: 'forward'
+      target: 'self'
+      amount: '1'
+      stat: ''
+      condition: ''
+      name: ''
+      when: 'hit'
+      transfer: false
   class: The Cleric
   prepared: false
 flags: {}

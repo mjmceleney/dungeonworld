@@ -1,7 +1,6 @@
 import { DwUtility } from "../utility.js";
 import { DwRolls } from "../rolls.js";
 import { DwPartyMoves } from "../party-moves.js";
-import { DwRecover } from "../recover.js";
 import { DwSpells } from "../spells.js";
 import { DwRecruit } from "../recruit.js";
 
@@ -12,42 +11,15 @@ export class ItemDw extends Item {
   prepareData() {
     super.prepareData();
 
-    // Get the Item's data
-    const itemData = this;
-    const actorData = this.actor ? this.actor : {};
-    const data = itemData.system;
-
-    // Clean up broken groups.
-    if (itemData.type == 'class') {
-      if (itemData.system.equipment) {
-        for (let [group_key, group] of Object.entries(itemData.system.equipment)) {
-          if (group) {
-            if (DwUtility.isEmpty(group['items'])) {
-              group['items'] = [];
-              group['objects'] = [];
-            }
-          }
+    // Clean up broken class gear groups.
+    if (this.type == 'class') {
+      for (const group of Object.values(this.system.equipment ?? {})) {
+        if (group && DwUtility.isEmpty(group.items)) {
+          group.items = [];
+          group.objects = [];
         }
       }
     }
-  }
-
-  async _getEquipmentObjects(force_reload = false) {
-    let obj = null;
-    let itemData = this;
-
-    let items = await DwUtility.getEquipment(force_reload);
-    let equipment = [];
-
-    if (itemData.system.equipment) {
-      for (let [group, group_items] of Object.entries(itemData.system.equipment)) {
-        if (group_items) {
-          equipment[group] = items.filter(i => group_items['items'].includes(i.id));
-        }
-      }
-    }
-
-    return equipment;
   }
 
   /** @override */
@@ -82,9 +54,8 @@ export class ItemDw extends Item {
     if (party && this.actor && ['character', 'hireling'].includes(this.actor.type)) {
       return DwPartyMoves.start(party, this.actor);
     }
-    // Recover, and preparing spells, are done in a dialog.
+    // Preparing spells and Recruit are done in a dialog.
     if (this.actor?.type == 'character') {
-      if (DwRecover.isRecover(this)) return DwRecover.prompt(this.actor, this);
       if (DwSpells.isPrepareMove(this)) return DwSpells.prepare(this.actor, this);
       if (DwRecruit.isRecruit(this)) return DwRecruit.prompt(this.actor, this);
     }
@@ -92,6 +63,13 @@ export class ItemDw extends Item {
     // rolling the spell itself rolls its own dice, such as damage.
     if (cast && this.type == 'spell' && this.actor) {
       return DwSpells.cast(this.actor, this);
+    }
+    // Rolling Cast a Spell itself asks which spell, so the card shows it and
+    // a 7-9 can lose it. With none to choose from, it's rolled as it is.
+    if (DwSpells.isCastMove(this) && this.actor?.type == 'character') {
+      const spell = await DwSpells.chooseSpell(this.actor, this);
+      if (spell === null) return;
+      if (spell) return DwSpells.cast(this.actor, spell, this);
     }
     return DwRolls.rollMove({actor: this.actor, data: this});
   }

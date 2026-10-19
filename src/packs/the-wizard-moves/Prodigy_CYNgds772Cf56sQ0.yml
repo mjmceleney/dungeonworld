@@ -22,6 +22,9 @@ system:
   requiresLevel: 2
   requiresMove: ''
   moveGroup: ''
+  lowerSpells:
+    count: 1
+    levels: 1
 ownership:
   default: 0
 effects: []
